@@ -69,7 +69,7 @@ func (memory *Memory) renderScreen() {
 			}
 		}
 	} else {
-		memory.Display.flip()
+		memory.Display.flush()
 	}
 }
 
@@ -113,10 +113,10 @@ func (memory *Memory) drawScreenByte(address uint16, value byte) {
 
 	for p = 7; p >= 0; p-- {
 		if (value & (1 << p)) != 0 {
-			memory.Display.setPixel(uint(pixelAddress), ink)
+			memory.Display.setPixelAt(uint(pixelAddress), ink)
 			pixelAddress += 4
 		} else {
-			memory.Display.setPixel(uint(pixelAddress), paper)
+			memory.Display.setPixelAt(uint(pixelAddress), paper)
 			pixelAddress += 4
 		}
 
@@ -154,10 +154,10 @@ func (memory *Memory) drawAttrByte(address uint16, value byte) {
 
 		for p = 7; p >= 0; p-- {
 			if (screenByte & (1 << p)) != 0 {
-				memory.Display.setPixel(uint(pixelAddress), ink)
+				memory.Display.setPixelAt(uint(pixelAddress), ink)
 				pixelAddress += 4
 			} else {
-				memory.Display.setPixel(uint(pixelAddress), paper)
+				memory.Display.setPixelAt(uint(pixelAddress), paper)
 				pixelAddress += 4
 			}
 			if p == 0 {

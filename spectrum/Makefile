@@ -6,8 +6,10 @@ GOFILES=\
 	memory.go\
 	port.go\
 	display.go\
+	sdldisplay.go\
 	keyboard.go\
 	spectrum.go\
+	filter.go\
 	48.go
 
 include $(GOROOT)/src/Make.pkg

@@ -95,7 +95,8 @@ repository.
 * Add sound emulation
 * Improve memory contention
 * Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
-* Better performances
+* Better general performances
+* Add more filters and improve the scaler
 * Add new backends (exp/draw?)
 
 # Contacts

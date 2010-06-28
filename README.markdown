@@ -68,7 +68,7 @@ Tips: to simulate a backspace hit:
 
     SHIFT+0
 
-For a nice pics of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm)
+For a nice pic of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
 
 To load a SNA rom:
 
@@ -79,7 +79,7 @@ To load a SNA rom:
     Host computer   Zx Spectrum
     ---------------------------
     CTRL            Symbol Shift
-    LEFT SHIFT      Caps
+    LEFT SHIFT      Caps Shift
 
 For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 

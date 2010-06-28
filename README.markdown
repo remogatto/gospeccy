@@ -4,7 +4,7 @@ GOSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
 interesting fact is that it is written in GO and - AFAIK - it's the
 first Spectrum/Z80 emulator coded with the new language by Google.
 
-There are a lot of ZX Spectrum emulators around so, why reinventing the wheel? Well, mainly for [Amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then because it was a great learning experience about emulators for me :) And it was a good chance to write something real with GO.
+There are a lot of ZX Spectrum emulators around so, why reinventing the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then because it was a great learning experience about emulators for me :) And it was a good chance to write something real with GO.
 
 Coding an emulator in GO is very enjoyable. The language is simple,
 pragmatic and fast and has a lot of features that help in emulators
@@ -75,10 +75,11 @@ To load a SNA rom:
 
     Host computer   Zx Spectrum
     ---------------------------
-    CTRL            Symbol Shift
-    LEFT SHIFT      Caps Shift
+    CTRL            SYMBOL SHIFT
+    LEFT SHIFT      CAPS SHIFT
     [a-z0-9]        [A-Z0-9]
-         
+    SPACE           SPACE
+
 For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 
 # ROMs

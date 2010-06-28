@@ -17,19 +17,19 @@ development (for example its low-level similarities with C but GO is
 
 The Zilog Z80 emulation is the core of GOSpeccy. The CPU emulation
 code is generated using the <tt>z80.pl</tt> script shipped with
-[FUSE][http://fuse-emulator.sourceforge.net/] (one of the best ZX
+[FUSE](http://fuse-emulator.sourceforge.net/) (one of the best ZX
 Spectrum emulator around). The script has been hacked to generate GO
 code rather than C code.
 
 Another source of inspiration was
-[JSSpeccy][http://matt.west.co.tt/spectrum/jsspeccy/], a neat
+[JSSpeccy](http://matt.west.co.tt/spectrum/jsspeccy/), a neat
 Javascript Speccy emulator.
 
 The Z80 emulation is tested using the excellent test-suite shipped
 with FUSE.
 
 If you like this software, please watch it on
-[github][remogatto/gospeccy]! Seeing a growing number of watchers is
+[github](http://github.com/remogatto/gospeccy)! Seeing a growing number of watchers is
 an excellent motivation for me to keep up this work :) Bug reports and
 testing are also appreciated! And don't forget to send me patches, of
 course ;)
@@ -63,7 +63,7 @@ Generally, roms are protected by copyright so none of them is included
 in GOSpeccy (with the exception of the 48k rom that can be freely
 distributed). BTW, you can find tons of roms for the ZX Spectrum on
 the Internet. Take a look at JSSpeccy
-[svn][http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/]
+[svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/)
 repository.
 
 # TODO

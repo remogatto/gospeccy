@@ -42,7 +42,7 @@ course ;)
 
 # Dependencies
 
-* banthar/Go-SDL
+* [banthar/Go-SDL](http://github.com/banthar/Go-SDL)
 
 # Quick start
 

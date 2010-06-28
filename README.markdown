@@ -39,6 +39,7 @@ course ;)
 * Complete Zilog Z80 emulation
 * SNA format support
 * SDL backend
+* 2x scaler and fullscreen (to be improved)
 
 # Dependencies
 
@@ -84,6 +85,10 @@ distributed). BTW, you can find tons of roms for the ZX Spectrum on
 the Internet. Take a look at JSSpeccy
 [svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/)
 repository.
+
+# Screenshots
+
+![Batty running on GOSpeccy](http://sites.google.com/site/remogatto/batty.png)
 
 # TODO
 

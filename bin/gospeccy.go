@@ -31,7 +31,6 @@ import (
 	"fmt"
 	"flag"
 	"os"
-	"time"
 )
 
 var (
@@ -113,8 +112,6 @@ func run() {
 
 	running := true
 
-	start := time.Nanoseconds()
-
 	for running {
 
 		e := &sdl.Event{}
@@ -156,9 +153,6 @@ func run() {
 			}
 		}
 
-		deltat += time.Nanoseconds() - start
-		startFrame := time.Nanoseconds()
-
 		speccy.RenderFrame()
 
 		if *scale {
@@ -168,12 +162,6 @@ func run() {
 		}
 
 		applicationScreen.Surface.Flip()
-
-		if(deltat > 3e9) {
-			fmt.Printf("FPS %f\n", 1 / (float(time.Nanoseconds() - startFrame)/float(1e9)))
-			start = time.Nanoseconds()
-			deltat = 0
-		}
 
 		sdl.Delay(20)
 	}

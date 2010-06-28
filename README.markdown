@@ -64,6 +64,11 @@ Now try press the following keys:
 
 And see your shining new ZX Spectrum computer responding :)
 
+Tips: to simulate a backspace hit:
+
+    SHIFT+0
+
+For a nice pics of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm)
 To load a SNA rom:
 
     gospeccy -d image.sna

@@ -48,14 +48,14 @@ course ;)
 
 First of all, be sure to install the dependencies. Then:
 
-  git clone http://github.com/remogatto/gospeccy
-  cd gospeccy
-  make install
-  gospeccy -d # Execute in a double sized window
+    git clone http://github.com/remogatto/gospeccy
+    cd gospeccy
+    make install
+    gospeccy -d # Execute in a double sized window
 
 To load a SNA rom:
 
-  gospeccy -d image.sna
+    gospeccy -d image.sna
 
 # ROMs
 

@@ -80,7 +80,8 @@ To load a SNA rom:
     ---------------------------
     CTRL            Symbol Shift
     LEFT SHIFT      Caps Shift
-
+    [a-z0-9]        [A-Z0-9]
+         
 For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 
 # ROMs

@@ -12,24 +12,27 @@ with GO.
 Coding an emulator in GO is very enjoyable. The language is simple,
 pragmatic and fast and has a lot of features that help in emulators
 development (for example its low-level similarities with C but GO is
-*a lot* more agile than C!). More about that in a future blog post may
-be :)
+*a lot* more agile than C!). More on that in a future blog post maybe
+:)
 
 The Zilog Z80 emulation is the core of GOSpeccy. The CPU emulation
-code is generated using the <tt>z80.pl</tt> script shipped with FUSE
-(one of the best ZX Spectrum emulator around). The script has been
-hacked to generate GO code rather than C code.
+code is generated using the <tt>z80.pl</tt> script shipped with
+[FUSE][http://fuse-emulator.sourceforge.net/] (one of the best ZX
+Spectrum emulator around). The script has been hacked to generate GO
+code rather than C code.
 
-Another source of inspiration was JSSpeccy, a neat Javascript Speccy
-emulator.
+Another source of inspiration was
+[JSSpeccy][http://matt.west.co.tt/spectrum/jsspeccy/], a neat
+Javascript Speccy emulator.
 
 The Z80 emulation is tested using the excellent test-suite shipped
-with FUSE (see spectrum/z80_test, spectrum/tests.in and
-spectrum/tests.expected files).
+with FUSE.
 
-If you like this software, please watch it on github! Seeing a growing
-number of watchers is a good motivation for me to keep up this work :)
-And don't forget to send me patches, of course ;)
+If you like this software, please watch it on
+[github][remogatto/gospeccy]! Seeing a growing number of watchers is
+an excellent motivation for me to keep up this work :) Bug reports and
+testing are also appreciated! And don't forget to send me patches, of
+course ;)
 
 # Features
 
@@ -39,7 +42,7 @@ And don't forget to send me patches, of course ;)
 
 # Dependencies
 
-* Go-SDL
+* banthar/Go-SDL
 
 # Quick start
 
@@ -59,7 +62,9 @@ To load a SNA rom:
 Generally, roms are protected by copyright so none of them is included
 in GOSpeccy (with the exception of the 48k rom that can be freely
 distributed). BTW, you can find tons of roms for the ZX Spectrum on
-the Internet. Take a look at JSSpeccy svn repository.
+the Internet. Take a look at JSSpeccy
+[svn][http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/]
+repository.
 
 # TODO
 
@@ -68,6 +73,12 @@ the Internet. Take a look at JSSpeccy svn repository.
 * Add support for more file formats (tap, szx, etc)
 * Better performances
 * Add new backends (exp/draw?)
+
+# Contacts
+
+* andrea.fazzi@alcacoop.it
+* http://twitter.com/remogatto
+* http://freecella.blogspot.com
 
 # LICENSE
 

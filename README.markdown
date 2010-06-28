@@ -1,21 +1,21 @@
-# GOSpeccy - A naive ZX Spectrum 48k Emulator
+# GoSpeccy - A naive ZX Spectrum 48k Emulator
 
-GOSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
-interesting fact is that it is written in GO and - AFAIK - it's the
+GoSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
+interesting fact is that it is written in Go and - AFAIK - it's the
 first Spectrum/Z80 emulator coded with the new language by Google.
 
-There are a lot of ZX Spectrum emulators around so, why reinventing the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then because it was a great learning experience about emulators for me :) And it was a good chance to write something real with GO.
+There are a lot of ZX Spectrum emulators around so, why reinventing the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then because it was a great learning experience about emulators for me :) And it was a good chance to write something real with Go.
 
-Coding an emulator in GO is very enjoyable. The language is simple,
+Coding an emulator in Go is very enjoyable. The language is simple,
 pragmatic and fast and has a lot of features that help in emulators
-development (for example its low-level similarities with C but GO is
+development (for example its low-level similarities with C but Go is
 *a lot* more agile than C!). More on that in a future blog post maybe
 :)
 
-The Zilog Z80 emulation is the core of GOSpeccy. The CPU emulation
+The Zilog Z80 emulation is the core of GoSpeccy. The CPU emulation
 code is generated using the <tt>z80.pl</tt> script shipped with
 [FUSE](http://fuse-emulator.sourceforge.net/) (one of the best ZX
-Spectrum emulator around). The script has been hacked to generate GO
+Spectrum emulator around). The script has been hacked to generate Go
 code rather than C code.
 
 Another source of inspiration was
@@ -85,7 +85,7 @@ For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 # ROMs
 
 Generally, roms are protected by copyright so none of them is included
-in GOSpeccy (with the exception of the 48k rom that can be freely
+in GoSpeccy (with the exception of the 48k rom that can be freely
 distributed). BTW, you can find tons of roms for the ZX Spectrum on
 the Internet. Take a look at JSSpeccy
 [svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/)
@@ -93,7 +93,7 @@ repository.
 
 # Screenshots
 
-![Batty running on GOSpeccy](http://sites.google.com/site/remogatto/batty.png)
+![Batty running on GoSpeccy](http://sites.google.com/site/remogatto/batty.png)
 
 # TODO
 

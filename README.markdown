@@ -85,6 +85,10 @@ the Internet. Take a look at JSSpeccy
 [svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/)
 repository.
 
+# Screenshots
+
+!http://sites.google.com/site/remogatto/batty.png
+
 # TODO
 
 * Add sound emulation

@@ -87,7 +87,7 @@ repository.
 
 # Screenshots
 
-!http://sites.google.com/site/remogatto/batty.png!
+![Batty running on GOSpeccy](http://sites.google.com/site/remogatto/batty.png)
 
 # TODO
 

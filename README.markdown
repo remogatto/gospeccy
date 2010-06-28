@@ -87,7 +87,7 @@ repository.
 
 # Screenshots
 
-!http://sites.google.com/site/remogatto/batty.png
+!http://sites.google.com/site/remogatto/batty.png!
 
 # TODO
 

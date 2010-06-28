@@ -39,6 +39,7 @@ course ;)
 * Complete Zilog Z80 emulation
 * SNA format support
 * SDL backend
+* 2x scaler and fullscreen (to be improved)
 
 # Dependencies
 

@@ -53,9 +53,28 @@ First of all, be sure to install the dependencies. Then:
     make install
     gospeccy -d # Execute in a double sized window
 
+Now try press the following keys:
+
+    p
+    CTRL+p
+    hello world
+    CTRL+p
+    RETURN
+
+And see your shining new ZX Spectrum computer responding :)
+
 To load a SNA rom:
 
     gospeccy -d image.sna
+
+# Key bindings
+
+    Host computer   Zx Spectrum
+    ---------------------------
+    CTRL            Symbol Shift
+    LEFT SHIFT      Caps
+
+For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 
 # ROMs
 
@@ -70,7 +89,7 @@ repository.
 
 * Add sound emulation
 * Improve memory contention
-* Add support for more file formats (tap, szx, etc)
+* Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
 * Better performances
 * Add new backends (exp/draw?)
 

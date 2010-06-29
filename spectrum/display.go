@@ -59,7 +59,10 @@ type SurfaceAccessor interface {
 
 
 type DisplayAccessor interface {
+
+	// FIXME: ZX Spectrum display coords should be of byte size!
 	setPixel(x, y uint, color [3]byte)
+
 	setPixelAt(address uint, color [3]byte)
 	setBorderColor(color [3]byte)
 	flush()

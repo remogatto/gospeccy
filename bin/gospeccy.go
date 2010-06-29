@@ -35,6 +35,8 @@ import (
 
 var (
 	display *spectrum.SDLDisplay
+	doubledDisplay *spectrum.SDLDoubledDisplay
+
 	applicationScreen *spectrum.SDLSurface
 	port *spectrum.Port
 	memory *spectrum.Memory
@@ -85,11 +87,11 @@ func run() {
 	}
 
 	if *scale {
-		display = spectrum.NewSDLDisplay(sdl.CreateRGBSurface(sdl.SWSURFACE, 320, 240, 32, 0, 0, 0, 0))
-		memory  = &spectrum.Memory{ Display: display }
-		port    = &spectrum.Port{ Display: display }
+		doubledDisplay = spectrum.NewSDLDoubledDisplay(sdl.SetVideoMode(640, 480, 32, 0))
+		memory  = &spectrum.Memory{ Display: doubledDisplay }
+		port    = &spectrum.Port{ Display: doubledDisplay }
 		speccy = spectrum.NewSpectrum48k(memory, port)
-		applicationScreen = &spectrum.SDLSurface{ sdl.SetVideoMode(640, 480, 32, sdlMode) }
+		applicationScreen = doubledDisplay.ScreenSurface 
 	} else {
 		display = spectrum.NewSDLDisplay(sdl.SetVideoMode(320, 240, 32, 0))
 		memory  = &spectrum.Memory{ Display: display }
@@ -154,12 +156,6 @@ func run() {
 		}
 
 		speccy.RenderFrame()
-
-		if *scale {
-			// This is a quick hack to double the size of
-			// the small speccy display. Need refactoring/optimization!
-			spectrum.Scale2x(display.ScreenSurface, applicationScreen)
-		}
 
 		applicationScreen.Surface.Flip()
 

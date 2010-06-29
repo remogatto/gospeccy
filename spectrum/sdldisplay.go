@@ -130,3 +130,44 @@ func (display *SDLDisplay) setPixelAt(address uint, color [3]byte) {
 func (display *SDLDisplay) setPixel(x, y uint, color [3]byte) {
 	display.DisplaySurface.setPixel(x, y, color)
 }
+
+// Experimental SDLDoubledDisplay
+type SDLDoubledDisplay struct {
+	SDLDisplay
+}
+
+func NewSDLDoubledDisplay(screenSurface *sdl.Surface) *SDLDoubledDisplay {
+	// Here below we create the internal DisplaySurface i.e. the
+	// drawable display area without borders
+	displaySurface := &SDLSurface { sdl.CreateRGBSurface(sdl.SWSURFACE, 512, 384, 32, 0, 0, 0, 0) }
+
+	// Literal initialization of the SDLDisplay object (the whole
+	// screen: drawable area + borders)
+	return &SDLDoubledDisplay{ SDLDisplay{ &SDLSurface{ screenSurface }, displaySurface, [3]byte { 0, 0, 0 } } }
+}
+
+func (display *SDLDoubledDisplay) flush() {
+	color := (uint32(display.borderColor[0]) << 16) | (uint32(display.borderColor[1]) << 8) | uint32(display.borderColor[2])
+
+	display.ScreenSurface.Surface.FillRect(nil, color)
+	display.ScreenSurface.Surface.Blit(&sdl.Rect{32 * 2, 24 * 2, 640 - 32*2, 480 - 24*2}, display.DisplaySurface.Surface, &sdl.Rect{0, 0, 512, 384 })
+}
+
+func (display *SDLDoubledDisplay) setBorderColor(color [3]byte) {
+	display.borderColor = color
+}
+
+func (display *SDLDoubledDisplay) setPixel(x, y uint, color [3]byte) {
+	var (
+		scaleX uint = x * 2
+		scaleY uint = y * 2
+		scaleXInc uint = scaleX + 1
+ 		scaleYInc uint = scaleY + 1
+	)
+
+	display.DisplaySurface.setPixel(scaleX, scaleY, color)
+	display.DisplaySurface.setPixel(scaleXInc, scaleYInc, color)
+	display.DisplaySurface.setPixel(scaleX, scaleYInc, color)
+	display.DisplaySurface.setPixel(scaleXInc, scaleY, color)
+}
+

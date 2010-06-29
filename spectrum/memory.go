@@ -1,5 +1,7 @@
 package spectrum
 
+// import "fmt"
+
 var flashFrame byte
 
 type MemoryAccessor interface {
@@ -89,40 +91,45 @@ func (memory *Memory) set(address uint, value byte) {
 	memory.data[address] = value
 }
 
+// Draw a line of 8 pixels on the speccy display. The starting point
+// of that line is encoded in address. The value byte specifies which
+// pixels to turn on. Pixels turned on are painted with ink
+// value. Pixels turned off are painted with paper value.
 func (memory *Memory) drawScreenByte(address uint16, value byte) {
-	/* 0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0 */
-	var x uint16 = (address & 0x001f)                                                                /* counted in characters */
-	var y uint16 = ((address & 0x0700) >> 8) | ((address & 0x00e0) >> 2) | ((address & 0x1800) >> 5) /* counted in pixels */
+
+	// FIXME: Need to use proper type for x, y etc getting rid of
+	// all these type conversions. I think uint16 is not needed at
+	// all, byte type should be enough.
+
+	// 0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0 
+	var x uint16 = (address & 0x001f) // counted in characters
+	var y uint16 = ((address & 0x0700) >> 8) | ((address & 0x00e0) >> 2) | ((address & 0x1800) >> 5) // counted in pixels
 	var attributeByte byte = memory.data[0x5800|((y & 0xf8) << 2) | x]
 
 	var ink [3]byte
 	var paper [3]byte
 
 	if ((attributeByte & 0x80) != 0) && ((flashFrame & 0x10) != 0) {
-		/* invert flashing attributes */
-		ink = palette[(attributeByte&0x78)>>3]
-		paper = palette[((attributeByte&0x40)>>3)|(attributeByte&0x07)]
+		// invert flashing attributes
+		ink = palette[(attributeByte & 0x78) >> 3]
+		paper = palette[((attributeByte & 0x40) >> 3)|(attributeByte & 0x07)]
 	} else {
-		ink = palette[((attributeByte&0x40)>>3)|(attributeByte&0x07)]
-		paper = palette[(attributeByte&0x78)>>3]
+		ink = palette[((attributeByte & 0x40)>>3)|(attributeByte & 0x07)]
+		paper = palette[(attributeByte & 0x78)>>3]
 	}
-
-	var pixelAddress uint = (uint(y) << 10) | (uint(x) << 5)
 
 	var p byte
 
-	for p = 7; p >= 0; p-- {
-		if (value & (1 << p)) != 0 {
-			memory.Display.setPixelAt(uint(pixelAddress), ink)
-			pixelAddress += 4
+	startx := x * 8
+
+	for p = 0; p < 8; p++ {
+		
+		if (value & (1 << (7 - p))) != 0 {
+			memory.Display.setPixel(uint(uint16(startx) + uint16(p)), uint(y), ink)
 		} else {
-			memory.Display.setPixelAt(uint(pixelAddress), paper)
-			pixelAddress += 4
+			memory.Display.setPixel(uint(uint16(startx) + uint16(p)), uint(y), paper)
 		}
 
-		if p == 0 {
-			break
-		}
 	}
 }
 
@@ -144,24 +151,27 @@ func (memory *Memory) drawAttrByte(address uint16, value byte) {
 	}
 
 	var y uint16
+	
+	startx := x0 * 8
+	starty := y0
 
 	for y = 0; y < 8; y++ {
 
-		var pixelAddress uint = ((uint(y0) | uint(y)) << 10) | (uint(x0) << 5)
+//		var pixelAddress uint = ((uint(y0) | uint(y)) << 10) | (uint(x0) << 5)
 		var screenByte byte = memory.data[0x4000|((y0 & 0xc0) << 5) |( y << 8) | ((y0 & 0x38) << 2) | x0]
 
 		var p byte
 
-		for p = 7; p >= 0; p-- {
-			if (screenByte & (1 << p)) != 0 {
-				memory.Display.setPixelAt(uint(pixelAddress), ink)
-				pixelAddress += 4
+		for p = 0; p < 8; p++ {
+//			fmt.Printf("x %d y %d\n", uint(uint16(startx) + uint16(p)), uint(starty + y))
+			if (screenByte & (1 << (7-p))) != 0 {
+				memory.Display.setPixel(uint(uint16(startx) + uint16(p)), uint(starty + y), ink)
+				// memory.Display.setPixelAt(uint(pixelAddress), ink)
+				// pixelAddress += 4
 			} else {
-				memory.Display.setPixelAt(uint(pixelAddress), paper)
-				pixelAddress += 4
-			}
-			if p == 0 {
-				break
+				memory.Display.setPixel(uint(uint16(startx) + uint16(p)), uint(starty + y), paper)
+				// memory.Display.setPixelAt(uint(pixelAddress), paper)
+				// pixelAddress += 4
 			}
 		}
 	}

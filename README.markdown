@@ -42,6 +42,10 @@ course ;)
 
 * [banthar/Go-SDL](http://github.com/banthar/Go-SDL)
 
+On Ubuntu Linux you'll need to install the following packages using synaptic:
+
+    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev
+
 # Quick start
 
 First of all, be sure to install the dependencies. Then:

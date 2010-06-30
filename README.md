@@ -50,7 +50,7 @@ On Ubuntu Linux you'll need to install the following packages using synaptic:
 
 First of all, be sure to install the dependencies. Then:
 
-    git clone http://github.com/remogatto/gospeccy
+    git clone http://github.com/remogatto/gospeccy.git
     cd gospeccy
     make install
     gospeccy -doubled # Execute in a doubled size window
@@ -67,9 +67,9 @@ And see your shining new ZX Spectrum 48k responding :)
 
 Tips: to simulate a backspace hit:
 
-    SHIFT+0
+    LEFT SHIFT+0
 
-For a nice pic of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
+For a nice picture of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
 
 To load a SNA rom:
 

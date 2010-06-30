@@ -6,7 +6,19 @@ type Spectrum48k struct {
 	Port   PortAccessor
 }
 
-func NewSpectrum48k(memory MemoryAccessor, port PortAccessor) *Spectrum48k {
+// Create a new speccy object.
+//
+// For example, to initialize a speccy object that writes on a SDL display:
+//
+//     display := spectrum.NewSDLScreen(sdl.SetVideoMode(320, 240, 32, sdlMode))
+//     speccy := spectrum.NewSpectrum48k(display)
+//
+// display should respond to DisplayAccessor interface (see display.go)
+func NewSpectrum48k(display DisplayAccessor) *Spectrum48k {
+
+	memory  := &Memory{ Display: display }
+	port    := &Port{ Display: display }
+
 	// Load the built-in ROM image into memory
 	for address, b := range rom48k {
 		memory.set(uint(address), b)

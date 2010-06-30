@@ -30,6 +30,17 @@ import (
 	"sdl"
 )
 
+const (
+	DisplayWidth = 256
+	DisplayHeight = 192
+
+	ScreenBorderX = 32
+	ScreenBorderY = 24
+
+	ScreenWidth = DisplayWidth + ScreenBorderX * 2
+	ScreenHeight = DisplayHeight + ScreenBorderY * 2
+)
+
 type SDLSurface struct {
 	Surface *sdl.Surface
 }
@@ -91,7 +102,7 @@ func (s *SDLSurface) getValueAt(id uint) uint32 {
 	return *p
 }
 
-type SDLDisplay struct {
+type SDLScreen struct {
 	// The whole screen borders included
 	ScreenSurface *SDLSurface
 
@@ -101,63 +112,62 @@ type SDLDisplay struct {
 	borderColor [3]byte
 }
 
-func NewSDLDisplay(screenSurface *sdl.Surface) *SDLDisplay {
-
+func NewSDLScreen(screenSurface *sdl.Surface) *SDLScreen {
 	// Here below we create the internal DisplaySurface i.e. the
 	// drawable display area without borders
-	displaySurface := &SDLSurface { sdl.CreateRGBSurface(sdl.SWSURFACE, 256, 192, 32, 0, 0, 0, 0) }
+	displaySurface := &SDLSurface { sdl.CreateRGBSurface(sdl.SWSURFACE, DisplayWidth, DisplayHeight, 32, 0, 0, 0, 0) }
 
-	// Literal initialization of the SDLDisplay object (the whole
+	// Literal initialization of the SDLScreen object (the whole
 	// screen: drawable area + borders)
-	return &SDLDisplay{ ScreenSurface: &SDLSurface{ screenSurface }, DisplaySurface: displaySurface }
+	return &SDLScreen{ ScreenSurface: &SDLSurface{ screenSurface }, DisplaySurface: displaySurface }
 }
 
-func (display *SDLDisplay) flush() {
+func (display *SDLScreen) flush() {
 	color := (uint32(display.borderColor[0]) << 16) | (uint32(display.borderColor[1]) << 8) | uint32(display.borderColor[2])
 
 	display.ScreenSurface.Surface.FillRect(nil, color)
 	display.ScreenSurface.Surface.Blit(&sdl.Rect{32, 24, 320 - 32, 240 - 24}, display.DisplaySurface.Surface, &sdl.Rect{0, 0, 256, 192})
 }
 
-func (display *SDLDisplay) setBorderColor(color [3]byte) {
+func (display *SDLScreen) setBorderColor(color [3]byte) {
 	display.borderColor = color
 }
 
-func (display *SDLDisplay) setPixelAt(address uint, color [3]byte) {
+func (display *SDLScreen) setPixelAt(address uint, color [3]byte) {
 	display.DisplaySurface.setPixelAt(address, color)
 }
 
-func (display *SDLDisplay) setPixel(x, y uint, color [3]byte) {
+func (display *SDLScreen) setPixel(x, y uint, color [3]byte) {
 	display.DisplaySurface.setPixel(x, y, color)
 }
 
 // Experimental SDLDoubledDisplay
-type SDLDoubledDisplay struct {
-	SDLDisplay
+type SDLDoubledScreen struct {
+	SDLScreen
 }
 
-func NewSDLDoubledDisplay(screenSurface *sdl.Surface) *SDLDoubledDisplay {
+func NewSDLDoubledScreen(screenSurface *sdl.Surface) *SDLDoubledScreen {
 	// Here below we create the internal DisplaySurface i.e. the
 	// drawable display area without borders
-	displaySurface := &SDLSurface { sdl.CreateRGBSurface(sdl.SWSURFACE, 512, 384, 32, 0, 0, 0, 0) }
+	displaySurface := &SDLSurface { sdl.CreateRGBSurface(sdl.SWSURFACE, DisplayWidth * 2, DisplayHeight * 2, 32, 0, 0, 0, 0) }
 
-	// Literal initialization of the SDLDisplay object (the whole
+	// Literal initialization of the SDLScreen object (the whole
 	// screen: drawable area + borders)
-	return &SDLDoubledDisplay{ SDLDisplay{ &SDLSurface{ screenSurface }, displaySurface, [3]byte { 0, 0, 0 } } }
+	return &SDLDoubledScreen{ SDLScreen{ &SDLSurface{ screenSurface }, displaySurface, [3]byte { 0, 0, 0 } } }
 }
 
-func (display *SDLDoubledDisplay) flush() {
+func (display *SDLDoubledScreen) flush() {
 	color := (uint32(display.borderColor[0]) << 16) | (uint32(display.borderColor[1]) << 8) | uint32(display.borderColor[2])
 
 	display.ScreenSurface.Surface.FillRect(nil, color)
 	display.ScreenSurface.Surface.Blit(&sdl.Rect{32 * 2, 24 * 2, 640 - 32*2, 480 - 24*2}, display.DisplaySurface.Surface, &sdl.Rect{0, 0, 512, 384 })
 }
 
-func (display *SDLDoubledDisplay) setBorderColor(color [3]byte) {
+func (display *SDLDoubledScreen) setBorderColor(color [3]byte) {
 	display.borderColor = color
 }
 
-func (display *SDLDoubledDisplay) setPixel(x, y uint, color [3]byte) {
+func (display *SDLDoubledScreen) setPixel(x, y uint, color [3]byte) {
 	var (
 		scaleX uint = x * 2
 		scaleY uint = y * 2

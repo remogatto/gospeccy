@@ -53,7 +53,7 @@ First of all, be sure to install the dependencies. Then:
     git clone http://github.com/remogatto/gospeccy
     cd gospeccy
     make install
-    gospeccy -d # Execute in a double sized window
+    gospeccy -doubled # Execute in a doubled size window
 
 Now try press the following keys:
 
@@ -73,7 +73,7 @@ For a nice pic of the speccy keyboard layout visit this [page](http://www.guybru
 
 To load a SNA rom:
 
-    gospeccy -d image.sna
+    gospeccy -doubled image.sna
 
 # Key bindings
 

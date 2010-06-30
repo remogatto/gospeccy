@@ -1,0 +1,26 @@
+2010-06-29 Andrea Fazzi <andrea.fazzi@alcacoop.it>
+
+	* Improve display design: better performance for scaled display
+	avoiding post processing of the surface.
+
+	* Simplify high-level API: create a speccy instance is simple as
+	issuing:
+
+	    speccy := NewSpectrum48k(display)
+
+	For example, to initialize a speccy object that writes on a SDL
+	display:
+
+	    display := spectrum.NewSDLScreen(sdl.SetVideoMode(320, 240, 32, sdlMode))
+	    speccy := spectrum.NewSpectrum48k(display)
+
+	Of course, display should respond to the DisplayAccessor interface
+
+	* Make command-line options autoexplicative
+	    d -> doubled
+	    f -> fullscreen
+	    h -> help
+
+2010-06-28 Andrea Fazzi <andrea.fazzi@alcacoop.it>
+
+	* Birthday! (first public release)

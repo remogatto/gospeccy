@@ -34,10 +34,7 @@ import (
 )
 
 var (
-	display *spectrum.SDLDisplay
-	doubledDisplay *spectrum.SDLDoubledDisplay
-
-	applicationScreen *spectrum.SDLSurface
+	applicationSurface *sdl.Surface
 	port *spectrum.Port
 	memory *spectrum.Memory
 	speccy *spectrum.Spectrum48k
@@ -48,12 +45,12 @@ var (
 
 // Big game loop block. Need a bit of refactoring I guess :)
 func run() {
-	help := flag.Bool("h", false, "Show usage")
-	scale := flag.Bool("d", false, "Double size")
-	fullscreen:= flag.Bool("f", false, "Fullscreen (enable double size by default)")
+	help := flag.Bool("help", false, "Show usage")
+	scale := flag.Bool("doubled", false, "Doubled size display")
+	fullscreen:= flag.Bool("fullscreen", false, "Fullscreen (enable doubled size display by default)")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "GOSpeccy - A simple ZX Spectrum 48k Emulator written in GO\n\n")
+		fmt.Fprintf(os.Stderr, "GoSpeccy - A simple ZX Spectrum 48k Emulator written in GO\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n\n")
 		fmt.Fprintf(os.Stderr, "\tgospeccy [options] [image.sna]\n\n")
 		fmt.Fprintf(os.Stderr, "Options are:\n\n")
@@ -87,21 +84,16 @@ func run() {
 	}
 
 	if *scale {
-		doubledDisplay = spectrum.NewSDLDoubledDisplay(sdl.SetVideoMode(640, 480, 32, 0))
-		memory  = &spectrum.Memory{ Display: doubledDisplay }
-		port    = &spectrum.Port{ Display: doubledDisplay }
-		speccy = spectrum.NewSpectrum48k(memory, port)
-		applicationScreen = doubledDisplay.ScreenSurface 
+		display := spectrum.NewSDLDoubledScreen(sdl.SetVideoMode(640, 480, 32, sdlMode))
+		speccy = spectrum.NewSpectrum48k(display)
+		applicationSurface = display.ScreenSurface.Surface
 	} else {
-		display = spectrum.NewSDLDisplay(sdl.SetVideoMode(320, 240, 32, 0))
-		memory  = &spectrum.Memory{ Display: display }
-		port    = &spectrum.Port{ Display: display }
-		speccy = spectrum.NewSpectrum48k(memory, port)
-		applicationScreen = display.ScreenSurface
-
+		display := spectrum.NewSDLScreen(sdl.SetVideoMode(320, 240, 32, sdlMode))
+		speccy = spectrum.NewSpectrum48k(display)
+		applicationSurface = display.ScreenSurface.Surface
 	}
 
-	if applicationScreen.Surface == nil {
+	if applicationSurface == nil {
 		panic(sdl.GetError())
 	}
 
@@ -157,7 +149,7 @@ func run() {
 
 		speccy.RenderFrame()
 
-		applicationScreen.Surface.Flip()
+		applicationSurface.Flip()
 
 		sdl.Delay(20)
 	}

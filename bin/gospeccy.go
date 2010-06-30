@@ -31,7 +31,10 @@ import (
 	"fmt"
 	"flag"
 	"os"
+	"time"
 )
+
+const frameDuration = 1e9 / 50 // 50 frames a second
 
 var (
 	applicationSurface *sdl.Surface
@@ -40,7 +43,7 @@ var (
 	speccy *spectrum.Spectrum48k
 
 	sdlMode uint32
-	deltat int64
+	lastFrame int64
 )
 
 // Big game loop block. Need a bit of refactoring I guess :)
@@ -151,7 +154,18 @@ func run() {
 
 		applicationSurface.Flip()
 
-		sdl.Delay(20)
+		// FIXME: This auto-adjust delay works well. BTW, it
+		// could be better to take an average delay after N
+		// rendered frames.
+
+		delay := time.Nanoseconds() - lastFrame
+
+		if delay <= frameDuration {
+			time.Sleep(frameDuration - delay)
+		}
+
+		lastFrame = time.Nanoseconds()
+
 	}
 
 	sdl.Quit()

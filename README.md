@@ -63,7 +63,7 @@ Now try press the following keys:
     CTRL+p
     RETURN
 
-And see your shining new ZX Spectrum computer responding :)
+And see your shining new ZX Spectrum 48k responding :)
 
 Tips: to simulate a backspace hit:
 
@@ -74,6 +74,14 @@ For a nice pic of the speccy keyboard layout visit this [page](http://www.guybru
 To load a SNA rom:
 
     gospeccy -doubled image.sna
+
+And if you're curious to see what this glorious machine can do despite
+of its limited graphics capabilities, try the nice
+[Fire104b](http://pouet.net/prod.php?which=54076) intro by Andrew
+Gerrand included in the gospeccy distribution! In the gospeccy folder,
+run:
+
+    gospeccy -doubled snapshots/Fire104b.sna
 
 # Key bindings
 
@@ -86,12 +94,12 @@ To load a SNA rom:
 
 For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 
-# ROMs
+# Propretary ROMs
 
-Generally, roms are protected by copyright so none of them is included
-in GoSpeccy (with the exception of the 48k rom that can be freely
-distributed). BTW, you can find tons of roms for the ZX Spectrum on
-the Internet. Take a look at JSSpeccy
+Generally, propretary roms are protected by copyright so none of them
+is included in GoSpeccy (with the exception of the 48k rom that can be
+freely distributed). BTW, you can find tons of roms for the ZX
+Spectrum on the Internet. Take a look at JSSpeccy
 [svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/)
 repository.
 

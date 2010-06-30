@@ -1,5 +1,7 @@
 2010-06-29 Andrea Fazzi <andrea.fazzi@alcacoop.it>
 
+	* Add Fire104b intro snapshot by Andrew Gerrand
+
 	* Improve display design: better performance for scaled display
 	avoiding post processing of the surface.
 
@@ -20,6 +22,8 @@
 	    d -> doubled
 	    f -> fullscreen
 	    h -> help
+
+	* Add LICENSE and ChangeLog files
 
 2010-06-28 Andrea Fazzi <andrea.fazzi@alcacoop.it>
 

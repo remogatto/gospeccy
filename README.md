@@ -81,7 +81,7 @@ of its limited graphics capabilities, try the nice
 Gerrand included in the gospeccy distribution! In the gospeccy folder,
 run:
 
-    gospeccy -doubled snapshots/Fire104b.sna
+    gospeccy -doubled snapshots/Syntax09nF.sna
 
 # Key bindings
 

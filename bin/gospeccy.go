@@ -28,10 +28,12 @@ package main
 import (
 	"spectrum"
 	"sdl"
+	"sdl/ttf"
 	"fmt"
 	"flag"
 	"os"
 	"time"
+	"io/ioutil"
 )
 
 const frameDuration = 1e9 / 50 // 50 frames a second
@@ -43,14 +45,57 @@ var (
 	speccy *spectrum.Spectrum48k
 
 	sdlMode uint32
-	lastFrame int64
+	lastFrame, delay int64
+	systemROM []byte
+	showFPS bool
 )
 
-// Big game loop block. Need a bit of refactoring I guess :)
+func gospeccyDir() string {
+	return os.Getenv("HOME") + "/.gospeccy/"
+}
+
+func fontFilename(filename string) string {
+	return gospeccyDir() + "font/" + filename
+}
+
+func romFilename(filename string) string {
+	return gospeccyDir() + "rom/" + filename
+}
+
+func snaFilename(filename string) string {
+	return gospeccyDir() + "sna/" + filename
+}
+
+func loadSystemROM(filename string) []byte {
+	rom, err := ioutil.ReadFile(filename)
+	if err != nil {
+		panic(err)
+	}
+	return rom
+}
+
+func printKeyInfo(e *sdl.KeyboardEvent) {
+	println("")
+	println(e.Keysym.Sym, ": ", sdl.GetKeyName(sdl.Key(e.Keysym.Sym)))
+
+	fmt.Printf("Type: %02x Which: %02x State: %02x Pad: %02x\n", e.Type, e.Which, e.State, e.Pad0[0])
+	fmt.Printf("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", e.Keysym.Scancode, e.Keysym.Sym, e.Keysym.Mod, e.Keysym.Unicode)
+}
+
+func printFPS(appSurface *sdl.Surface, font *ttf.Font, delay int64) {
+	white := sdl.Color{255, 255, 255, 0}
+	text := ttf.RenderText_Blended(font, fmt.Sprintf("FPS %d", int(1/(float(delay)/1e9))), white)
+	appSurface.Blit(&sdl.Rect{10, 10, 0, 0}, text, nil)
+}
+
+// Big loop block. Need a bit of refactoring I guess :)
 func run() {
+
 	help := flag.Bool("help", false, "Show usage")
-	scale := flag.Bool("doubled", false, "Doubled size display")
-	fullscreen:= flag.Bool("fullscreen", false, "Fullscreen (enable doubled size display by default)")
+	verbose := flag.Bool("verbose", false, "Print a lot of stupid messages")
+	scale := flag.Bool("doubled", false, "Double size display")
+	fullscreen:= flag.Bool("fullscreen", false, "Fullscreen (enable double size by default)")
+	rom := flag.String("rom", romFilename("48.rom"), "Start with the given system rom")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "GoSpeccy - A simple ZX Spectrum 48k Emulator written in GO\n\n")
@@ -65,6 +110,13 @@ func run() {
 	if *help == true {
 		flag.Usage()
 		return
+	}
+
+	// Load system ROM
+	if *rom != "" {
+		systemROM = loadSystemROM(*rom)
+	} else {
+		systemROM = loadSystemROM(romFilename("48.rom"))
 	}
 
 	if sdl.Init(sdl.INIT_EVERYTHING) != 0 {
@@ -88,11 +140,11 @@ func run() {
 
 	if *scale {
 		display := spectrum.NewSDLDoubledScreen(sdl.SetVideoMode(640, 480, 32, sdlMode))
-		speccy = spectrum.NewSpectrum48k(display)
+		speccy = spectrum.NewSpectrum48k(systemROM, display)
 		applicationSurface = display.ScreenSurface.Surface
 	} else {
 		display := spectrum.NewSDLScreen(sdl.SetVideoMode(320, 240, 32, sdlMode))
-		speccy = spectrum.NewSpectrum48k(display)
+		speccy = spectrum.NewSpectrum48k(systemROM, display)
 		applicationSurface = display.ScreenSurface.Surface
 	}
 
@@ -100,12 +152,30 @@ func run() {
 		panic(sdl.GetError())
 	}
 
+	// Try to load the snapshot file from the current dir. If not
+	// found fall back to $HOME/.gospeccy/sna/filename
 	if flag.Arg(0) != "" {
-		fmt.Println(flag.Arg(0))
-		speccy.LoadSna(flag.Arg(0))
+		if speccy.LoadSna(flag.Arg(0)) != nil {
+			err := speccy.LoadSna(snaFilename(flag.Arg(0)))
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
+
+	// Initialize font library and load fonts
+
+	if ttf.Init() != 0 {
+		panic(sdl.GetError())
+	}
+
+	font := ttf.OpenFont(fontFilename("Fontin Sans.otf"), 14)
+
+	if font == nil {
+		panic(sdl.GetError())
+	}
 
 	running := true
 
@@ -119,25 +189,23 @@ func run() {
 				running = false
 				break
 			case sdl.KEYDOWN, sdl.KEYUP:
-				println("")
-				println(e.Keyboard().Keysym.Sym, ": ", sdl.GetKeyName(sdl.Key(e.Keyboard().Keysym.Sym)))
-
-				fmt.Printf("%04x ", e.Type)
-
-				for i := 0; i < len(e.Pad0); i++ {
-					fmt.Printf("%02x ", e.Pad0[i])
-				}
-				println()
 
 				k := e.Keyboard()
 
-				fmt.Printf("Type: %02x Which: %02x State: %02x Pad: %02x\n", k.Type, k.Which, k.State, k.Pad0[0])
-				fmt.Printf("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
+				if *verbose {
+					printKeyInfo(k)
+				}
 
 				switch k.Keysym.Sym {
 
-				case 27:
+				case 27: // ESC
 					running = false
+
+				case 291: // f10
+					if k.State != 0 {
+						showFPS = !showFPS
+					}
+
 				default:
 					if k.State != 0 {
 						speccy.KeyDown(uint(k.Keysym.Sym))
@@ -152,13 +220,11 @@ func run() {
 
 		speccy.RenderFrame()
 
-		applicationSurface.Flip()
-
-		// FIXME: This auto-adjust delay works well. BTW, it
+		// FIXME: This auto-adjust-delay works well. BTW, it
 		// could be better to take an average delay after N
 		// rendered frames.
 
-		delay := time.Nanoseconds() - lastFrame
+		delay = time.Nanoseconds() - lastFrame
 
 		if delay <= frameDuration {
 			time.Sleep(frameDuration - delay)
@@ -166,12 +232,16 @@ func run() {
 
 		lastFrame = time.Nanoseconds()
 
+		if showFPS {
+			printFPS(applicationSurface, font, delay)
+		}
+
+		applicationSurface.Flip()
+
 	}
 
 	sdl.Quit()
 
 }
 
-func main() {
-	run()
-}
+func main() { run() }

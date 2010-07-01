@@ -9,6 +9,5 @@ GOFILES=\
 	sdldisplay.go\
 	keyboard.go\
 	spectrum.go\
-	48.go
 
 include $(GOROOT)/src/Make.pkg

@@ -29,6 +29,7 @@ import (
 	"io/ioutil"
 	"container/vector"
 	"fmt"
+	"os"
 )
 
 /* The flags */
@@ -168,11 +169,11 @@ func (z80 *Z80) Reset() {
 	for i = 0; i < uint(len(z80.memory.Data())); i++ { z80.memory.set(i, 0) }
 }
 
-func (z80 *Z80) LoadSna(filename string) {
+func (z80 *Z80) LoadSna(filename string) os.Error {
 	bytes, err := ioutil.ReadFile(filename)
 
 	if err != nil {
-		fmt.Println(err)
+		return err
 	} else {
 		// Populate registers
 		z80.i = bytes[0]
@@ -224,6 +225,8 @@ func (z80 *Z80) LoadSna(filename string) {
 		z80.iff1 = z80.iff2
 		z80.ret()
 	}
+
+	return nil
 }
 
 func splitWord(word uint16) (byte , byte) {

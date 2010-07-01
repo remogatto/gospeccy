@@ -35,6 +35,7 @@ format.dirs: $(addsuffix .format, $(DIRS))
 clean:	clean.dirs
 
 install: install.dirs
+	cd bin && make install_res
 
 test:	test.dirs
 

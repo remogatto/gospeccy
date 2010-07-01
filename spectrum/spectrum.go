@@ -1,5 +1,7 @@
 package spectrum
 
+import "os"
+
 type Spectrum48k struct {
 	Cpu    *Z80
 	Memory MemoryAccessor
@@ -8,19 +10,22 @@ type Spectrum48k struct {
 
 // Create a new speccy object.
 //
+// rom is an array of bytes containing the system ROM
+// display is an object that responds to DisplayAccessor interface
+//
 // For example, to initialize a speccy object that writes on a SDL display:
 //
 //     display := spectrum.NewSDLScreen(sdl.SetVideoMode(320, 240, 32, sdlMode))
-//     speccy := spectrum.NewSpectrum48k(display)
+//     speccy := spectrum.NewSpectrum48k(rom, display)
 //
-// display should respond to DisplayAccessor interface (see display.go)
-func NewSpectrum48k(display DisplayAccessor) *Spectrum48k {
+func NewSpectrum48k(rom []byte, display DisplayAccessor) *Spectrum48k {
 
 	memory  := &Memory{ Display: display }
 	port    := &Port{ Display: display }
 
-	// Load the built-in ROM image into memory
-	for address, b := range rom48k {
+	// Load the system ROM image into memory
+	
+	for address, b := range rom {
 		memory.set(uint(address), b)
 	}
 
@@ -49,8 +54,8 @@ func (speccy *Spectrum48k) RenderFrame() {
 	speccy.interrupt()
 }
 
-func (speccy *Spectrum48k) LoadSna(filename string) {
-	speccy.Cpu.LoadSna(filename)
+func (speccy *Spectrum48k) LoadSna(filename string) os.Error {
+	return speccy.Cpu.LoadSna(filename)
 }
 
 func (speccy *Spectrum48k) KeyDown(keySym uint) {

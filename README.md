@@ -4,13 +4,29 @@ GoSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
 interesting fact is that it is written in Go and - AFAIK - it's the
 first Spectrum/Z80 emulator coded with the new language by Google.
 
-There are a lot of ZX Spectrum emulators around so, why reinventing the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then because it was a great learning experience about emulators for me :) And it was a good chance to write something real with Go.
+There are a lot of ZX Spectrum emulators around so, why reinventing
+the wheel? Well, mainly for
+[amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then
+because it was a great learning experience about emulators for me :)
+And it was a good chance to write something real with Go.
 
 Coding an emulator in Go is very enjoyable. The language is simple,
-pragmatic and fast and has a lot of features that help in emulators
-development (for example its low-level similarities with C but Go is
-*a lot* more agile than C!). More on that in a future blog post maybe
-:)
+pragmatic and fast (well... fast enough to run a Z80 emulator!). It
+has a lot of features that help in emulators development:
+ 
+* it has "low-level" similarities with C being *a lot* more effective
+  than C!
+
+* it is strong-typed and type safe so you are aware about errors at
+  compile-time
+
+* it is garbage collected so you haven't to worry about memory leaks
+
+* it has an int16 built-in type that helps dealing with 8/16 bit
+  machines
+
+* it has goroutines that help handling emulator events (keyboard
+  events for example)
 
 The Zilog Z80 emulation is the core of GoSpeccy. The CPU emulation
 code is generated using the <tt>z80.pl</tt> script shipped with
@@ -22,14 +38,14 @@ Another source of inspiration was
 [JSSpeccy](http://matt.west.co.tt/spectrum/jsspeccy/), a neat
 Javascript Speccy emulator.
 
-The Z80 emulation is tested using the excellent test-suite shipped
+The Z80 emulation is tested against the excellent test-suite shipped
 with FUSE.
 
 If you like this software, please watch it on
-[github](http://github.com/remogatto/gospeccy)! Seeing a growing number of watchers is
-an excellent motivation for me to keep up this work :) Bug reports and
-testing are also appreciated! And don't forget to send me patches, of
-course ;)
+[github](http://github.com/remogatto/gospeccy)! Seeing a growing
+number of watchers is an excellent motivation for me to keep up this
+work :) Bug reports and testing are also appreciated! And don't forget
+to fork and send me patches, of course ;)
 
 # Features
 

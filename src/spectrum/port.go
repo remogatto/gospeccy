@@ -25,26 +25,63 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
+
+
 type PortAccessor interface {
+	frame_begin(borderColor RGBA)
+	frame_releaseMemory()
+	
 	readPort(address uint16) byte
 	writePort(address uint16, b byte)
 	contendPortPreio(address uint16)
 	contendPortPostio(address uint16)
 }
 
-type Port struct {
-	Display DisplayAccessor
+
+
+type BorderEvent struct {
+	// The moment when the border color was changed.
+	// It is the number of T-states since the beginning of the frame.
+	tstate uint
+	
+	// The new border color
+	color RGBA
+	
+	// Previous event, if any.
+	// Constraint: (tstate >= previous_orNil.tstate)
+	previous_orNil *BorderEvent
 }
 
-func (p *Port) readPort(address uint16) byte {
+type Ports struct {
+	memory MemoryAccessor
+	keyboard *Keyboard
+	borderEvents *BorderEvent		// Might be nil
+	z80 *Z80
+}
+
+func NewPorts(memory MemoryAccessor, keyboard *Keyboard) *Ports {
+	return &Ports{memory, keyboard, nil, nil}
+}
+
+func (p *Ports) frame_begin(borderColor RGBA) {
+	p.borderEvents = &BorderEvent{tstate:0, color:borderColor, previous_orNil:nil}
+}
+
+func (p *Ports) frame_releaseMemory() {
+	// Release memory
+	p.borderEvents = nil
+}
+
+func (p *Ports) readPort(address uint16) byte {
 	var result byte = 0xff
 	p.contendPortPreio(address)
 
 	if (address & 0x0001) == 0x0000 {
 		// Read keyboard
-		for row := 0; row < 8; row++ {
+		var row uint
+		for row = 0; row < 8; row++ {
 			if (address & (1 << (uint16(row) + 8))) == 0 { // bit held low, so scan this row
-				result &= keyStates[row]
+				result &= p.keyboard.GetKeyState(row)
 			}
 		}
 		return result
@@ -61,32 +98,36 @@ func (p *Port) readPort(address uint16) byte {
 	return result
 }
 
-func (p *Port) writePort(address uint16, b byte) {
+func (p *Ports) writePort(address uint16, b byte) {
 	p.contendPortPreio(address)
 
 	if ((address & 0x0001) == 0) {
-		p.Display.setBorderColor(palette[b & 0x07])
+		color := palette[b & 0x07]
+		
+		// Modify the border only if it really changed
+		if p.memory.getBorder().value32() != color.value32() {
+			p.memory.setBorder(color)
+			p.borderEvents = &BorderEvent{p.z80.tstates, color, p.borderEvents}
+		}
 	}
 
 	p.contendPortPostio(address)
 }
 
-func (p *Port) contendPortPreio(address uint16) {
+func (p *Ports) contendPortPreio(address uint16) {
 	if (address & 0xc000) == 0x4000 {
 	}
-	tstates++
+	p.z80.tstates++
 }
 
-func (p *Port) contendPortPostio(address uint16) {
+func (p *Ports) contendPortPostio(address uint16) {
 	if (address & 0x0001) != 0 {
 		if (address & 0xc000) == 0x4000 {
 		} else {
-			tstates += 3
+			p.z80.tstates += 3
 		}
 
 	} else {
-		tstates += 3
-
+		p.z80.tstates += 3
 	}
-
 }

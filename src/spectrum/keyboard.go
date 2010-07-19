@@ -25,11 +25,67 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
+import "sync"
+
+
+
+type Keyboard struct {
+	keyStates [8]byte
+	mutex sync.RWMutex
+}
+
+func NewKeyboard() *Keyboard {
+	k := &Keyboard{}
+	
+	// Initialize keyStates
+	var row uint
+	for row = 0; row < 8; row++ {
+		k.SetKeyState(row, 0xff)
+	}
+	
+	return k
+}
+
+func (keyboard *Keyboard) GetKeyState(row uint) byte {
+	keyboard.mutex.RLock()
+	keyState := keyboard.keyStates[row]
+	keyboard.mutex.RUnlock()
+	return keyState
+}
+
+func (keyboard *Keyboard) SetKeyState(row uint, state byte) {
+	keyboard.mutex.Lock()
+	keyboard.keyStates[row] = state
+	keyboard.mutex.Unlock()
+}
+
+func (keyboard *Keyboard) KeyDown(keySym uint) {
+	keyCode, ok := keyCodes[keySym]
+	
+	if ok {
+		keyboard.mutex.Lock()
+		keyboard.keyStates[keyCode.row] &= ^(keyCode.mask)
+		keyboard.mutex.Unlock()
+	}
+}
+
+func (keyboard *Keyboard) KeyUp(keySym uint) {
+	keyCode, ok := keyCodes[keySym]
+	
+	if ok {
+		keyboard.mutex.Lock()
+		keyboard.keyStates[keyCode.row] |= (keyCode.mask)
+		keyboard.mutex.Unlock()
+	}
+}
+
+
+
+
+
 type keyCell struct {
 	row, mask byte
 }
-
-var keyStates [8]byte
 
 var keyCodes = map[uint]keyCell{
 	49: keyCell{row: 3, mask: 0x01}, /* 1 */
@@ -65,7 +121,7 @@ var keyCodes = map[uint]keyCell{
 	108: keyCell{row: 6, mask: 0x02}, /* L */
 	13: keyCell{row: 6, mask: 0x01}, /* enter */
 
-	304:  keyCell{row: 0, mask: 0x01}, /* caps */
+	304/*left shift*/:  keyCell{row: 0, mask: 0x01}, /* caps */
 	122:  keyCell{row: 0, mask: 0x02}, /* Z */
 	120:  keyCell{row: 0, mask: 0x04}, /* X */
 	99:  keyCell{row: 0, mask: 0x08}, /* C */

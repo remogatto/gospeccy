@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -26,40 +26,40 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 const (
-	ScreenWidth = 256
+	ScreenWidth  = 256
 	ScreenHeight = 192
 
-	ScreenWidth_Attr = ScreenWidth/8	// =32
-	ScreenHeight_Attr = ScreenHeight/8	// =24
+	ScreenWidth_Attr  = ScreenWidth / 8  // =32
+	ScreenHeight_Attr = ScreenHeight / 8 // =24
 
 	ScreenBorderX = 32
 	ScreenBorderY = 24
 
 	// Screen dimensions, including the border
-	TotalScreenWidth = ScreenWidth + ScreenBorderX * 2
-	TotalScreenHeight = ScreenHeight + ScreenBorderY * 2
+	TotalScreenWidth  = ScreenWidth + ScreenBorderX*2
+	TotalScreenHeight = ScreenHeight + ScreenBorderY*2
 )
 
 type RGBA struct {
-	R,G,B,A byte
+	R, G, B, A byte
 }
 
 var palette [16]RGBA = [16]RGBA{
-	RGBA{0  , 0  , 0  , 255},
-	RGBA{0  , 0  , 192, 255},
-	RGBA{192, 0  , 0  , 255},
-	RGBA{192, 0  , 192, 255},
-	RGBA{0  , 192, 0  , 255},
-	RGBA{0  , 192, 192, 255},
-	RGBA{192, 192, 0  , 255},
+	RGBA{0, 0, 0, 255},
+	RGBA{0, 0, 192, 255},
+	RGBA{192, 0, 0, 255},
+	RGBA{192, 0, 192, 255},
+	RGBA{0, 192, 0, 255},
+	RGBA{0, 192, 192, 255},
+	RGBA{192, 192, 0, 255},
 	RGBA{192, 192, 192, 255},
-	RGBA{0  , 0  , 0  , 255},
-	RGBA{0  , 0  , 255, 255},
-	RGBA{255, 0  , 0  , 255},
-	RGBA{255, 0  , 255, 255},
-	RGBA{0  , 255, 0  , 255},
-	RGBA{0  , 255, 255, 255},
-	RGBA{255, 255, 0  , 255},
+	RGBA{0, 0, 0, 255},
+	RGBA{0, 0, 255, 255},
+	RGBA{255, 0, 0, 255},
+	RGBA{255, 0, 255, 255},
+	RGBA{0, 255, 0, 255},
+	RGBA{0, 255, 255, 255},
+	RGBA{255, 255, 0, 255},
 	RGBA{255, 255, 255, 255}}
 
 func (color RGBA) value32() uint32 {
@@ -69,4 +69,3 @@ func (color RGBA) value32() uint32 {
 type DisplayChannel interface {
 	getScreenChannel() chan *Screen
 }
-

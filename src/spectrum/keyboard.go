@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -27,22 +27,20 @@ package spectrum
 
 import "sync"
 
-
-
 type Keyboard struct {
 	keyStates [8]byte
-	mutex sync.RWMutex
+	mutex     sync.RWMutex
 }
 
 func NewKeyboard() *Keyboard {
 	k := &Keyboard{}
-	
+
 	// Initialize keyStates
 	var row uint
 	for row = 0; row < 8; row++ {
 		k.SetKeyState(row, 0xff)
 	}
-	
+
 	return k
 }
 
@@ -61,7 +59,7 @@ func (keyboard *Keyboard) SetKeyState(row uint, state byte) {
 
 func (keyboard *Keyboard) KeyDown(keySym uint) {
 	keyCode, ok := keyCodes[keySym]
-	
+
 	if ok {
 		keyboard.mutex.Lock()
 		keyboard.keyStates[keyCode.row] &= ^(keyCode.mask)
@@ -71,17 +69,13 @@ func (keyboard *Keyboard) KeyDown(keySym uint) {
 
 func (keyboard *Keyboard) KeyUp(keySym uint) {
 	keyCode, ok := keyCodes[keySym]
-	
+
 	if ok {
 		keyboard.mutex.Lock()
 		keyboard.keyStates[keyCode.row] |= (keyCode.mask)
 		keyboard.mutex.Unlock()
 	}
 }
-
-
-
-
 
 type keyCell struct {
 	row, mask byte
@@ -110,7 +104,7 @@ var keyCodes = map[uint]keyCell{
 	111: keyCell{row: 5, mask: 0x02}, /* O */
 	112: keyCell{row: 5, mask: 0x01}, /* P */
 
-	97: keyCell{row: 1, mask: 0x01}, /* A */
+	97:  keyCell{row: 1, mask: 0x01}, /* A */
 	115: keyCell{row: 1, mask: 0x02}, /* S */
 	100: keyCell{row: 1, mask: 0x04}, /* D */
 	102: keyCell{row: 1, mask: 0x08}, /* F */
@@ -119,15 +113,15 @@ var keyCodes = map[uint]keyCell{
 	106: keyCell{row: 6, mask: 0x08}, /* J */
 	107: keyCell{row: 6, mask: 0x04}, /* K */
 	108: keyCell{row: 6, mask: 0x02}, /* L */
-	13: keyCell{row: 6, mask: 0x01}, /* enter */
+	13:  keyCell{row: 6, mask: 0x01}, /* enter */
 
-	304/*left shift*/:  keyCell{row: 0, mask: 0x01}, /* caps */
-	122:  keyCell{row: 0, mask: 0x02}, /* Z */
-	120:  keyCell{row: 0, mask: 0x04}, /* X */
+	304: keyCell{row: 0, mask: 0x01}, /* caps */
+	122: keyCell{row: 0, mask: 0x02}, /* Z */
+	120: keyCell{row: 0, mask: 0x04}, /* X */
 	99:  keyCell{row: 0, mask: 0x08}, /* C */
-	118:  keyCell{row: 0, mask: 0x10}, /* V */
+	118: keyCell{row: 0, mask: 0x10}, /* V */
 	98:  keyCell{row: 7, mask: 0x10}, /* B */
-	110:  keyCell{row: 7, mask: 0x08}, /* N */
-	109:  keyCell{row: 7, mask: 0x04}, /* M */
-	306:  keyCell{row: 7, mask: 0x02}, /* sym - gah, firefox screws up ctrl+key too */
-	32:  keyCell{row: 7, mask: 0x01} /* space */ }
+	110: keyCell{row: 7, mask: 0x08}, /* N */
+	109: keyCell{row: 7, mask: 0x04}, /* M */
+	306: keyCell{row: 7, mask: 0x02}, /* sym - gah, firefox screws up ctrl+key too */
+	32:  keyCell{row: 7, mask: 0x01} /* space */}

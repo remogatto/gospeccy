@@ -66,19 +66,6 @@ func (color RGBA) value32() uint32 {
 	return (uint32(color.A) << 24) | (uint32(color.R) << 16) | (uint32(color.G) << 8) | uint32(color.B)
 }
 
-type SurfaceAccessor interface {
-	Width() uint
-	Height() uint
-	SizeInBytes() uint
-	Bpp() uint
-
-	setValueAt(offset uint, value uint32)
-	setPixelAt(offset uint, color RGBA)
-	
-	setValue(x, y uint, value uint32)
-	setPixel(x, y uint, color RGBA)
-}
-
 type DisplayChannel interface {
 	getScreenChannel() chan *Screen
 }

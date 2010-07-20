@@ -77,10 +77,6 @@ func (s *SDLSurface) setPixel(x, y uint, color RGBA) {
 	s.setPixelAt(y * pitch + x*bpp, color)
 }
 
-
-
-
-
 type SDLScreen struct {
 	// Channel for receiving screen data
 	screenChannel  chan *Screen
@@ -371,10 +367,6 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
 		renderBorderEvents(display.ScreenSurface, /*scale*/1, screen.borderEvents)
 	}
 }
-
-
-
-
 
 type SDLScreen2x struct {
 	// Channel for receiving screen data

@@ -77,16 +77,3 @@ func (speccy *Spectrum48k) RenderFrame() {
 func (speccy *Spectrum48k) LoadSna(filename string) os.Error {
 	return speccy.Cpu.LoadSna(filename)
 }
-
-// func dumpRegisters() {
-// 	fmt.Printf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
-// 		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc)
-// 	fmt.Printf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|(z80.r&0x7f),
-// 		z80.iff1, z80.iff2, z80.im, z80.halted, tstates)
-// }
-
-// func dumpMemory() {
-// 	for i, val := range memory {
-// 		fmt.Printf("%d %d\n", i, val)
-// 	}
-// }

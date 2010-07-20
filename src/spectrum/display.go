@@ -25,23 +25,46 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
-var palette [16][3]byte = [16][3]byte{
-	[3]byte{0, 0, 0},
-	[3]byte{0, 0, 192},
-	[3]byte{192, 0, 0},
-	[3]byte{192, 0, 192},
-	[3]byte{0, 192, 0},
-	[3]byte{0, 192, 192},
-	[3]byte{192, 192, 0},
-	[3]byte{192, 192, 192},
-	[3]byte{0, 0, 0},
-	[3]byte{0, 0, 255},
-	[3]byte{255, 0, 0},
-	[3]byte{255, 0, 255},
-	[3]byte{0, 255, 0},
-	[3]byte{0, 255, 255},
-	[3]byte{255, 255, 0},
-	[3]byte{255, 255, 255}}
+const (
+	ScreenWidth = 256
+	ScreenHeight = 192
+
+	ScreenWidth_Attr = ScreenWidth/8	// =32
+	ScreenHeight_Attr = ScreenHeight/8	// =24
+
+	ScreenBorderX = 32
+	ScreenBorderY = 24
+
+	// Screen dimensions, including the border
+	TotalScreenWidth = ScreenWidth + ScreenBorderX * 2
+	TotalScreenHeight = ScreenHeight + ScreenBorderY * 2
+)
+
+type RGBA struct {
+	R,G,B,A byte
+}
+
+var palette [16]RGBA = [16]RGBA{
+	RGBA{0  , 0  , 0  , 255},
+	RGBA{0  , 0  , 192, 255},
+	RGBA{192, 0  , 0  , 255},
+	RGBA{192, 0  , 192, 255},
+	RGBA{0  , 192, 0  , 255},
+	RGBA{0  , 192, 192, 255},
+	RGBA{192, 192, 0  , 255},
+	RGBA{192, 192, 192, 255},
+	RGBA{0  , 0  , 0  , 255},
+	RGBA{0  , 0  , 255, 255},
+	RGBA{255, 0  , 0  , 255},
+	RGBA{255, 0  , 255, 255},
+	RGBA{0  , 255, 0  , 255},
+	RGBA{0  , 255, 255, 255},
+	RGBA{255, 255, 0  , 255},
+	RGBA{255, 255, 255, 255}}
+
+func (color RGBA) value32() uint32 {
+	return (uint32(color.A) << 24) | (uint32(color.R) << 16) | (uint32(color.G) << 8) | uint32(color.B)
+}
 
 type SurfaceAccessor interface {
 	Width() uint
@@ -49,22 +72,14 @@ type SurfaceAccessor interface {
 	SizeInBytes() uint
 	Bpp() uint
 
-	getValueAt(id uint) uint32
-	setValueAt(id uint, value uint32)
-
-	setPixelAt(address uint, color [3]byte)
-	setPixelValue(x, y uint, value uint32)
-	setPixel(x, y uint, color [3]byte)
+	setValueAt(offset uint, value uint32)
+	setPixelAt(offset uint, color RGBA)
+	
+	setValue(x, y uint, value uint32)
+	setPixel(x, y uint, color RGBA)
 }
 
-
-type DisplayAccessor interface {
-
-	// FIXME: ZX Spectrum display coords should be of byte size!
-	setPixel(x, y uint, color [3]byte)
-
-	setPixelAt(address uint, color [3]byte)
-	setBorderColor(color [3]byte)
-	flush()
+type DisplayChannel interface {
+	getScreenChannel() chan *Screen
 }
 

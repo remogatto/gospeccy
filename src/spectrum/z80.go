@@ -96,8 +96,11 @@ type Z80 struct {
 	bc, bc_, hl, hl_, af, de, de_, ix, iy register16
 
 	sz53Table, sz53pTable, parityTable [0x100]byte
+	
+	// Number of tstates since the beginning of the last frame
+	tstates uint
 
-	halted byte
+	halted bool
 
 	interruptsEnabledAt int
 
@@ -109,7 +112,7 @@ type Z80 struct {
 }
 
 var initialMemory [0x10000]byte
-var eventNextEvent, tstates uint
+var eventNextEvent uint
 
 func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 	z80 := &Z80{memory: memory, PortAccessor: port}
@@ -133,7 +136,7 @@ func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
 	out.Push(fmt.Sprintf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
 		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc))
 	out.Push(fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|(z80.r&0x7f),
-		z80.iff1, z80.iff2, z80.im, z80.halted, tstates))
+		z80.iff1, z80.iff2, z80.im, z80.halted, z80.tstates))
 }
 
 func (z80 *Z80) DumpMemory(out *vector.StringVector) {
@@ -163,22 +166,29 @@ func (z80 *Z80) Reset() {
 
 	z80.sp, z80.i, z80.r, z80.r7, z80.pc, z80.iff1, z80.iff2, z80.im = 0, 0, 0, 0, 0, 0, 0, 0
 
-	z80.halted = 0
+	z80.tstates = 0
+	
+	z80.halted = false
 
-	tstates = 0
-
-	var i uint
-	for i = 0; i < uint(len(z80.memory.Data())); i++ {
-		z80.memory.set(i, 0)
+	for i := 0; i < 0x10000; i++ {
+		z80.memory.set(uint16(i), 0)
 	}
 }
 
+// Initialize state from the snapshot defined by the specified filename.
+// Returns nil on success.
 func (z80 *Z80) LoadSna(filename string) os.Error {
 	bytes, err := ioutil.ReadFile(filename)
 
 	if err != nil {
 		return err
 	} else {
+		if len(bytes) != 49179 {
+			return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
+		}
+		
+		z80.tstates = 0
+		
 		// Populate registers
 		z80.i = bytes[0]
 		z80.l_ = bytes[1]
@@ -212,12 +222,14 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 		z80.a = bytes[22]
 		z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
 		z80.im = uint16(bytes[25])
+		
+		// Border color
 		z80.writePort(0xfe, bytes[26]&0x07)
 
 		// Populate memory
 		var i uint16
 		for i = 0; i < 0xc000; i++ {
-			z80.memory.set(uint(i+0x4000), bytes[i+27])
+			z80.memory.set(uint16(i+0x4000), bytes[i+27])
 		}
 
 		// Set attribute bytes to force repaint of whole screen
@@ -244,9 +256,9 @@ func joinBytes(h, l byte) uint16 {
 func (z80 *Z80) interrupt() {
 	if z80.iff1 != 0 {
 
-		if z80.halted != 0 {
+		if z80.halted {
 			z80.pc++
-			z80.halted = 0
+			z80.halted = false
 		}
 
 		z80.iff1, z80.iff2 = 0, 0
@@ -941,7 +953,7 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 }
 
 func (z80 *Z80) doOpcodes() {
-	for tstates < eventNextEvent {
+	for z80.tstates < eventNextEvent {
 
 		z80.memory.contendRead(z80.pc, 4)
 
@@ -1486,7 +1498,7 @@ func (z80 *Z80) doOpcodes() {
 			z80.memory.writeByte(z80.HL(), z80.l)
 			break
 		case 0x76: /* HALT */
-			z80.halted = 1
+			z80.halted = true
 			z80.pc--
 			break
 		case 0x77: /* LD (HL),A */
@@ -5439,8 +5451,8 @@ func (z80 *Z80) doOpcodes() {
 			/* Interrupts are not accepted immediately after an EI, but are
 			accepted after the next instruction */
 			z80.iff1, z80.iff2 = 1, 1
-			z80.interruptsEnabledAt = int(tstates)
-			// eventAdd(tstates + 1, z80InterruptEvent)
+			z80.interruptsEnabledAt = int(z80.tstates)
+			// eventAdd(z80.tstates + 1, z80InterruptEvent)
 			break
 		case 0xfc: /* CALL M,nnnn */
 			if (z80.f & FLAG_S) != 0 {

@@ -1,50 +1,27 @@
-include $(GOROOT)/src/Make.$(GOARCH)
+gospeccy: _obj _obj/spectrum.a _obj/gospeccy.8
+	8l -L./_obj -o $@ _obj/gospeccy.8
 
-#Run 'make deps' if you add or change new folders.
-DIRS=\
-	spectrum\
-	bin
-TEST=\
-	spectrum\
+clean:
+	rm -f gospeccy
+	rm -rf _obj
 
-all.dirs: $(addsuffix .all, $(DIRS))
-clean.dirs: $(addsuffix .clean, $(DIRS))
-install.dirs: $(addsuffix .install, $(DIRS))
-test.dirs: $(addsuffix .test, $(TEST))
-docs.dirs: $(addsuffix .docs, $(DIRS))
-format.dirs: $(addsuffix .format, $(DIRS))
+.PHONY:
+_obj:
+	mkdir _obj
 
-%.all:
-	+cd $* && make
+_obj/gospeccy.8: src/gospeccy.go _obj/spectrum.a
+	8g -I./_obj -o $@ src/gospeccy.go
 
-%.clean:
-	+cd $* && make clean
+_obj/spectrum.a:
+	8g -o _obj/spectrum.8 $^
+	gopack grc $@ _obj/spectrum.8
 
-%.install:
-	+cd $* && make install
-
-%.test:
-	+cd $* && make test
-
-%.docs:
-	+godoc -pkgroot="." -html -v $* > docs/$*.html
-
-%.format:
-	+cd $* && gofmt -w *.go
-
-clean:	clean.dirs
-
-install: install.dirs
-	cd bin && make install_res
-
-test:	test.dirs
-
-docs:	docs.dirs
-
-format: format.dirs
-
-deps:
-	./deps.bash
-
-include Make.deps
+_obj/spectrum.a: src/spectrum/application.go
+_obj/spectrum.a: src/spectrum/display.go
+_obj/spectrum.a: src/spectrum/keyboard.go
+_obj/spectrum.a: src/spectrum/memory.go
+_obj/spectrum.a: src/spectrum/port.go
+_obj/spectrum.a: src/spectrum/sdldisplay.go
+_obj/spectrum.a: src/spectrum/spectrum.go
+_obj/spectrum.a: src/spectrum/z80.go
 

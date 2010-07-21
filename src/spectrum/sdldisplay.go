@@ -66,15 +66,38 @@ func (s *SDLSurface) setPixelAt(offset uint, color RGBA) {
 }
 
 func (s *SDLSurface) setValue(x, y uint, value uint32) {
-	var bpp, pitch = uint(s.Surface.Format.BytesPerPixel), uint(s.Surface.Pitch)
+	var bpp, pitch = s.Bpp(), uint(s.Surface.Pitch)
 	
 	s.setValueAt(y * pitch + x*bpp, value)
 }
 
 func (s *SDLSurface) setPixel(x, y uint, color RGBA) {
-	var bpp, pitch = uint(s.Surface.Format.BytesPerPixel), uint(s.Surface.Pitch)
-	
-	s.setPixelAt(y * pitch + x*bpp, color)
+	s.setValue(x, y, color.value32())
+}
+
+
+
+
+func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *Screen, renderer _ScreenRenderer) {
+	var screen    *Screen = nil
+	var oldScreen *Screen = nil
+	for {
+		select {
+			case <-evtLoop.Pause:
+				evtLoop.Pause <- 0
+
+			case <-evtLoop.Terminate:
+				// Terminate this Go routine
+				if evtLoop.App.Verbose { println("screen render loop: exit") }
+				evtLoop.Terminate <- 0
+				return
+				
+			case screen = <- screenChannel:
+				renderer.render(screen, oldScreen)
+				oldScreen = screen
+				screen = nil
+		}
+	}
 }
 
 
@@ -106,53 +129,166 @@ func (display *SDLScreen) getScreenChannel() chan *Screen {
 	return display.screenChannel
 }
 
-func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *Screen, renderer _ScreenRenderer) {
-	var screen    *Screen = nil
-	var oldScreen *Screen = nil
-	for {
-		select {
-			case <-evtLoop.Pause:
-				evtLoop.Pause <- 0
-
-			case <-evtLoop.Terminate:
-				// Terminate this Go routine
-				if evtLoop.App.Verbose { println("screen render loop: exit") }
-				evtLoop.Terminate <- 0
-				return
-				
-			case screen = <- screenChannel:
-				renderer.render(screen, oldScreen)
-				oldScreen = screen
-				screen = nil
-		}
-	}
-}
-
-func renderBorder(surface *sdl.Surface, scale uint, screen *Screen, oldScreen_orNil *Screen) {
-	borderValue := screen.border.value32()
+func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
+	unscaledDisplay.newFrame()
+	unscaledDisplay.render(screen, oldScreen_orNil)
 	
-	if (oldScreen_orNil == nil) || (borderValue != oldScreen_orNil.border.value32()) ||
-	   (screen.borderEvents != nil) || (oldScreen_orNil.borderEvents != nil) {
-		s := scale
+	surface := display.ScreenSurface
+	pixels := &unscaledDisplay.pixels
+	for _,r := range *unscaledDisplay.changedRegions {
+		end_x := int(r.X) + int(r.W)
+		end_y := int(r.Y) + int(r.H)
 		
-		const W = ScreenWidth
-		const H = ScreenHeight
-		const BW = ScreenBorderX
-		const BH = ScreenBorderY
-		const TW = TotalScreenWidth
-
-		surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*0)     , uint16(s*TW), uint16(s*BH)}, borderValue )
-		surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*(BH+H)), uint16(s*TW), uint16(s*BH)}, borderValue )
-		surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*BH)    , uint16(s*BW), uint16(s*H )}, borderValue )
-		surface.FillRect( &sdl.Rect{int16(s*(BW+W)), int16(s*BH)    , uint16(s*BW), uint16(s*H )}, borderValue )
-		
-		if screen.borderEvents == nil {
-			updateBorder(surface, scale)
+		for y:=int(r.Y) ; y<end_y ; y++ {
+			wy := TotalScreenWidth*y
+			for x:=int(r.X) ; x<end_x ; x++ {
+				surface.setValue(uint(x), uint(y), palette[pixels[wy+x]])
+			}
 		}
+	}
+	
+	if unscaledDisplay.border_orNil != nil {
+		SDL_renderBorder(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/1, *unscaledDisplay.border_orNil)
+	}
+	
+	SDL_updateRects(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/1)
+	
+	unscaledDisplay.releaseMemory()
+}
+
+
+
+
+
+type SDLScreen2x struct {
+	// Channel for receiving screen data
+	screenChannel  chan *Screen
+	
+	// The whole screen, borders included
+	ScreenSurface SDLSurface
+}
+
+func NewSDLScreen2x(app *Application, screenSurface *sdl.Surface) *SDLScreen2x {
+	SDL_screen := &SDLScreen2x{ make(chan *Screen), SDLSurface{ screenSurface } }
+	
+	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
+	
+	return SDL_screen
+}
+
+// Implement DisplayChannel
+func (display *SDLScreen2x) getScreenChannel() chan *Screen {
+	return display.screenChannel
+}
+
+func (display *SDLScreen2x) render(screen, oldScreen_orNil *Screen) {
+	unscaledDisplay.newFrame()
+	unscaledDisplay.render(screen, oldScreen_orNil)
+	
+	pixels := &unscaledDisplay.pixels
+	for _,r := range *unscaledDisplay.changedRegions {
+		end_x := int(r.X) + int(r.W)
+		end_y := int(r.Y) + int(r.H)
+		
+		for y:=int(r.Y) ; y<end_y ; y++ {
+			wy := TotalScreenWidth*y
+			for x:=int(r.X) ; x<end_x ; x++ {
+				display.setPixel_2x(uint(x), uint(y), palette[pixels[wy+x]])
+			}
+		}
+	}
+	
+	if unscaledDisplay.border_orNil != nil {
+		SDL_renderBorder(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/2, *unscaledDisplay.border_orNil)
+	}
+	
+	SDL_updateRects(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/2)
+	
+	unscaledDisplay.releaseMemory()
+}
+
+func (display *SDLScreen2x) setPixel_2x(x, y uint, color uint32) {
+	scaleX := x<<1
+	scaleY := y<<1
+
+	surface := display.ScreenSurface
+	surface.setValue(scaleX  , scaleY  , color)
+	surface.setValue(scaleX+1, scaleY+1, color)
+	surface.setValue(scaleX  , scaleY+1, color)
+	surface.setValue(scaleX+1, scaleY  , color)
+}
+
+
+
+
+
+func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint) {
+	if scale == 1 {
+		surface.UpdateRects(*surfaceChanges)
+	} else {
+		scaledRects := make([]sdl.Rect, len(*surfaceChanges))
+		
+		for i,r := range *surfaceChanges {
+			scaledRects[i] = sdl.Rect{ int16(scale)*r.X , int16(scale)*r.Y , uint16(scale)*r.W , uint16(scale)*r.H }
+		}
+		
+		surface.UpdateRects(scaledRects)
 	}
 }
 
-func updateBorder(surface *sdl.Surface, scale uint) {
+func SDL_renderBorder(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint, color byte) {
+	s := scale
+	c := palette[color]
+	
+	const W = ScreenWidth
+	const H = ScreenHeight
+	const BW = ScreenBorderX
+	const BH = ScreenBorderY
+	const TW = TotalScreenWidth
+
+	surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*0)     , uint16(s*TW), uint16(s*BH)}, c )
+	surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*(BH+H)), uint16(s*TW), uint16(s*BH)}, c )
+	surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*BH)    , uint16(s*BW), uint16(s*H )}, c )
+	surface.FillRect( &sdl.Rect{int16(s*(BW+W)), int16(s*BH)    , uint16(s*BW), uint16(s*H )}, c )
+	
+	// This is NOT a typo, the scale is actually 1 here
+	surfaceChanges.addBorder(/*scale*/1)
+}
+
+
+
+
+
+type ListOfRects []sdl.Rect
+
+func newListOfRects() *ListOfRects {
+	l := new(ListOfRects)
+	*l = make([]sdl.Rect,0,8)
+	return l
+}
+
+func (l *ListOfRects) addRect(rect sdl.Rect) {
+	slice := *l
+	
+	len_slice := len(slice)
+	if len_slice == cap(slice) {
+		// Double the capacity (assumes non-zero initial capacity)
+        newSlice := make([]sdl.Rect, len_slice, 2*cap(slice))
+		copy(newSlice, slice)
+		slice = newSlice
+	}
+	
+	slice = slice[0:len_slice+1]
+	slice[len_slice] = rect
+	
+	*l = slice
+}
+
+func (l *ListOfRects) add(x,y int, w,h uint) {
+	l.addRect( sdl.Rect{int16(x), int16(y), uint16(w), uint16(h)} )
+}
+
+func (l *ListOfRects) addBorder(scale uint) {
 	s := scale
 	
 	const W = ScreenWidth
@@ -161,55 +297,72 @@ func updateBorder(surface *sdl.Surface, scale uint) {
 	const BH = ScreenBorderY
 	const TW = TotalScreenWidth
 
-	surface.UpdateRect( int32(s*0)     , int32(s*0)     , uint32(s*TW), uint32(s*BH) )
-	surface.UpdateRect( int32(s*0)     , int32(s*(BH+H)), uint32(s*TW), uint32(s*BH) )
-	surface.UpdateRect( int32(s*0)     , int32(s*BH)    , uint32(s*BW), uint32(s*H ) )
-	surface.UpdateRect( int32(s*(BW+W)), int32(s*BH)    , uint32(s*BW), uint32(s*H ) )
+	l.add( int(s*0)     , int(s*0)     , s*TW, s*BH )
+	l.add( int(s*0)     , int(s*(BH+H)), s*TW, s*BH )
+	l.add( int(s*0)     , int(s*BH)    , s*BW, s*H  )
+	l.add( int(s*(BW+W)), int(s*BH)    , s*BW, s*H  )
 }
 
-// (This shouldn't be a public type)
+
+
+
+
+type UnscaledDisplay struct {
+	pixels         [TotalScreenWidth*TotalScreenHeight]byte
+	changedRegions *ListOfRects
+	border_orNil   *byte	// Valid in case the whole border has a single color
+}
+
+var unscaledDisplay = newUnscaledDisplay()
+
+func newUnscaledDisplay() *UnscaledDisplay {
+	return &UnscaledDisplay{changedRegions:newListOfRects(), border_orNil:nil}
+}
+
+func (disp *UnscaledDisplay) newFrame() {
+	disp.changedRegions = newListOfRects()
+	disp.border_orNil = nil
+}
+
+func (disp *UnscaledDisplay) releaseMemory() {
+	disp.changedRegions = nil
+	disp.border_orNil = nil
+}
+
+func (disp *UnscaledDisplay) renderBorder(screen *Screen, oldScreen_orNil *Screen) {
+	if (oldScreen_orNil == nil) || (screen.border != oldScreen_orNil.border) || (oldScreen_orNil.borderEvents != nil) {
+		var border byte = screen.border
+		disp.border_orNil = &border
+		
+		disp.changedRegions.addBorder(/*scale*/1)
+	}
+}
+
+// FIXME: This shouldn't be a public type
 type SimplifiedBorderEvent struct {
 	tstate uint
-	color RGBA
+	color byte
 }
 
-func scanlineFill(surface SDLSurface, scale uint, minx,maxx,y uint, color RGBA) {
-	ys := y*scale
+func (disp *UnscaledDisplay) scanlineFill(minx,maxx,y uint, color byte) {
+	wy := TotalScreenWidth*y
 	
 	if (y < ScreenBorderY) || (y >= TotalScreenHeight-ScreenBorderY) {
 		for x:=minx ; x<=maxx ; x++ {
-			xs := x*scale
-			
-			for yy:=uint(0) ; yy<scale; yy++ {
-				for xx:=uint(0) ; xx<scale; xx++ {
-					surface.setPixel(xs+xx, ys+yy, color)
-				}
-			}
+			disp.pixels[wy+x] = color
 		}
 	} else {
 		for x:=minx ; x<ScreenBorderX ; x++ {
-			xs := x*scale
-			
-			for yy:=uint(0) ; yy<scale; yy++ {
-				for xx:=uint(0) ; xx<scale; xx++ {
-					surface.setPixel(xs+xx, ys+yy, color)
-				}
-			}
+			disp.pixels[wy+x] = color
 		}
 		for x:=uint(TotalScreenWidth-ScreenBorderX) ; x<=maxx; x++ {
-			xs := x*scale
-			
-			for yy:=uint(0) ; yy<scale; yy++ {
-				for xx:=uint(0) ; xx<scale; xx++ {
-					surface.setPixel(xs+xx, ys+yy, color)
-				}
-			}
+			disp.pixels[wy+x] = color
 		}
 	}
 }
 
 // Render border in the interval [start,end)
-func renderBorderBetweenTwoEvents(surface SDLSurface, scale uint, start *SimplifiedBorderEvent, end *SimplifiedBorderEvent) {
+func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *SimplifiedBorderEvent, end *SimplifiedBorderEvent) {
 	// Spectrum 48k video timings
 	const (
 		TSTATES_PER_PIXEL = 2
@@ -267,22 +420,22 @@ func renderBorderBetweenTwoEvents(surface SDLSurface, scale uint, start *Simplif
 	color := start.color
 	if start_y == end_y {
 		y := start_y
-		scanlineFill(surface, scale, uint(start_x), uint(end_x), uint(y), color);
+		disp.scanlineFill(uint(start_x), uint(end_x), uint(y), color);
 	} else {
 		// Top scanline (start_y)
-		scanlineFill(surface, scale, uint(start_x), TotalScreenWidth-1, uint(start_y), color);
+		disp.scanlineFill(uint(start_x), TotalScreenWidth-1, uint(start_y), color);
 		
 		// Scanlines (start_y+1) ... (end_y-1)
 		for y:=start_y+1 ; y<end_y ; y++ {
-			scanlineFill(surface, scale, 0, TotalScreenWidth-1, uint(y), color);
+			disp.scanlineFill(0, TotalScreenWidth-1, uint(y), color);
 		}
 		
 		// Bottom scanline (end_y)
-		scanlineFill(surface, scale, 0, uint(end_x), uint(end_y), color);
+		disp.scanlineFill(0, uint(end_x), uint(end_y), color);
 	}
 }
 
-func renderBorderEvents(surface SDLSurface, scale uint, lastEvent_orNil *BorderEvent) {
+func (disp *UnscaledDisplay) renderBorderEvents(lastEvent_orNil *BorderEvent) {
 	// Determine the number of border-events
 	numEvents := 0
 	for e:=lastEvent_orNil ; e!=nil ; e=e.previous_orNil {
@@ -308,20 +461,23 @@ func renderBorderEvents(surface SDLSurface, scale uint, lastEvent_orNil *BorderE
 	// Note; If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil. But this is OK.
 	
 	for i:=0 ; i < numEvents ; i++ {
-		renderBorderBetweenTwoEvents(surface, scale, &events[i], &events[i+1])
+		disp.renderBorderBetweenTwoEvents(&events[i], &events[i+1])
 	}
 	
-	updateBorder(surface.Surface, scale)
+	disp.changedRegions.addBorder(/*scale*/1)
 }
 
-func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
+func (disp *UnscaledDisplay) render(screen, oldScreen_orNil *Screen) {
 	const X0 = ScreenBorderX
 	const Y0 = ScreenBorderY
 	
 	var attr_x, attr_y uint
 	for attr_y = 0; attr_y < ScreenHeight_Attr; attr_y++ {
+		srcBaseAddr_y := (0x800*(attr_y>>3) + ScreenWidth_Attr*(attr_y&7))
+		dst_Y0        := Y0+8*attr_y
+		
 		for attr_x = 0; attr_x < ScreenWidth_Attr; attr_x++ {
-			attr_ofs := (0x20*attr_y)+attr_x
+			attr_ofs := (ScreenWidth_Attr*attr_y)+attr_x
 			
 			ink_paper := screen.attr[attr_ofs]
 			
@@ -334,135 +490,46 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
 				changed_attr = true
 			}
 			
-			srcBaseAddr := (0x800*(attr_y>>3) + 0x20*(attr_y&7)) + attr_x
-			
 			dst_X0 := X0+8*attr_x
-			dst_Y0 := Y0+8*attr_y
 			
-			var y    uint = 0
-			var y100 uint = 0
-			for y < 8 {
-				var value byte = screen.bitmap[srcBaseAddr + y100];
+			changed_bitmap := false
+			if changed_attr || screen.dirty[attr_ofs] {
+				srcBaseAddr  := srcBaseAddr_y + attr_x
+				single_color := (ink_paper[0] == ink_paper[1])
 				
-				if !changed_attr && (value == oldScreen_orNil.bitmap[srcBaseAddr + y100]) {
-					y    += 1
-					y100 += 0x100
-					continue
+				var y      uint = 0
+				var y100   uint = 0
+				var dst_wy uint = TotalScreenWidth*(dst_Y0+y)
+				for y < 8 {
+					var value byte = screen.bitmap[srcBaseAddr + y100];
+					
+					if changed_attr || ((value != oldScreen_orNil.bitmap[srcBaseAddr + y100] && !single_color)) {
+						changed_bitmap = true
+						
+						for x := 7; x >= 0; x-- {
+							color := ink_paper[value&1]
+							disp.pixels[dst_wy+(dst_X0+uint(x))] = color
+							value = value >> 1
+						}
+					}
+					
+					y      += 1
+					y100   += 0x100
+					dst_wy += TotalScreenWidth
 				}
-				
-				for x := 7; x >= 0; x-- {
-					color := ink_paper[value&1]
-					display.ScreenSurface.setPixel(dst_X0+uint(x), dst_Y0+y, color)
-					value = value >> 1
-				}
-				
-				y    += 1
-				y100 += 0x100
+			}
+			
+			if changed_attr || changed_bitmap {
+				disp.changedRegions.add(int(dst_X0), int(dst_Y0), 8, 8)
 			}
 		}
 	}
 	
-	screenSurface := display.ScreenSurface.Surface
-	screenSurface.UpdateRect(X0, Y0, ScreenWidth, ScreenHeight)
-	
-	renderBorder(screenSurface, /*scale*/1, screen, oldScreen_orNil)
-	
 	if screen.borderEvents != nil {
-		renderBorderEvents(display.ScreenSurface, /*scale*/1, screen.borderEvents)
+		disp.renderBorderEvents(screen.borderEvents)
+	} else {
+		disp.renderBorder(screen, oldScreen_orNil)
 	}
 }
 
-
-
-
-
-type SDLScreen2x struct {
-	// Channel for receiving screen data
-	screenChannel  chan *Screen
-	
-	// The whole screen, borders included
-	ScreenSurface SDLSurface
-}
-
-func NewSDLScreen2x(app *Application, screenSurface *sdl.Surface) *SDLScreen2x {
-	SDL_screen := &SDLScreen2x{ make(chan *Screen), SDLSurface{ screenSurface } }
-	
-	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
-	
-	return SDL_screen
-}
-
-// Implement DisplayChannel
-func (display *SDLScreen2x) getScreenChannel() chan *Screen {
-	return display.screenChannel
-}
-
-func (display *SDLScreen2x) render(screen, oldScreen_orNil *Screen) {
-	const X0 = ScreenBorderX
-	const Y0 = ScreenBorderY
-	
-	var attr_x, attr_y uint
-	for attr_y = 0; attr_y < ScreenHeight_Attr; attr_y++ {
-		for attr_x = 0; attr_x < ScreenWidth_Attr; attr_x++ {
-			attr_ofs := (0x20*attr_y)+attr_x
-			
-			ink_paper := screen.attr[attr_ofs]
-			
-			changed_attr := false
-			if oldScreen_orNil != nil {
-				if !equals(oldScreen_orNil.attr[attr_ofs], ink_paper) {
-					changed_attr = true
-				}
-			} else {
-				changed_attr = true
-			}
-			
-			srcBaseAddr := (0x800*(attr_y>>3) + 0x20*(attr_y&7)) + attr_x
-			
-			dst_X0 := X0+8*attr_x
-			dst_Y0 := Y0+8*attr_y
-			
-			var y    uint = 0
-			var y100 uint = 0
-			for y < 8 {
-				var value byte = screen.bitmap[srcBaseAddr + y100];
-				
-				if !changed_attr && (value == oldScreen_orNil.bitmap[srcBaseAddr + y100]) {
-					y    += 1
-					y100 += 0x100
-					continue
-				}
-				
-				for x := 7; x >= 0; x-- {
-					color := ink_paper[value&1]
-					display.setPixel_2x(dst_X0+uint(x), dst_Y0+y, color)
-					value = value >> 1
-				}
-				
-				y    += 1
-				y100 += 0x100
-			}
-		}
-	}
-	
-	screenSurface := display.ScreenSurface.Surface
-	screenSurface.UpdateRect(2*X0, 2*Y0, 2*ScreenWidth, 2*ScreenHeight)
-	
-	renderBorder(screenSurface, /*scale*/2, screen, oldScreen_orNil)
-	
-	if screen.borderEvents != nil {
-		renderBorderEvents(display.ScreenSurface, /*scale*/2, screen.borderEvents)
-	}
-}
-
-func (display *SDLScreen2x) setPixel_2x(x, y uint, color RGBA) {
-	scaleX := x*2
-	scaleY := y*2
-
-	surface := display.ScreenSurface
-	surface.setPixel(scaleX  , scaleY  , color)
-	surface.setPixel(scaleX+1, scaleY+1, color)
-	surface.setPixel(scaleX  , scaleY+1, color)
-	surface.setPixel(scaleX+1, scaleY  , color)
-}
 

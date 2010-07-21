@@ -44,40 +44,27 @@ type RGBA struct {
 	R,G,B,A byte
 }
 
-var palette [16]RGBA = [16]RGBA{
-	RGBA{0  , 0  , 0  , 255},
-	RGBA{0  , 0  , 192, 255},
-	RGBA{192, 0  , 0  , 255},
-	RGBA{192, 0  , 192, 255},
-	RGBA{0  , 192, 0  , 255},
-	RGBA{0  , 192, 192, 255},
-	RGBA{192, 192, 0  , 255},
-	RGBA{192, 192, 192, 255},
-	RGBA{0  , 0  , 0  , 255},
-	RGBA{0  , 0  , 255, 255},
-	RGBA{255, 0  , 0  , 255},
-	RGBA{255, 0  , 255, 255},
-	RGBA{0  , 255, 0  , 255},
-	RGBA{0  , 255, 255, 255},
-	RGBA{255, 255, 0  , 255},
-	RGBA{255, 255, 255, 255}}
-
 func (color RGBA) value32() uint32 {
 	return (uint32(color.A) << 24) | (uint32(color.R) << 16) | (uint32(color.G) << 8) | uint32(color.B)
 }
 
-type SurfaceAccessor interface {
-	Width() uint
-	Height() uint
-	SizeInBytes() uint
-	Bpp() uint
-
-	setValueAt(offset uint, value uint32)
-	setPixelAt(offset uint, color RGBA)
-	
-	setValue(x, y uint, value uint32)
-	setPixel(x, y uint, color RGBA)
-}
+var palette [16]uint32 = [16]uint32{
+	RGBA{0  , 0  , 0  , 255}.value32(),
+	RGBA{0  , 0  , 192, 255}.value32(),
+	RGBA{192, 0  , 0  , 255}.value32(),
+	RGBA{192, 0  , 192, 255}.value32(),
+	RGBA{0  , 192, 0  , 255}.value32(),
+	RGBA{0  , 192, 192, 255}.value32(),
+	RGBA{192, 192, 0  , 255}.value32(),
+	RGBA{192, 192, 192, 255}.value32(),
+	RGBA{0  , 0  , 0  , 255}.value32(),
+	RGBA{0  , 0  , 255, 255}.value32(),
+	RGBA{255, 0  , 0  , 255}.value32(),
+	RGBA{255, 0  , 255, 255}.value32(),
+	RGBA{0  , 255, 0  , 255}.value32(),
+	RGBA{0  , 255, 255, 255}.value32(),
+	RGBA{255, 255, 0  , 255}.value32(),
+	RGBA{255, 255, 255, 255}.value32()}
 
 type DisplayChannel interface {
 	getScreenChannel() chan *Screen

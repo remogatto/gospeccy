@@ -18,40 +18,36 @@ type MemoryAccessor interface {
 
 	set(addr uint16, value byte)
 	
-	getBorder() RGBA
-	setBorder(borderColor RGBA)
+	getBorder() byte
+	setBorder(borderColor byte)
 
+	frame_begin()
 	sendScreenToDisplay(display DisplayChannel, borderEvents *BorderEvent)
 
 	At(addr uint) byte
 	Data() []byte
 }
 
-type PaperInk [2]RGBA
+type PaperInk [2]byte
 
 func equals(a,b PaperInk) bool {
-	return	(a[0].R == b[0].R) &&
-			(a[0].G == b[0].G) &&
-			(a[0].B == b[0].B) &&
-			(a[0].A == b[0].A) &&
-			(a[1].R == b[1].R) &&
-			(a[1].G == b[1].G) &&
-			(a[1].B == b[1].B) &&
-			(a[1].A == b[1].A)
+	return	(a[0] == b[0]) && (a[1] == b[1])
 }
 
 type Screen struct {
 	bitmap       [ScreenWidth/8*ScreenHeight] byte
 	attr         [ScreenWidth_Attr*ScreenHeight_Attr] PaperInk
-	border       RGBA
+	dirty        [ScreenWidth_Attr*ScreenHeight_Attr] bool	// The 8x8 rectangular region was modified, either the bitmap or the attr
+	border       byte
 	borderEvents *BorderEvent	// Might be nil
 	flash        bool
 }
 
 type Memory struct {
-	data [0x10000]byte
-	borderColor RGBA
-	z80 *Z80
+	data         [0x10000]byte
+	borderColor  byte
+	dirtyScreen  [ScreenWidth_Attr*ScreenHeight_Attr] bool
+	z80          *Z80
 }
 
 func NewMemory() *Memory {
@@ -73,15 +69,33 @@ func (memory *Memory) writeByte(address uint16, b byte) {
 }
 
 func (memory *Memory) writeByteInternal(address uint16, b byte) {
+	if (address >= 0x4000) && (address < 0x5800) && (memory.data[address] != b) {
+		memory.screenBitmapWrite(address)
+	}
+	
 	memory.data[address] = b
 }
 
-func (memory *Memory) getBorder() RGBA {
+func (memory *Memory) screenBitmapWrite(address uint16) {
+	// address: [0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0]
+	var attr_x = (address & 0x001f)
+	var attr_y = ( ((address & 0x0700) >> 8) | ((address & 0x00e0) >> 2) | ((address & 0x1800) >> 5) ) / 8
+	
+	memory.dirtyScreen[attr_y*ScreenWidth_Attr + attr_x] = true
+}
+
+func (memory *Memory) getBorder() byte {
 	return memory.borderColor
 }
 
-func (memory *Memory) setBorder(borderColor RGBA) {
+func (memory *Memory) setBorder(borderColor byte) {
 	memory.borderColor = borderColor
+}
+
+func (memory *Memory) frame_begin() {
+	for i:=0 ; i<(ScreenWidth_Attr*ScreenHeight_Attr) ; i++ {
+		memory.dirtyScreen[i] = false
+	}
 }
 
 func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *BorderEvent) {
@@ -102,20 +116,22 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 		for attr_ofs := 0; attr_ofs < ScreenWidth_Attr*ScreenHeight_Attr; attr_ofs++ {
 			attr := memory.data[0x5800+attr_ofs]
 				
-			var ink RGBA
-			var paper RGBA
+			var ink,paper byte
 				
 			if flash && ((attr & 0x80) != 0) {
 				/* invert flashing attributes */
-				ink = palette[(attr&0x78)>>3]
-				paper = palette[((attr&0x40)>>3)|(attr&0x07)]
+				ink = (attr&0x78)>>3
+				paper = ((attr&0x40)>>3)|(attr&0x07)
 			} else {
-				ink = palette[((attr&0x40)>>3)|(attr&0x07)]
-				paper = palette[(attr&0x78)>>3]
+				ink = ((attr&0x40)>>3)|(attr&0x07)
+				paper = (attr&0x78)>>3
 			}
 			
 			screen.attr[attr_ofs] = PaperInk{paper, ink}
 		}
+		
+		// screen.dirty
+		screen.dirty = memory.dirtyScreen
 		
 		// screen.border
 		screen.border = memory.borderColor

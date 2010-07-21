@@ -28,7 +28,7 @@ package spectrum
 
 
 type PortAccessor interface {
-	frame_begin(borderColor RGBA)
+	frame_begin(borderColor byte)
 	frame_releaseMemory()
 	
 	readPort(address uint16) byte
@@ -45,7 +45,7 @@ type BorderEvent struct {
 	tstate uint
 	
 	// The new border color
-	color RGBA
+	color byte
 	
 	// Previous event, if any.
 	// Constraint: (tstate >= previous_orNil.tstate)
@@ -63,7 +63,7 @@ func NewPorts(memory MemoryAccessor, keyboard *Keyboard) *Ports {
 	return &Ports{memory, keyboard, nil, nil}
 }
 
-func (p *Ports) frame_begin(borderColor RGBA) {
+func (p *Ports) frame_begin(borderColor byte) {
 	p.borderEvents = &BorderEvent{tstate:0, color:borderColor, previous_orNil:nil}
 }
 
@@ -102,10 +102,10 @@ func (p *Ports) writePort(address uint16, b byte) {
 	p.contendPortPreio(address)
 
 	if ((address & 0x0001) == 0) {
-		color := palette[b & 0x07]
+		color := (b & 0x07)
 		
 		// Modify the border only if it really changed
-		if p.memory.getBorder().value32() != color.value32() {
+		if p.memory.getBorder() != color {
 			p.memory.setBorder(color)
 			p.borderEvents = &BorderEvent{p.z80.tstates, color, p.borderEvents}
 		}

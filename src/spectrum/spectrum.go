@@ -64,6 +64,7 @@ func (speccy *Spectrum48k) interrupt() {
 
 func (speccy *Spectrum48k) RenderFrame() {
 	speccy.Ports.frame_begin(speccy.Memory.getBorder())
+	speccy.Memory.frame_begin()
 	speccy.doOpcodes()
 	if speccy.Display != nil  {
 		speccy.Memory.sendScreenToDisplay(speccy.Display, speccy.Ports.borderEvents)

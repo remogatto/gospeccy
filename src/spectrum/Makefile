@@ -9,5 +9,7 @@ GOFILES=\
 	sdldisplay.go\
 	keyboard.go\
 	spectrum.go\
+	fpscounter.go\
+	application.go
 
 include $(GOROOT)/src/Make.pkg

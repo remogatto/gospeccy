@@ -38,7 +38,7 @@ import (
 //
 // Note: The first letter is uppercase, so this function is public, but it should not be.
 //       The Go language fails here.
-func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
+func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
 	ticker := time.NewTicker(/*10ms*/10*1e6)
 	
 	// Better create the event-object here once, rather than multiple times within the loop
@@ -220,7 +220,7 @@ func main() {
 	}
 
 	// Begin speccy emulation
-	go SDL_eventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
+	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
 	go emulatorLoop(app.NewEventLoop(), speccy, *fps)
 
 quit:

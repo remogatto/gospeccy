@@ -51,14 +51,14 @@ type BorderEvent struct {
 }
 
 type Ports struct {
-	memory       MemoryAccessor
+	display      *Display
 	keyboard     *Keyboard
 	borderEvents *BorderEvent // Might be nil
 	z80          *Z80
 }
 
-func NewPorts(memory MemoryAccessor, keyboard *Keyboard) *Ports {
-	return &Ports{memory, keyboard, nil, nil}
+func NewPorts(display *Display, keyboard *Keyboard) *Ports {
+	return &Ports{display, keyboard, nil, nil}
 }
 
 func (p *Ports) frame_begin(borderColor RGBA) {
@@ -103,8 +103,8 @@ func (p *Ports) writePort(address uint16, b byte) {
 		color := palette[b&0x07]
 
 		// Modify the border only if it really changed
-		if p.memory.getBorder().value32() != color.value32() {
-			p.memory.setBorder(color)
+		if p.display.getBorderColor().value32() != color.value32() {
+			p.display.setBorderColor(color)
 			p.borderEvents = &BorderEvent{p.z80.tstates, color, p.borderEvents}
 		}
 	}

@@ -12,16 +12,23 @@ const TStatesPerFrame = 69888
 type Spectrum48k struct {
 	Cpu      *Z80
 	Memory   MemoryAccessor
-	Display  DisplayChannel // Initially nil
+	Display  *Display
 	Keyboard *Keyboard
 	Ports    *Ports
+
+	// Channel from which display data are sent. Initially nil.
+	DisplayData        DisplayChannel
 }
 
 // Create a new speccy object.
 func NewSpectrum48k() (*Spectrum48k, os.Error) {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
-	ports := NewPorts(memory, keyboard)
+
+	// The displays shares system memory
+	display := NewDisplay(&memory.data)
+
+	ports := NewPorts(display, keyboard)
 	z80 := NewZ80(memory, ports)
 
 	ports.z80 = z80
@@ -42,13 +49,13 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 		}
 	}
 
-	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Display: nil, Ports: ports}
+	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Display: display, Ports: ports, DisplayData: nil}
 
 	return speccy, nil
 }
 
-func (speccy *Spectrum48k) SetDisplay(display DisplayChannel) {
-	speccy.Display = display
+func (speccy *Spectrum48k) SetDisplayChannel(ch DisplayChannel) {
+	speccy.DisplayData = ch
 }
 
 // Execute the number of T-states corresponding to one screen frame
@@ -63,10 +70,10 @@ func (speccy *Spectrum48k) interrupt() {
 }
 
 func (speccy *Spectrum48k) RenderFrame() {
-	speccy.Ports.frame_begin(speccy.Memory.getBorder())
+	speccy.Ports.frame_begin(speccy.Display.getBorderColor())
 	speccy.doOpcodes()
-	if speccy.Display != nil {
-		speccy.Memory.sendScreenToDisplay(speccy.Display, speccy.Ports.borderEvents)
+	if speccy.DisplayData != nil {
+		speccy.Display.sendDisplayData(speccy.DisplayData, speccy.Ports.borderEvents)
 	}
 	speccy.Ports.frame_releaseMemory()
 	speccy.interrupt()

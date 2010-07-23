@@ -216,7 +216,7 @@ func main() {
 		
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 		
-		speccy.SetDisplay(display)
+		speccy.SetDisplayChannel(display)
 	}
 
 	// Begin speccy emulation

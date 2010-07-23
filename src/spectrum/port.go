@@ -110,24 +110,35 @@ func (p *Ports) writePort(address uint16, b byte) {
 			p.borderEvents = &BorderEvent{p.z80.tstates, color, p.borderEvents}
 		}
 	}
-
+	
 	p.contendPortPostio(address)
+}
+
+func (p *Ports) contend(time uint) {
+	tstates_p := &p.z80.tstates
+	*tstates_p += uint(delay_table[*tstates_p])
+	*tstates_p += time
 }
 
 func (p *Ports) contendPortPreio(address uint16) {
 	if (address & 0xc000) == 0x4000 {
+		p.contend(1)
+	} else {
+		p.z80.tstates += 1
 	}
-	p.z80.tstates++
 }
 
 func (p *Ports) contendPortPostio(address uint16) {
-	if (address & 0x0001) != 0 {
+	if (address & 0x0001) == 1 {
 		if (address & 0xc000) == 0x4000 {
+			p.contend(1)
+			p.contend(1)
+			p.contend(1)
 		} else {
 			p.z80.tstates += 3
 		}
 
 	} else {
-		p.z80.tstates += 3
+		p.contend(3)
 	}
 }

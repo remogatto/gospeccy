@@ -363,31 +363,6 @@ func (disp *UnscaledDisplay) scanlineFill(minx,maxx,y uint, color byte) {
 
 // Render border in the interval [start,end)
 func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *SimplifiedBorderEvent, end *SimplifiedBorderEvent) {
-	// Spectrum 48k video timings
-	const (
-		TSTATES_PER_PIXEL = 2
-	
-		// Horizontal
-		LINE_SCREEN       = 128		// 128 T states of screen
-		LINE_RIGHT_BORDER = 24 		// 24 T states of right border
-		LINE_RETRACE      = 48		// 48 T states of horizontal retrace
-		LINE_LEFT_BORDER  = 24		// 24 T states of left border
-		
-		TSTATES_PER_LINE  = (LINE_RIGHT_BORDER + LINE_SCREEN + LINE_LEFT_BORDER + LINE_RETRACE)
-		
-		FIRST_BYTE        = 14336	// T states before the first byte of the screen (16384) is displayed
-		
-		// Vertical
-		LINES_TOP         = 64
-		LINES_SCREEN      = 192
-		LINES_BOTTOM      = 56
-		BORDER_TOP        = ScreenBorderY
-		BORDER_BOTTOM     = ScreenBorderY
-		
-		// The T-state which corresponds to pixel (0,0) on the SDL surface
-		DISPLAY_START     = ( FIRST_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/TSTATES_PER_PIXEL )
-	)
-	
 	start_y := (int(start.tstate) - DISPLAY_START) / TSTATES_PER_LINE
 	end_y   := (int(end.tstate)-1 - DISPLAY_START) / TSTATES_PER_LINE
 	

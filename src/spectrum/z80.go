@@ -97,7 +97,9 @@ type Z80 struct {
 
 	sz53Table, sz53pTable, parityTable [0x100]byte
 	
-	// Number of tstates since the beginning of the last frame
+	// Number of tstates since the beginning of the last frame.
+	// The value of this variable is usually smaller than TStatesPerFrame,
+	// but in same unlikely circumstances it may be >= than that.
 	tstates uint
 
 	halted bool
@@ -187,8 +189,6 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 			return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
 		}
 		
-		z80.tstates = 0
-		
 		// Populate registers
 		z80.i = bytes[0]
 		z80.l_ = bytes[1]
@@ -237,6 +237,8 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 			z80.memory.writeByte(i, z80.memory.At(uint(i)))
 		}
 
+		z80.tstates = 0
+		
 		// Send a RETN
 		z80.iff1 = z80.iff2
 		z80.ret()
@@ -257,6 +259,7 @@ func (z80 *Z80) interrupt() {
 	if z80.iff1 != 0 {
 
 		if z80.halted {
+			z80.tstates = 0
 			z80.pc++
 			z80.halted = false
 		}

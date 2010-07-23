@@ -27,9 +27,6 @@ package spectrum
 
 
 type PortAccessor interface {
-	frame_begin(borderColor RGBA)
-	frame_releaseMemory()
-
 	readPort(address uint16) byte
 	writePort(address uint16, b byte)
 	contendPortPreio(address uint16)

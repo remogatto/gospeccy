@@ -27,7 +27,6 @@ package spectrum
 
 import (
 	"io/ioutil"
-	"container/vector"
 	"fmt"
 	"os"
 )
@@ -111,7 +110,6 @@ type Z80 struct {
 	LogEvents bool
 }
 
-var initialMemory [0x10000]byte
 var eventNextEvent uint
 
 func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
@@ -130,33 +128,6 @@ func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 	z80.initTables()
 
 	return z80
-}
-
-func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
-	out.Push(fmt.Sprintf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
-		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc))
-	out.Push(fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|(z80.r&0x7f),
-		z80.iff1, z80.iff2, z80.im, z80.halted, z80.tstates))
-}
-
-func (z80 *Z80) DumpMemory(out *vector.StringVector) {
-	var i uint
-	for i = 0; i < 0x10000; i++ {
-		if z80.memory.At(i) == initialMemory[i] {
-			continue
-		}
-
-		line := fmt.Sprintf("%04x ", i)
-
-		for (i < 0x10000) && (z80.memory.At(i) != initialMemory[i]) {
-			line += fmt.Sprintf("%02x ", z80.memory.At(i))
-			i++
-		}
-
-		line += fmt.Sprintf("-1\n")
-
-		out.Push(line)
-	}
 }
 
 func (z80 *Z80) Reset() {

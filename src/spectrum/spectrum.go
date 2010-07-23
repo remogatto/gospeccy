@@ -17,7 +17,7 @@ type Spectrum48k struct {
 	Ports    *Ports
 
 	// Channel to which display data are sent. Initially nil.
-	displayReceiver        DisplayReceiver
+	displayReceiver DisplayReceiver
 }
 
 // Create a new speccy object.

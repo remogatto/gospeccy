@@ -68,30 +68,30 @@ func (color RGBA) value32() uint32 {
 
 type PaperInk [2]RGBA
 
-func equals(a,b PaperInk) bool {
-	return	(a[0].R == b[0].R) &&
-			(a[0].G == b[0].G) &&
-			(a[0].B == b[0].B) &&
-			(a[0].A == b[0].A) &&
-			(a[1].R == b[1].R) &&
-			(a[1].G == b[1].G) &&
-			(a[1].B == b[1].B) &&
-			(a[1].A == b[1].A)
+func equals(a, b PaperInk) bool {
+	return (a[0].R == b[0].R) &&
+		(a[0].G == b[0].G) &&
+		(a[0].B == b[0].B) &&
+		(a[0].A == b[0].A) &&
+		(a[1].R == b[1].R) &&
+		(a[1].G == b[1].G) &&
+		(a[1].B == b[1].B) &&
+		(a[1].A == b[1].A)
 }
 
 type Display struct {
 	// Shared VRAM
-	memory []byte
+	memory      []byte
 	borderColor RGBA
 }
 
 type DisplayData struct {
-	borderColor RGBA
+	borderColor  RGBA
 	borderEvents *BorderEvent // Might be nil
 	flash        bool
 
-	bitmap       [ScreenWidth/8*ScreenHeight] byte
-	attr         [ScreenWidth_Attr*ScreenHeight_Attr] PaperInk	
+	bitmap [ScreenWidth / 8 * ScreenHeight]byte
+	attr   [ScreenWidth_Attr * ScreenHeight_Attr]PaperInk
 }
 
 type DisplayReceiver interface {
@@ -99,34 +99,34 @@ type DisplayReceiver interface {
 }
 
 func NewDisplay(systemMemory []byte) *Display {
-	return &Display{ memory: systemMemory[0x4000:0x5b00] }
+	return &Display{memory: systemMemory[0x4000:0x5b00]}
 }
 
-func (display *Display) getBorderColor() RGBA { return display.borderColor }
+func (display *Display) getBorderColor() RGBA      { return display.borderColor }
 func (display *Display) setBorderColor(color RGBA) { display.borderColor = color }
 
 func (display *Display) prepare() *DisplayData {
-	
+
 	var decodedDisplay DisplayData
 
 	flashFrame = (flashFrame + 1) & 0x1f
-	
+
 	// screen.bitmap
 	for ofs := 0; ofs < ScreenWidth/8*ScreenHeight; ofs++ {
 		decodedDisplay.bitmap[ofs] = display.memory[ofs]
 	}
-	
+
 	// screen.flash
-	flash := (flashFrame & 0x10 != 0)
+	flash := (flashFrame&0x10 != 0)
 	decodedDisplay.flash = flash
-	
+
 	// screen.attr
 	for attr_ofs := 0; attr_ofs < ScreenWidth_Attr*ScreenHeight_Attr; attr_ofs++ {
 		attr := display.memory[(0x5800-0x4000)+attr_ofs]
-		
+
 		var ink RGBA
 		var paper RGBA
-		
+
 		if flash && ((attr & 0x80) != 0) {
 			/* invert flashing attributes */
 			ink = palette[(attr&0x78)>>3]
@@ -135,7 +135,7 @@ func (display *Display) prepare() *DisplayData {
 			ink = palette[((attr&0x40)>>3)|(attr&0x07)]
 			paper = palette[(attr&0x78)>>3]
 		}
-		
+
 		decodedDisplay.attr[attr_ofs] = PaperInk{paper, ink}
 	}
 
@@ -156,7 +156,7 @@ func (display *Display) send(displayReceiver DisplayReceiver, borderEvents *Bord
 	} else {
 		displayData.borderEvents = borderEvents
 	}
-	
+
 	displayReceiver.getDisplayDataCh() <- displayData
 
 }

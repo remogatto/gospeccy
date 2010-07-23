@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -39,98 +39,106 @@ import (
 // Note: The first letter is uppercase, so this function is public, but it should not be.
 //       The Go language fails here.
 func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
-	ticker := time.NewTicker(/*10ms*/10*1e6)
-	
+	ticker := time.NewTicker( /*10ms*/ 10 * 1e6)
+
 	// Better create the event-object here once, rather than multiple times within the loop
 	event := &sdl.Event{}
-	
+
 	for {
 		select {
-			case <-evtLoop.Pause:
-				ticker.Stop()
-				spectrum.Drain(ticker)
-				evtLoop.Pause <- 0
+		case <-evtLoop.Pause:
+			ticker.Stop()
+			spectrum.Drain(ticker)
+			evtLoop.Pause <- 0
 
-			case <-evtLoop.Terminate:
-				// Terminate this Go routine
-				if evtLoop.App.Verbose { println("SDL event loop: exit") }
-				ticker.Stop()
-				evtLoop.Terminate <- 0
-				return
-				
-			case <-ticker.C:
-				if event.Poll() {
-					switch event.Type {
-						case sdl.QUIT:
-							if evtLoop.App.Verbose { println("SDL quit -> request[exit the application]") }
-							evtLoop.App.RequestExit()
-							
-						case sdl.KEYDOWN, sdl.KEYUP:
-							k := event.Keyboard()
-						
-							if verboseKeyboard {
-								println()
-								println(k.Keysym.Sym, ": ", sdl.GetKeyName(sdl.Key(k.Keysym.Sym)))
+		case <-evtLoop.Terminate:
+			// Terminate this Go routine
+			if evtLoop.App.Verbose {
+				println("SDL event loop: exit")
+			}
+			ticker.Stop()
+			evtLoop.Terminate <- 0
+			return
 
-								fmt.Printf("%04x ", event.Type)
+		case <-ticker.C:
+			if event.Poll() {
+				switch event.Type {
+				case sdl.QUIT:
+					if evtLoop.App.Verbose {
+						println("SDL quit -> request[exit the application]")
+					}
+					evtLoop.App.RequestExit()
 
-								for i := 0; i < len(event.Pad0); i++ {
-									fmt.Printf("%02x ", event.Pad0[i])
-								}
-								println()
+				case sdl.KEYDOWN, sdl.KEYUP:
+					k := event.Keyboard()
 
-								fmt.Printf("Type: %02x Which: %02x State: %02x Pad: %02x\n", k.Type, k.Which, k.State, k.Pad0[0])
-								fmt.Printf("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
-							}
-						
-							switch k.Keysym.Sym {
-								/* Backspace*/
-								case 8:
-									if event.Type == sdl.KEYDOWN {
-										speccy.Keyboard.KeyDown(304)
-										speccy.Keyboard.KeyDown(48)
-									} else {
-										speccy.Keyboard.KeyUp(48)
-										speccy.Keyboard.KeyUp(304)
-									}
-								
-								/* Escape*/
-								case 27:
-									if evtLoop.App.Verbose { println("escape key -> request[exit the application]") }									
-									evtLoop.App.RequestExit()
-								
-								default:
-									if k.State != 0 {
-										speccy.Keyboard.KeyDown(uint(k.Keysym.Sym))
-									} else {
-										speccy.Keyboard.KeyUp(uint(k.Keysym.Sym))
-									}
-							}
+					if verboseKeyboard {
+						println()
+						println(k.Keysym.Sym, ": ", sdl.GetKeyName(sdl.Key(k.Keysym.Sym)))
+
+						fmt.Printf("%04x ", event.Type)
+
+						for i := 0; i < len(event.Pad0); i++ {
+							fmt.Printf("%02x ", event.Pad0[i])
+						}
+						println()
+
+						fmt.Printf("Type: %02x Which: %02x State: %02x Pad: %02x\n", k.Type, k.Which, k.State, k.Pad0[0])
+						fmt.Printf("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
+					}
+
+					switch k.Keysym.Sym {
+					/* Backspace*/
+					case 8:
+						if event.Type == sdl.KEYDOWN {
+							speccy.Keyboard.KeyDown(304)
+							speccy.Keyboard.KeyDown(48)
+						} else {
+							speccy.Keyboard.KeyUp(48)
+							speccy.Keyboard.KeyUp(304)
+						}
+
+					/* Escape*/
+					case 27:
+						if evtLoop.App.Verbose {
+							println("escape key -> request[exit the application]")
+						}
+						evtLoop.App.RequestExit()
+
+					default:
+						if k.State != 0 {
+							speccy.Keyboard.KeyDown(uint(k.Keysym.Sym))
+						} else {
+							speccy.Keyboard.KeyUp(uint(k.Keysym.Sym))
+						}
 					}
 				}
+			}
 		}
 	}
 }
 
 func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, displayRefreshFrequency float) {
-	ticker := time.NewTicker(int64(1e9/displayRefreshFrequency))
-	
+	ticker := time.NewTicker(int64(1e9 / displayRefreshFrequency))
+
 	for {
 		select {
-			case <-evtLoop.Pause:
-				ticker.Stop()
-				spectrum.Drain(ticker)
-				evtLoop.Pause <- 0
+		case <-evtLoop.Pause:
+			ticker.Stop()
+			spectrum.Drain(ticker)
+			evtLoop.Pause <- 0
 
-			case <-evtLoop.Terminate:
-				// Terminate this Go routine
-				if evtLoop.App.Verbose { println("emulator loop: exit") }
-				evtLoop.Terminate <- 0
-				return
-				
-			case <-ticker.C:
-				// if evtLoop.App.Verbose { fmt.Printf("%d ms\n", time.Nanoseconds()/1e6) }
-				speccy.RenderFrame()
+		case <-evtLoop.Terminate:
+			// Terminate this Go routine
+			if evtLoop.App.Verbose {
+				println("emulator loop: exit")
+			}
+			evtLoop.Terminate <- 0
+			return
+
+		case <-ticker.C:
+			// if evtLoop.App.Verbose { fmt.Printf("%d ms\n", time.Nanoseconds()/1e6) }
+			speccy.RenderFrame()
 		}
 	}
 }
@@ -138,7 +146,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, dis
 func main() {
 	help := flag.Bool("help", false, "Show usage")
 	scale2x := flag.Bool("2x", false, "2x display scaler")
-	fullscreen:= flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
+	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
 	fps := flag.Float("fps", 50.08, "Frames per second")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseKeyboard := flag.Bool("verbose-keyboard", false, "Enable debugging messages (keyboard events)")
@@ -170,10 +178,12 @@ func main() {
 		app.RequestExit()
 		goto quit
 	}
-	
+
 	// Load snapshot (if any)
 	if flag.Arg(0) != "" {
-		if app.Verbose { fmt.Printf("loading snapshot \"%s\"\n", flag.Arg(0)) }
+		if app.Verbose {
+			fmt.Printf("loading snapshot \"%s\"\n", flag.Arg(0))
+		}
 		err := speccy.LoadSna(flag.Arg(0))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -197,25 +207,25 @@ func main() {
 		}
 
 		var display spectrum.DisplayReceiver
-		
+
 		if *scale2x {
 			screenSurface := sdl.SetVideoMode(2*spectrum.TotalScreenWidth, 2*spectrum.TotalScreenHeight, 32, sdlMode)
 			if screenSurface == nil {
 				panic(sdl.GetError())
 			}
-			
+
 			display = spectrum.NewSDLScreen2x(app, screenSurface)
 		} else {
 			screenSurface := sdl.SetVideoMode(spectrum.TotalScreenWidth, spectrum.TotalScreenHeight, 32, sdlMode)
 			if screenSurface == nil {
 				panic(sdl.GetError())
 			}
-			
+
 			display = spectrum.NewSDLScreen(app, screenSurface)
 		}
-		
+
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
-		
+
 		speccy.SetDisplayReceiver(display)
 	}
 

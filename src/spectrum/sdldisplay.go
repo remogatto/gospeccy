@@ -322,14 +322,14 @@ func renderBorderEvents(surface SDLSurface, scale uint, lastEvent_orNil *BorderE
 func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 	const X0 = ScreenBorderX
 	const Y0 = ScreenBorderY
-	
+
 	var attr_x, attr_y uint
 	for attr_y = 0; attr_y < ScreenHeight_Attr; attr_y++ {
 		for attr_x = 0; attr_x < ScreenWidth_Attr; attr_x++ {
-			attr_ofs := (0x20*attr_y)+attr_x
-			
+			attr_ofs := (0x20 * attr_y) + attr_x
+
 			ink_paper := screen.attr[attr_ofs]
-			
+
 			changed_attr := false
 			if oldScreen_orNil != nil {
 				if !equals(oldScreen_orNil.attr[attr_ofs], ink_paper) {
@@ -340,40 +340,40 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 			}
 
 			srcBaseAddr := (0x800*(attr_y>>3) + 0x20*(attr_y&7)) + attr_x
-			
-			dst_X0 := X0+8*attr_x
-			dst_Y0 := Y0+8*attr_y
-			
-			var y    uint = 0
+
+			dst_X0 := X0 + 8*attr_x
+			dst_Y0 := Y0 + 8*attr_y
+
+			var y uint = 0
 			var y100 uint = 0
 			for y < 8 {
-				var value byte = screen.bitmap[srcBaseAddr + y100];
-				
-				if !changed_attr && (value == oldScreen_orNil.bitmap[srcBaseAddr + y100]) {
-					y    += 1
+				var value byte = screen.bitmap[srcBaseAddr+y100]
+
+				if !changed_attr && (value == oldScreen_orNil.bitmap[srcBaseAddr+y100]) {
+					y += 1
 					y100 += 0x100
 					continue
 				}
-				
+
 				for x := 7; x >= 0; x-- {
 					color := ink_paper[value&1]
 					display.ScreenSurface.setPixel(dst_X0+uint(x), dst_Y0+y, color)
 					value = value >> 1
 				}
-				
-				y    += 1
+
+				y += 1
 				y100 += 0x100
 			}
 		}
 	}
-	
+
 	screenSurface := display.ScreenSurface.Surface
 	screenSurface.UpdateRect(X0, Y0, ScreenWidth, ScreenHeight)
-	
-	renderBorder(screenSurface, /*scale*/1, screen, oldScreen_orNil)
-	
+
+	renderBorder(screenSurface, /*scale*/ 1, screen, oldScreen_orNil)
+
 	if screen.borderEvents != nil {
-		renderBorderEvents(display.ScreenSurface, /*scale*/1, screen.borderEvents)
+		renderBorderEvents(display.ScreenSurface, /*scale*/ 1, screen.borderEvents)
 	}
 }
 

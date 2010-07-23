@@ -23,8 +23,8 @@ type MemoryAccessor interface {
 }
 
 type Memory struct {
-	data        [0x10000]byte
-	z80         *Z80
+	data [0x10000]byte
+	z80  *Z80
 }
 
 func NewMemory() *Memory {

@@ -16,8 +16,8 @@ type Spectrum48k struct {
 	Keyboard *Keyboard
 	Ports    *Ports
 
-	// Channel from which display data are sent. Initially nil.
-	DisplayData        DisplayChannel
+	// Channel to which display data are sent. Initially nil.
+	displayReceiver        DisplayReceiver
 }
 
 // Create a new speccy object.
@@ -49,13 +49,13 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 		}
 	}
 
-	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Display: display, Ports: ports, DisplayData: nil}
+	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Display: display, Ports: ports, displayReceiver: nil}
 
 	return speccy, nil
 }
 
-func (speccy *Spectrum48k) SetDisplayChannel(ch DisplayChannel) {
-	speccy.DisplayData = ch
+func (speccy *Spectrum48k) SetDisplayReceiver(displayReceiver DisplayReceiver) {
+	speccy.displayReceiver = displayReceiver
 }
 
 // Execute the number of T-states corresponding to one screen frame
@@ -72,8 +72,8 @@ func (speccy *Spectrum48k) interrupt() {
 func (speccy *Spectrum48k) RenderFrame() {
 	speccy.Ports.frame_begin(speccy.Display.getBorderColor())
 	speccy.doOpcodes()
-	if speccy.DisplayData != nil {
-		speccy.Display.sendDisplayData(speccy.DisplayData, speccy.Ports.borderEvents)
+	if speccy.displayReceiver != nil {
+		speccy.Display.send(speccy.displayReceiver, speccy.Ports.borderEvents)
 	}
 	speccy.Ports.frame_releaseMemory()
 	speccy.interrupt()

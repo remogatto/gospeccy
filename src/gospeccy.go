@@ -196,7 +196,7 @@ func main() {
 			sdlMode = 0
 		}
 
-		var display spectrum.DisplayChannel
+		var display spectrum.DisplayReceiver
 		
 		if *scale2x {
 			screenSurface := sdl.SetVideoMode(2*spectrum.TotalScreenWidth, 2*spectrum.TotalScreenHeight, 32, sdlMode)
@@ -216,7 +216,7 @@ func main() {
 		
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 		
-		speccy.SetDisplayChannel(display)
+		speccy.SetDisplayReceiver(display)
 	}
 
 	// Begin speccy emulation

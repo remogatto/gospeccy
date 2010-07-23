@@ -85,7 +85,7 @@ type Display struct {
 	borderColor RGBA
 }
 
-type DecodedDisplay struct {
+type DisplayData struct {
 	borderColor RGBA
 	borderEvents *BorderEvent // Might be nil
 	flash        bool
@@ -94,8 +94,8 @@ type DecodedDisplay struct {
 	attr         [ScreenWidth_Attr*ScreenHeight_Attr] PaperInk	
 }
 
-type DisplayChannel interface {
-	getScreenChannel() chan *DecodedDisplay
+type DisplayReceiver interface {
+	getDisplayDataCh() chan *DisplayData
 }
 
 func NewDisplay(systemMemory []byte) *Display {
@@ -105,9 +105,9 @@ func NewDisplay(systemMemory []byte) *Display {
 func (display *Display) getBorderColor() RGBA { return display.borderColor }
 func (display *Display) setBorderColor(color RGBA) { display.borderColor = color }
 
-func (display *Display) decode() *DecodedDisplay {
+func (display *Display) prepare() *DisplayData {
 	
-	var decodedDisplay DecodedDisplay
+	var decodedDisplay DisplayData
 
 	flashFrame = (flashFrame + 1) & 0x1f
 	
@@ -145,18 +145,18 @@ func (display *Display) decode() *DecodedDisplay {
 
 }
 
-func (display *Display) sendDisplayData(ch DisplayChannel, borderEvents *BorderEvent) {
+func (display *Display) send(displayReceiver DisplayReceiver, borderEvents *BorderEvent) {
 
-	decodedDisplay := display.decode()
+	displayData := display.prepare()
 
 	// screen.borderEvents
 	if (borderEvents != nil) && (borderEvents.previous_orNil == nil) {
 		// Only the one event which was added there at the start of the frame - ignore it
-		decodedDisplay.borderEvents = nil
+		displayData.borderEvents = nil
 	} else {
-		decodedDisplay.borderEvents = borderEvents
+		displayData.borderEvents = borderEvents
 	}
 	
-	ch.getScreenChannel() <- decodedDisplay
+	displayReceiver.getDisplayDataCh() <- displayData
 
 }

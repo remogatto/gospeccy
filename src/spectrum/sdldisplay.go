@@ -78,33 +78,34 @@ func (s *SDLSurface) setPixel(x, y uint, color RGBA) {
 }
 
 type SDLScreen struct {
-	// Channel for receiving decoded screen data
-	screenChannel chan *DecodedDisplay
+	// Channel for receiving screen data from the emulation
+	// goroutine
+	displayDataCh chan *DisplayData
 
 	// The whole screen, borders included
 	ScreenSurface SDLSurface
 }
 
 // Implement DisplayChannel
-func (display *SDLScreen) getScreenChannel() chan *DecodedDisplay {
-	return display.screenChannel
+func (display *SDLScreen) getDisplayDataCh() chan *DisplayData {
+	return display.displayDataCh
 }
 
 type _ScreenRenderer interface {
-	render(screen, oldScreen_orNil *DecodedDisplay)
+	render(screen, oldScreen_orNil *DisplayData)
 }
 
 func NewSDLScreen(app *Application, screenSurface *sdl.Surface) *SDLScreen {
-	SDL_screen := &SDLScreen{make(chan *DecodedDisplay), SDLSurface{screenSurface}}
+	SDL_screen := &SDLScreen{make(chan *DisplayData), SDLSurface{screenSurface}}
 
-	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
+	go screenRenderLoop(app.NewEventLoop(), SDL_screen.displayDataCh, SDL_screen)
 
 	return SDL_screen
 }
 
-func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DecodedDisplay, renderer _ScreenRenderer) {
-	var screen *DecodedDisplay = nil
-	var oldScreen *DecodedDisplay = nil
+func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DisplayData, renderer _ScreenRenderer) {
+	var screen *DisplayData = nil
+	var oldScreen *DisplayData = nil
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -126,7 +127,7 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DecodedDisplay, re
 	}
 }
 
-func renderBorder(surface *sdl.Surface, scale uint, screen *DecodedDisplay, oldScreen_orNil *DecodedDisplay) {
+func renderBorder(surface *sdl.Surface, scale uint, screen *DisplayData, oldScreen_orNil *DisplayData) {
 	borderValue := screen.borderColor.value32()
 
 	if (oldScreen_orNil == nil) || (borderValue != oldScreen_orNil.borderColor.value32()) ||
@@ -318,7 +319,7 @@ func renderBorderEvents(surface SDLSurface, scale uint, lastEvent_orNil *BorderE
 	updateBorder(surface.Surface, scale)
 }
 
-func (display *SDLScreen) render(screen, oldScreen_orNil *DecodedDisplay) {
+func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 	const X0 = ScreenBorderX
 	const Y0 = ScreenBorderY
 	
@@ -377,27 +378,28 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DecodedDisplay) {
 }
 
 type SDLScreen2x struct {
-	// Channel for receiving screen data
-	screenChannel chan *DecodedDisplay
+	// Channel for receiving screen data from the emulation
+	// goroutine
+	displayDataCh chan *DisplayData
 
 	// The whole screen, borders included
 	ScreenSurface SDLSurface
 }
 
 func NewSDLScreen2x(app *Application, screenSurface *sdl.Surface) *SDLScreen2x {
-	SDL_screen := &SDLScreen2x{make(chan *DecodedDisplay), SDLSurface{screenSurface}}
+	SDL_screen := &SDLScreen2x{make(chan *DisplayData), SDLSurface{screenSurface}}
 
-	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
+	go screenRenderLoop(app.NewEventLoop(), SDL_screen.displayDataCh, SDL_screen)
 
 	return SDL_screen
 }
 
 // Implement DisplayChannel
-func (display *SDLScreen2x) getScreenChannel() chan *DecodedDisplay {
-	return display.screenChannel
+func (display *SDLScreen2x) getDisplayDataCh() chan *DisplayData {
+	return display.displayDataCh
 }
 
-func (display *SDLScreen2x) render(screen, oldScreen_orNil *DecodedDisplay) {
+func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 	const X0 = ScreenBorderX
 	const Y0 = ScreenBorderY
 

@@ -122,7 +122,7 @@ func (display *Display) prepare() *DisplayData {
 
 	// screen.attr
 	for attr_ofs := 0; attr_ofs < ScreenWidth_Attr*ScreenHeight_Attr; attr_ofs++ {
-		attr := display.memory[(0x5800-0x4000)+attr_ofs]
+		attr := display.memory[6144+attr_ofs]
 
 		var ink RGBA
 		var paper RGBA
@@ -134,6 +134,7 @@ func (display *Display) prepare() *DisplayData {
 		} else {
 			ink = palette[((attr&0x40)>>3)|(attr&0x07)]
 			paper = palette[(attr&0x78)>>3]
+
 		}
 
 		decodedDisplay.attr[attr_ofs] = PaperInk{paper, ink}

@@ -162,7 +162,7 @@ func TestSDLRenderer(t *testing.T) {
 func BenchmarkRender(b *testing.B) {
 
 	b.StopTimer()
-	
+
 	const numFrames = 1000
 
 	var (

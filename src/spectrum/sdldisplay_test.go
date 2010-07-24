@@ -160,31 +160,46 @@ func TestSDLRenderer(t *testing.T) {
 }
 
 func BenchmarkRender(b *testing.B) {
-	renderedScreen := &SDLScreen{nil, SDLSurface{newSurface()}}
 
-	inputImage := readInputImage("testdata/initial.scr")
-	inputImage.borderColor = RGBA{192, 192, 192, 255}
+	b.StopTimer()
 
-	displayData := inputImage.prepare()
+	const numFrames = 100
 
-	for i := 0; i < b.N; i++ {
-		renderedScreen.render(displayData, nil)
+	var (
+		frames [numFrames]DisplayData
+		prevFrame *DisplayData = nil
+	)
+
+	sdlScreen := &SDLScreen{ make(chan *DisplayData), SDLSurface{ newSurface() } }
+
+	if speccy, err := NewSpectrum48k(); err != nil {
+		panic(err)
+	} else {
+		speccy.SetDisplayReceiver(sdlScreen)
+		speccy.LoadSna("testdata/fire.sna")
+		
+		go func() {
+			for i := 0; i < numFrames; i++ {
+				speccy.RenderFrame()
+			}
+		}()
+
+		go func() {
+			for i := 0; i < numFrames; i++ {
+				frames[i] = *<-sdlScreen.getDisplayDataCh()
+			}
+		}()
+
+		var j byte
+
+		b.StartTimer()
+		for i := 0; i < b.N; i++ {
+			j %= numFrames / 2
+			sdlScreen.render(&frames[j], prevFrame)
+			prevFrame = &frames[j]
+			j++
+		}
+
 	}
-
-}
-
-func BenchmarkRenderWithoutChanges(b *testing.B) {
-	var oldDisplayData *DisplayData = nil
-	renderedScreen := &SDLScreen{nil, SDLSurface{newSurface()}}
-
-	inputImage := readInputImage("testdata/initial.scr")
-	inputImage.borderColor = RGBA{192, 192, 192, 255}
-
-	displayData := inputImage.prepare()
-
-	for i := 0; i < b.N; i++ {
-		renderedScreen.render(displayData, oldDisplayData)
-		oldDisplayData = displayData
-	}
-
+	
 }

@@ -25,7 +25,7 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
 
-	// The displays shares system memory
+	// The display shares system memory
 	display := NewDisplay(&memory.data)
 
 	ports := NewPorts(display, keyboard)

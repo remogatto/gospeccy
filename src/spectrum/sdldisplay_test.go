@@ -145,7 +145,6 @@ var RenderTests = []RenderTest{
 	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_1.png", borderColor: RGBA{192, 192, 192, 255}, flash: true},
 }
 
-// Test the static render capabilities. Flashing is not tested here.
 func TestSDLRenderer(t *testing.T) {
 
 	initSDL()
@@ -157,5 +156,35 @@ func TestSDLRenderer(t *testing.T) {
 	}
 
 	sdl.Quit()
+
+}
+
+func BenchmarkRender(b *testing.B) {
+	renderedScreen := &SDLScreen{nil, SDLSurface{newSurface()}}
+
+	inputImage := readInputImage("testdata/initial.scr")
+	inputImage.borderColor = RGBA{192, 192, 192, 255}
+
+	displayData := inputImage.prepare()
+
+	for i := 0; i < b.N; i++ {
+		renderedScreen.render(displayData, nil)
+	}
+
+}
+
+func BenchmarkRenderWithoutChanges(b *testing.B) {
+	var oldDisplayData *DisplayData = nil
+	renderedScreen := &SDLScreen{nil, SDLSurface{newSurface()}}
+
+	inputImage := readInputImage("testdata/initial.scr")
+	inputImage.borderColor = RGBA{192, 192, 192, 255}
+
+	displayData := inputImage.prepare()
+
+	for i := 0; i < b.N; i++ {
+		renderedScreen.render(displayData, oldDisplayData)
+		oldDisplayData = displayData
+	}
 
 }

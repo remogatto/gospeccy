@@ -81,9 +81,9 @@ func equals(a, b PaperInk) bool {
 
 type Display struct {
 	// Shared VRAM
-	memory      []byte
+	memory []byte
 
-	flashFrame byte
+	flashFrame  byte
 	borderColor RGBA
 }
 

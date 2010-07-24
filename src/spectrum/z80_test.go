@@ -37,9 +37,9 @@ import (
 )
 
 var (
-	events *vector.StringVector = new(vector.StringVector)
+	events        *vector.StringVector = new(vector.StringVector)
 	initialMemory [0x10000]byte
-	dirtyMemory [0x10000]bool
+	dirtyMemory   [0x10000]bool
 )
 
 func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
@@ -79,7 +79,7 @@ func (z80 *Z80) DumpMemory(out *vector.StringVector) {
 
 type testMemory struct {
 	data [0x10000]byte
-	z80 *Z80
+	z80  *Z80
 }
 
 func (memory *testMemory) readByteInternal(addr uint16) byte {
@@ -289,8 +289,8 @@ func TestDoOpcodes(t *testing.T) {
 
 			halted, _ := strconv.Btoui64(otherRegs[5], 10)
 
-			if halted != 0 { 
-				z80.halted = true 
+			if halted != 0 {
+				z80.halted = true
 			} else {
 				z80.halted = false
 			}

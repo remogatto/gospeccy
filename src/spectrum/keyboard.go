@@ -124,5 +124,5 @@ var keyCodes = map[uint]keyCell{
 	110: keyCell{row: 7, mask: 0x08}, /* N */
 	109: keyCell{row: 7, mask: 0x04}, /* M */
 	306: keyCell{row: 7, mask: 0x02}, /* sym - gah, firefox screws up ctrl+key too */
-	32:  keyCell{row: 7, mask: 0x01},/* space */
+	32:  keyCell{row: 7, mask: 0x01}, /* space */
 }

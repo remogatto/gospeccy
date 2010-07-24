@@ -66,7 +66,7 @@ func colorsAreNotEqual(got, expected image.Color) bool {
 	expected_r, expected_g, expected_b, expected_a := expected.RGBA()
 	if (got_r != expected_r) || (got_g != expected_g) || (got_b != expected_b) || (got_a != expected_a) {
 		return true
-	} 
+	}
 	return false
 }
 
@@ -85,30 +85,30 @@ func imagesAreNotEqual(got *SDLScreen, expected image.Image) image.Image {
 
 	if diff {
 		return diffImage
-	} 
-	
+	}
+
 	return nil
-	
+
 }
 
 type RenderTest struct {
-	in, out string
+	in, out     string
 	borderColor RGBA
-	flash bool
-	diffImage image.Image
+	flash       bool
+	diffImage   image.Image
 }
 
 func (r *RenderTest) renderInputImage() bool {
-	renderedScreen := &SDLScreen{ nil, SDLSurface{ newSurface() } }
+	renderedScreen := &SDLScreen{nil, SDLSurface{newSurface()}}
 
 	expectedImage := readOutputImage(r.out)
 	inputImage := readInputImage(r.in)
-	
+
 	inputImage.borderColor = r.borderColor
 
 	if r.flash {
 		inputImage.flashFrame = 0x10
-		inputImage.prepare() 
+		inputImage.prepare()
 	}
 
 	displayData := inputImage.prepare()
@@ -130,19 +130,19 @@ func (r *RenderTest) getDiffFn() string {
 func (r *RenderTest) reportError(t *testing.T) {
 	t.Errorf("Expected image %s is not equal to the rendered one! Check %s\n", r.out, r.getDiffFn())
 
-	if file, err := os.Open(r.getDiffFn(), os.O_CREATE | os.O_WRONLY, 0666); err != nil {
+	if file, err := os.Open(r.getDiffFn(), os.O_CREATE|os.O_WRONLY, 0666); err != nil {
 		panic(err)
 	} else {
 		if err := png.Encode(file, r.diffImage); err != nil {
 			panic(err)
 		}
-	}	
+	}
 }
 
 var RenderTests = []RenderTest{
-	RenderTest{ in: "testdata/initial.scr", out: "testdata/initial.png", borderColor: RGBA{192, 192, 192, 255}},
-	RenderTest{ in: "testdata/flash.scr", out: "testdata/flash_0.png", borderColor: RGBA{192, 192, 192, 255}},
-	RenderTest{ in: "testdata/flash.scr", out: "testdata/flash_1.png", borderColor: RGBA{192, 192, 192, 255}, flash: true},
+	RenderTest{in: "testdata/initial.scr", out: "testdata/initial.png", borderColor: RGBA{192, 192, 192, 255}},
+	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_0.png", borderColor: RGBA{192, 192, 192, 255}},
+	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_1.png", borderColor: RGBA{192, 192, 192, 255}, flash: true},
 }
 
 // Test the static render capabilities. Flashing is not tested here.
@@ -151,7 +151,9 @@ func TestSDLRenderer(t *testing.T) {
 	initSDL()
 
 	for _, r := range RenderTests {
-		if notEqual := r.renderInputImage(); notEqual { r.reportError(t) }
+		if notEqual := r.renderInputImage(); notEqual {
+			r.reportError(t)
+		}
 	}
 
 	sdl.Quit()

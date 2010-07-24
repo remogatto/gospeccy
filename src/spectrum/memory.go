@@ -1,9 +1,5 @@
 package spectrum
 
-// import "fmt"
-
-var flashFrame byte
-
 type MemoryAccessor interface {
 	readByte(address uint16) byte
 	readByteInternal(address uint16) byte

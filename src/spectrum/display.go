@@ -82,6 +82,8 @@ func equals(a, b PaperInk) bool {
 type Display struct {
 	// Shared VRAM
 	memory      []byte
+
+	flashFrame byte
 	borderColor RGBA
 }
 
@@ -109,7 +111,7 @@ func (display *Display) prepare() *DisplayData {
 
 	var decodedDisplay DisplayData
 
-	flashFrame = (flashFrame + 1) & 0x1f
+	display.flashFrame = (display.flashFrame + 1) & 0x1f
 
 	// screen.bitmap
 	for ofs := 0; ofs < ScreenWidth/8*ScreenHeight; ofs++ {
@@ -117,7 +119,7 @@ func (display *Display) prepare() *DisplayData {
 	}
 
 	// screen.flash
-	flash := (flashFrame&0x10 != 0)
+	flash := (display.flashFrame&0x10 != 0)
 	decodedDisplay.flash = flash
 
 	// screen.attr

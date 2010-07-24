@@ -107,7 +107,7 @@ func (r *RenderTest) renderInputImage() bool {
 	inputImage.borderColor = r.borderColor
 
 	if r.flash {
-		flashFrame = 0x10
+		inputImage.flashFrame = 0x10
 		inputImage.prepare() 
 	}
 

@@ -166,18 +166,18 @@ func BenchmarkRender(b *testing.B) {
 	const numFrames = 100
 
 	var (
-		frames [numFrames]DisplayData
+		frames    [numFrames]DisplayData
 		prevFrame *DisplayData = nil
 	)
 
-	sdlScreen := &SDLScreen{ make(chan *DisplayData), SDLSurface{ newSurface() } }
+	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}}
 
 	if speccy, err := NewSpectrum48k(); err != nil {
 		panic(err)
 	} else {
 		speccy.SetDisplayReceiver(sdlScreen)
 		speccy.LoadSna("testdata/fire.sna")
-		
+
 		go func() {
 			for i := 0; i < numFrames; i++ {
 				speccy.RenderFrame()
@@ -201,5 +201,5 @@ func BenchmarkRender(b *testing.B) {
 		}
 
 	}
-	
+
 }

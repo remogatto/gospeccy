@@ -556,8 +556,8 @@ sub opcode_EI (@) {
       /* Interrupts are not accepted immediately after an EI, but are
 	 accepted after the next instruction */
       z80.iff1, z80.iff2 = 1, 1
-      z80.interruptsEnabledAt = int(tstates)
-      // eventAdd(tstates + 1, z80InterruptEvent)
+      z80.interruptsEnabledAt = int(z80.tstates)
+      // eventAdd(z80.tstates + 1, z80InterruptEvent)
 EI
 }
 
@@ -628,7 +628,7 @@ sub opcode_EXX (@) {
 EXX
 }
 
-sub opcode_HALT (@) { print "      z80.halted=1;\n      z80.pc--;\n"; }
+sub opcode_HALT (@) { print "      z80.halted=true;\n      z80.pc--;\nreturn\n"; }
 
 sub opcode_IM (@) {
 

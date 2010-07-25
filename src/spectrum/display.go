@@ -40,72 +40,99 @@ const (
 	TotalScreenHeight = ScreenHeight + ScreenBorderY*2
 )
 
+// Spectrum 48k video timings
+const (
+	TSTATES_PER_PIXEL = 2
+
+	// Horizontal
+	LINE_SCREEN       = ScreenWidth / TSTATES_PER_PIXEL // 128 T states of screen
+	LINE_RIGHT_BORDER = 24                              // 24 T states of right border
+	LINE_RETRACE      = 48                              // 48 T states of horizontal retrace
+	LINE_LEFT_BORDER  = 24                              // 24 T states of left border
+
+	TSTATES_PER_LINE = (LINE_RIGHT_BORDER + LINE_SCREEN + LINE_LEFT_BORDER + LINE_RETRACE) // 224 T states
+
+	FIRST_SCREEN_BYTE = 14336 // T states before the first byte of the screen (16384) is displayed
+
+	// Vertical
+	LINES_TOP     = 64
+	LINES_SCREEN  = ScreenHeight
+	LINES_BOTTOM  = 56
+	BORDER_TOP    = ScreenBorderY
+	BORDER_BOTTOM = ScreenBorderY
+
+	// The T-state which corresponds to pixel (0,0) on the (SDL) surface.
+	// That pixel belongs to the border.
+	DISPLAY_START = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/TSTATES_PER_PIXEL)
+)
+
 type RGBA struct {
 	R, G, B, A byte
 }
-
-var palette [16]RGBA = [16]RGBA{
-	RGBA{0, 0, 0, 255},
-	RGBA{0, 0, 192, 255},
-	RGBA{192, 0, 0, 255},
-	RGBA{192, 0, 192, 255},
-	RGBA{0, 192, 0, 255},
-	RGBA{0, 192, 192, 255},
-	RGBA{192, 192, 0, 255},
-	RGBA{192, 192, 192, 255},
-	RGBA{0, 0, 0, 255},
-	RGBA{0, 0, 255, 255},
-	RGBA{255, 0, 0, 255},
-	RGBA{255, 0, 255, 255},
-	RGBA{0, 255, 0, 255},
-	RGBA{0, 255, 255, 255},
-	RGBA{255, 255, 0, 255},
-	RGBA{255, 255, 255, 255}}
 
 func (color RGBA) value32() uint32 {
 	return (uint32(color.A) << 24) | (uint32(color.R) << 16) | (uint32(color.G) << 8) | uint32(color.B)
 }
 
-type PaperInk [2]RGBA
+var palette [16]uint32 = [16]uint32{
+	RGBA{0, 0, 0, 255}.value32(),
+	RGBA{0, 0, 192, 255}.value32(),
+	RGBA{192, 0, 0, 255}.value32(),
+	RGBA{192, 0, 192, 255}.value32(),
+	RGBA{0, 192, 0, 255}.value32(),
+	RGBA{0, 192, 192, 255}.value32(),
+	RGBA{192, 192, 0, 255}.value32(),
+	RGBA{192, 192, 192, 255}.value32(),
+	RGBA{0, 0, 0, 255}.value32(),
+	RGBA{0, 0, 255, 255}.value32(),
+	RGBA{255, 0, 0, 255}.value32(),
+	RGBA{255, 0, 255, 255}.value32(),
+	RGBA{0, 255, 0, 255}.value32(),
+	RGBA{0, 255, 255, 255}.value32(),
+	RGBA{255, 255, 0, 255}.value32(),
+	RGBA{255, 255, 255, 255}.value32(),
+}
+
+type PaperInk [2]byte
 
 func equals(a, b PaperInk) bool {
-	return (a[0].R == b[0].R) &&
-		(a[0].G == b[0].G) &&
-		(a[0].B == b[0].B) &&
-		(a[0].A == b[0].A) &&
-		(a[1].R == b[1].R) &&
-		(a[1].G == b[1].G) &&
-		(a[1].B == b[1].B) &&
-		(a[1].A == b[1].A)
+	return (a[0] == b[0]) && (a[1] == b[1])
 }
 
 type Display struct {
-	// Shared VRAM
-	memory []byte
+	systemMemory MemoryAccessor
 
-	flashFrame  byte
-	borderColor RGBA
+	// Portion of system memory used by the display
+	vram []byte
+
+	flashFrame, borderColor byte
 }
 
 type DisplayData struct {
-	borderColor  RGBA
+	borderColor  byte
 	borderEvents *BorderEvent // Might be nil
 	flash        bool
 
 	bitmap [ScreenWidth / 8 * ScreenHeight]byte
 	attr   [ScreenWidth_Attr * ScreenHeight_Attr]PaperInk
+
+	// The 8x8 rectangular region was modified, either the bitmap
+	// or the attr
+	dirty []bool
 }
 
 type DisplayReceiver interface {
 	getDisplayDataCh() chan *DisplayData
 }
 
-func NewDisplay(systemMemory []byte) *Display {
-	return &Display{memory: systemMemory[0x4000:0x5b00]}
+func NewDisplay(systemMemory MemoryAccessor) *Display {
+	display := &Display{systemMemory: systemMemory}
+	display.vram = systemMemory.Data()[0x4000:0x5b00]
+	return display
 }
 
-func (display *Display) getBorderColor() RGBA      { return display.borderColor }
-func (display *Display) setBorderColor(color RGBA) { display.borderColor = color }
+func (display *Display) getBorderColor() byte      { return display.borderColor }
+func (display *Display) setBorderColor(color byte) { display.borderColor = color }
 
 func (display *Display) prepare() *DisplayData {
 
@@ -115,7 +142,7 @@ func (display *Display) prepare() *DisplayData {
 
 	// screen.bitmap
 	for ofs := 0; ofs < ScreenWidth/8*ScreenHeight; ofs++ {
-		decodedDisplay.bitmap[ofs] = display.memory[ofs]
+		decodedDisplay.bitmap[ofs] = display.vram[ofs]
 	}
 
 	// screen.flash
@@ -124,23 +151,25 @@ func (display *Display) prepare() *DisplayData {
 
 	// screen.attr
 	for attr_ofs := 0; attr_ofs < ScreenWidth_Attr*ScreenHeight_Attr; attr_ofs++ {
-		attr := display.memory[6144+attr_ofs]
+		attr := display.vram[6144+attr_ofs]
 
-		var ink RGBA
-		var paper RGBA
+		var ink, paper byte
 
 		if flash && ((attr & 0x80) != 0) {
 			/* invert flashing attributes */
-			ink = palette[(attr&0x78)>>3]
-			paper = palette[((attr&0x40)>>3)|(attr&0x07)]
+			ink = (attr & 0x78) >> 3
+			paper = ((attr & 0x40) >> 3) | (attr & 0x07)
 		} else {
-			ink = palette[((attr&0x40)>>3)|(attr&0x07)]
-			paper = palette[(attr&0x78)>>3]
+			ink = ((attr & 0x40) >> 3) | (attr & 0x07)
+			paper = (attr & 0x78) >> 3
 
 		}
 
 		decodedDisplay.attr[attr_ofs] = PaperInk{paper, ink}
 	}
+
+	// screen.dirty
+	decodedDisplay.dirty = display.systemMemory.getDirtyScreen()
 
 	decodedDisplay.borderColor = display.getBorderColor()
 

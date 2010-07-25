@@ -25,8 +25,8 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
 
-	// The display shares system memory
-	display := NewDisplay(&memory.data)
+	// A portion of system memory is used by the display
+	display := NewDisplay(memory)
 
 	ports := NewPorts(display, keyboard)
 	z80 := NewZ80(memory, ports)
@@ -61,7 +61,7 @@ func (speccy *Spectrum48k) SetDisplayReceiver(displayReceiver DisplayReceiver) {
 // Execute the number of T-states corresponding to one screen frame
 func (speccy *Spectrum48k) doOpcodes() {
 	eventNextEvent = TStatesPerFrame
-	speccy.Cpu.tstates = 0
+	speccy.Cpu.tstates = (speccy.Cpu.tstates % TStatesPerFrame)
 	speccy.Cpu.doOpcodes()
 }
 
@@ -71,12 +71,13 @@ func (speccy *Spectrum48k) interrupt() {
 
 func (speccy *Spectrum48k) RenderFrame() {
 	speccy.Ports.frame_begin(speccy.Display.getBorderColor())
+	speccy.Memory.frame_begin()
+	speccy.interrupt()
 	speccy.doOpcodes()
 	if speccy.displayReceiver != nil {
 		speccy.Display.send(speccy.displayReceiver, speccy.Ports.borderEvents)
 	}
 	speccy.Ports.frame_releaseMemory()
-	speccy.interrupt()
 }
 
 // Initialize state from the snapshot defined by the specified filename.

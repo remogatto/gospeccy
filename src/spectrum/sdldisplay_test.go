@@ -164,6 +164,10 @@ func TestSDLRenderer(t *testing.T) {
 func BenchmarkRender(b *testing.B) {
 
 	b.StopTimer()
+	
+	initSDL()
+
+	surface := newSurface()
 
 	const numFrames = 1000
 
@@ -172,7 +176,7 @@ func BenchmarkRender(b *testing.B) {
 		prevFrame *DisplayData = nil
 	)
 
-	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}}
+	sdlScreen := &SDLScreen{ make(chan *DisplayData), SDLSurface{ surface } }
 
 	if speccy, err := NewSpectrum48k(); err != nil {
 		panic(err)
@@ -191,7 +195,7 @@ func BenchmarkRender(b *testing.B) {
 		}
 
 		var j int
-
+		
 		b.StartTimer()
 		for i := 0; i < b.N; i++ {
 			j %= numFrames
@@ -202,4 +206,5 @@ func BenchmarkRender(b *testing.B) {
 
 	}
 
+	sdl.Quit()
 }

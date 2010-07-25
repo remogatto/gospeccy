@@ -184,11 +184,9 @@ func BenchmarkRender(b *testing.B) {
 			}
 		}()
 
-		go func() {
-			for i := 0; i < numFrames; i++ {
-				frames[i] = *<-sdlScreen.getDisplayDataCh()
-			}
-		}()
+		for i := 0; i < numFrames; i++ {
+			frames[i] = *<-sdlScreen.getDisplayDataCh()
+		}
 
 		var j int
 

@@ -1503,7 +1503,7 @@ func (z80 *Z80) doOpcodes() {
 		case 0x76: /* HALT */
 			z80.halted = true
 			z80.pc--
-			break
+			return
 		case 0x77: /* LD (HL),A */
 			z80.memory.writeByte(z80.HL(), z80.a)
 			break

@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"unsafe"
+	//	"fmt"
 )
 
 func (s *SDLSurface) At(x, y int) image.Color {
@@ -56,8 +57,9 @@ func readOutputImage(filename string) image.Image {
 }
 
 func readInputImage(filename string) *Display {
-	display := &Display{}
-	display.memory, _ = ioutil.ReadFile(filename)
+	memory := NewMemory()
+	display := NewDisplay(memory)
+	display.vram, _ = ioutil.ReadFile(filename)
 	return display
 }
 
@@ -93,7 +95,7 @@ func imagesAreNotEqual(got *SDLScreen, expected image.Image) image.Image {
 
 type RenderTest struct {
 	in, out     string
-	borderColor RGBA
+	borderColor byte
 	flash       bool
 	diffImage   image.Image
 }
@@ -140,9 +142,9 @@ func (r *RenderTest) reportError(t *testing.T) {
 }
 
 var RenderTests = []RenderTest{
-	RenderTest{in: "testdata/initial.scr", out: "testdata/initial.png", borderColor: RGBA{192, 192, 192, 255}},
-	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_0.png", borderColor: RGBA{192, 192, 192, 255}},
-	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_1.png", borderColor: RGBA{192, 192, 192, 255}, flash: true},
+	RenderTest{in: "testdata/initial.scr", out: "testdata/initial.png", borderColor: 7},
+	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_0.png", borderColor: 7},
+	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_1.png", borderColor: 7, flash: true},
 }
 
 func TestSDLRenderer(t *testing.T) {
@@ -192,7 +194,7 @@ func BenchmarkRender(b *testing.B) {
 
 		b.StartTimer()
 		for i := 0; i < b.N; i++ {
-			j %= numFrames / 2
+			j %= numFrames
 			sdlScreen.render(&frames[j], prevFrame)
 			prevFrame = &frames[j]
 			j++

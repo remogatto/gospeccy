@@ -82,6 +82,13 @@ type testMemory struct {
 	z80  *Z80
 }
 
+func (memory *testMemory) frame_begin() {
+}
+
+func (memory *testMemory) getDirtyScreen() []bool {
+	return nil
+}
+
 func (memory *testMemory) readByteInternal(addr uint16) byte {
 	events.Push(fmt.Sprintf("%5d MR %04x %02x\n", memory.z80.tstates, addr, memory.data[addr]))
 	return memory.data[addr]
@@ -345,7 +352,6 @@ func TestDoOpcodes(t *testing.T) {
 			z80.Reset()
 		}
 	}
-
 
 	// Read the tests.expected file
 

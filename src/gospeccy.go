@@ -84,7 +84,7 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 							}
 						
 							switch k.Keysym.Sym {
-								/* Backspace*/
+								/* Backspace */
 								case 8:
 									if event.Type == sdl.KEYDOWN {
 										speccy.Keyboard.KeyDown(304)
@@ -94,7 +94,17 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 										speccy.Keyboard.KeyUp(304)
 									}
 								
-								/* Escape*/
+								/* , */
+								case 44:
+									if event.Type == sdl.KEYDOWN {
+										speccy.Keyboard.KeyDown(306)
+										speccy.Keyboard.KeyDown(110)
+									} else {
+										speccy.Keyboard.KeyUp(110)
+										speccy.Keyboard.KeyUp(306)
+									}
+								
+								/* Escape */
 								case 27:
 									if evtLoop.App.Verbose { println("escape key -> request[exit the application]") }									
 									evtLoop.App.RequestExit()

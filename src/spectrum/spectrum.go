@@ -7,7 +7,8 @@ import (
 )
 
 const Spectrum48k_ROM_filepath = "roms/48.rom"
-const TStatesPerFrame = 69888
+const TStatesPerFrame = 69888	// Number of T-states per frame
+const InterruptLength = 32		// How long does an interrupt last in T-states
 
 type Spectrum48k struct {
 	Cpu      *Z80

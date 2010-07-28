@@ -187,14 +187,14 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 	var screen Screen
 	{
 		flash := (memory.frame & 0x10) != 0
-		flash_previous := (memory.frame-1) & 0x10 != 0
+		flash_previous := ((memory.frame-1) & 0x10) != 0
 		flash_diff := (flash != flash_previous)
 
 		// Fill screen.bitmap & screen.attr, but only the dirty regions.
 		memory_data := &memory.data
 		memory_ulaBitmap := &memory.ula_bitmap
 		memory_ulaAttr := &memory.ula_attr
-		memory_dirtyScreen := memory.dirtyScreen
+		memory_dirtyScreen := &memory.dirtyScreen
 		screen_bitmap := &screen.bitmap
 		screen_attr := &screen.attr
 		for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
@@ -217,7 +217,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 
 						if (attr & 0x80) != 0 {
 							memory_dirtyScreen[attr_ofs] = true
-							break;
+							break
 						}
 
 						linearY_ofs += BytesPerLine

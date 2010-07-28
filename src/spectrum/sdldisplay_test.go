@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 	"unsafe"
-	//	"fmt"
 )
 
 func (s *SDLSurface) At(x, y int) image.Color {

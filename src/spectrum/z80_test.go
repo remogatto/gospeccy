@@ -400,3 +400,21 @@ func TestDoOpcodes(t *testing.T) {
 	}
 
 }
+
+func BenchmarkZ80(b *testing.B) {
+
+	b.StopTimer()
+
+	if speccy, err := NewSpectrum48k(); err != nil {
+		panic(err)
+	} else {
+		speccy.LoadSna("testdata/fire.sna")
+
+		b.StartTimer()
+
+		for i := 0; i < b.N; i++ {
+			speccy.doOpcodes()
+		}
+
+	}
+}

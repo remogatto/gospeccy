@@ -40,10 +40,10 @@ import (
 //       The Go language fails here.
 func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
 	ticker := time.NewTicker(/*10ms*/10*1e6)
-	
+
 	// Better create the event-object here once, rather than multiple times within the loop
 	event := &sdl.Event{}
-	
+
 	for {
 		select {
 			case <-evtLoop.Pause:
@@ -57,20 +57,22 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 				ticker.Stop()
 				evtLoop.Terminate <- 0
 				return
-				
+
 			case <-ticker.C:
 				if event.Poll() {
 					switch event.Type {
 						case sdl.QUIT:
 							if evtLoop.App.Verbose { println("SDL quit -> request[exit the application]") }
 							evtLoop.App.RequestExit()
-							
+
 						case sdl.KEYDOWN, sdl.KEYUP:
 							k := event.Keyboard()
-						
+
+							keyName := sdl.GetKeyName(sdl.Key(k.Keysym.Sym))
+
 							if verboseKeyboard {
 								println()
-								println(k.Keysym.Sym, ": ", sdl.GetKeyName(sdl.Key(k.Keysym.Sym)))
+								println(k.Keysym.Sym, ": ", keyName)
 
 								fmt.Printf("%04x ", event.Type)
 
@@ -82,39 +84,27 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 								fmt.Printf("Type: %02x Which: %02x State: %02x Pad: %02x\n", k.Type, k.Which, k.State, k.Pad0[0])
 								fmt.Printf("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
 							}
-						
-							switch k.Keysym.Sym {
-								/* Backspace */
-								case 8:
-									if event.Type == sdl.KEYDOWN {
-										speccy.Keyboard.KeyDown(304)
-										speccy.Keyboard.KeyDown(48)
-									} else {
-										speccy.Keyboard.KeyUp(48)
-										speccy.Keyboard.KeyUp(304)
+
+							if keyName == "escape" {
+								if evtLoop.App.Verbose { println("escape key -> request[exit the application]") }
+								evtLoop.App.RequestExit()
+							} else {
+								sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
+
+								if haveMapping {
+									switch event.Type {
+									case sdl.KEYDOWN:
+										// Normal order
+										for i:=0; i<len(sequence); i++ {
+											speccy.Keyboard.KeyDown(sequence[i])
+										}
+									case sdl.KEYUP:
+										// Reverse order
+										for i:=len(sequence)-1; i>=0; i-- {
+											speccy.Keyboard.KeyUp(sequence[i])
+										}
 									}
-								
-								/* , */
-								case 44:
-									if event.Type == sdl.KEYDOWN {
-										speccy.Keyboard.KeyDown(306)
-										speccy.Keyboard.KeyDown(110)
-									} else {
-										speccy.Keyboard.KeyUp(110)
-										speccy.Keyboard.KeyUp(306)
-									}
-								
-								/* Escape */
-								case 27:
-									if evtLoop.App.Verbose { println("escape key -> request[exit the application]") }									
-									evtLoop.App.RequestExit()
-								
-								default:
-									if k.State != 0 {
-										speccy.Keyboard.KeyDown(uint(k.Keysym.Sym))
-									} else {
-										speccy.Keyboard.KeyUp(uint(k.Keysym.Sym))
-									}
+								}
 							}
 					}
 				}
@@ -124,7 +114,7 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 
 func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, displayRefreshFrequency float) {
 	ticker := time.NewTicker(int64(1e9/displayRefreshFrequency))
-	
+
 	for {
 		select {
 			case <-evtLoop.Pause:
@@ -137,7 +127,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, dis
 				if evtLoop.App.Verbose { println("emulator loop: exit") }
 				evtLoop.Terminate <- 0
 				return
-				
+
 			case <-ticker.C:
 				// if evtLoop.App.Verbose { fmt.Printf("%d ms\n", time.Nanoseconds()/1e6) }
 				speccy.RenderFrame()
@@ -180,7 +170,7 @@ func main() {
 		app.RequestExit()
 		goto quit
 	}
-	
+
 	// Load snapshot (if any)
 	if flag.Arg(0) != "" {
 		if app.Verbose { fmt.Printf("loading snapshot \"%s\"\n", flag.Arg(0)) }
@@ -207,25 +197,25 @@ func main() {
 		}
 
 		var display spectrum.DisplayChannel
-		
+
 		if *scale2x {
 			screenSurface := sdl.SetVideoMode(2*spectrum.TotalScreenWidth, 2*spectrum.TotalScreenHeight, 32, sdlMode)
 			if screenSurface == nil {
 				panic(sdl.GetError())
 			}
-			
+
 			display = spectrum.NewSDLScreen2x(app, screenSurface)
 		} else {
 			screenSurface := sdl.SetVideoMode(spectrum.TotalScreenWidth, spectrum.TotalScreenHeight, 32, sdlMode)
 			if screenSurface == nil {
 				panic(sdl.GetError())
 			}
-			
+
 			display = spectrum.NewSDLScreen(app, screenSurface)
 		}
-		
+
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
-		
+
 		speccy.SetDisplay(display)
 	}
 

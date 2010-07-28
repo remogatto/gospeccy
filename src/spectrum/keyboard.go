@@ -36,13 +36,13 @@ type Keyboard struct {
 
 func NewKeyboard() *Keyboard {
 	k := &Keyboard{}
-	
+
 	// Initialize keyStates
 	var row uint
 	for row = 0; row < 8; row++ {
 		k.SetKeyState(row, 0xff)
 	}
-	
+
 	return k
 }
 
@@ -59,9 +59,9 @@ func (keyboard *Keyboard) SetKeyState(row uint, state byte) {
 	keyboard.mutex.Unlock()
 }
 
-func (keyboard *Keyboard) KeyDown(keySym uint) {
-	keyCode, ok := keyCodes[keySym]
-	
+func (keyboard *Keyboard) KeyDown(logicalKeyCode uint) {
+	keyCode, ok := keyCodes[logicalKeyCode]
+
 	if ok {
 		keyboard.mutex.Lock()
 		keyboard.keyStates[keyCode.row] &= ^(keyCode.mask)
@@ -69,9 +69,9 @@ func (keyboard *Keyboard) KeyDown(keySym uint) {
 	}
 }
 
-func (keyboard *Keyboard) KeyUp(keySym uint) {
-	keyCode, ok := keyCodes[keySym]
-	
+func (keyboard *Keyboard) KeyUp(logicalKeyCode uint) {
+	keyCode, ok := keyCodes[logicalKeyCode]
+
 	if ok {
 		keyboard.mutex.Lock()
 		keyboard.keyStates[keyCode.row] |= (keyCode.mask)
@@ -81,53 +81,214 @@ func (keyboard *Keyboard) KeyUp(keySym uint) {
 
 
 
+// Logical key codes
+const (
+	KEY_1 = iota
+	KEY_2
+	KEY_3
+	KEY_4
+	KEY_5
+	KEY_6
+	KEY_7
+	KEY_8
+	KEY_9
+	KEY_0
 
+	KEY_Q
+	KEY_W
+	KEY_E
+	KEY_R
+	KEY_T
+	KEY_Y
+	KEY_U
+	KEY_I
+	KEY_O
+	KEY_P
+
+	KEY_A
+	KEY_S
+	KEY_D
+	KEY_F
+	KEY_G
+	KEY_H
+	KEY_J
+	KEY_K
+	KEY_L
+	KEY_Enter
+
+	KEY_CapsShift
+	KEY_Z
+	KEY_X
+	KEY_C
+	KEY_V
+	KEY_B
+	KEY_N
+	KEY_M
+	KEY_SymbolShift
+	KEY_Space
+)
 
 type keyCell struct {
 	row, mask byte
 }
 
 var keyCodes = map[uint]keyCell{
-	49: keyCell{row: 3, mask: 0x01}, /* 1 */
-	50: keyCell{row: 3, mask: 0x02}, /* 2 */
-	51: keyCell{row: 3, mask: 0x04}, /* 3 */
-	52: keyCell{row: 3, mask: 0x08}, /* 4 */
-	53: keyCell{row: 3, mask: 0x10}, /* 5 */
-	54: keyCell{row: 4, mask: 0x10}, /* 6 */
-	55: keyCell{row: 4, mask: 0x08}, /* 7 */
-	56: keyCell{row: 4, mask: 0x04}, /* 8 */
-	57: keyCell{row: 4, mask: 0x02}, /* 9 */
-	48: keyCell{row: 4, mask: 0x01}, /* 0 */
+	KEY_1: keyCell{row: 3, mask: 0x01},
+	KEY_2: keyCell{row: 3, mask: 0x02},
+	KEY_3: keyCell{row: 3, mask: 0x04},
+	KEY_4: keyCell{row: 3, mask: 0x08},
+	KEY_5: keyCell{row: 3, mask: 0x10},
+	KEY_6: keyCell{row: 4, mask: 0x10},
+	KEY_7: keyCell{row: 4, mask: 0x08},
+	KEY_8: keyCell{row: 4, mask: 0x04},
+	KEY_9: keyCell{row: 4, mask: 0x02},
+	KEY_0: keyCell{row: 4, mask: 0x01},
 
-	113: keyCell{row: 2, mask: 0x01}, /* Q */
-	119: keyCell{row: 2, mask: 0x02}, /* W */
-	101: keyCell{row: 2, mask: 0x04}, /* E */
-	114: keyCell{row: 2, mask: 0x08}, /* R */
-	116: keyCell{row: 2, mask: 0x10}, /* T */
-	121: keyCell{row: 5, mask: 0x10}, /* Y */
-	117: keyCell{row: 5, mask: 0x08}, /* U */
-	105: keyCell{row: 5, mask: 0x04}, /* I */
-	111: keyCell{row: 5, mask: 0x02}, /* O */
-	112: keyCell{row: 5, mask: 0x01}, /* P */
+	KEY_Q: keyCell{row: 2, mask: 0x01},
+	KEY_W: keyCell{row: 2, mask: 0x02},
+	KEY_E: keyCell{row: 2, mask: 0x04},
+	KEY_R: keyCell{row: 2, mask: 0x08},
+	KEY_T: keyCell{row: 2, mask: 0x10},
+	KEY_Y: keyCell{row: 5, mask: 0x10},
+	KEY_U: keyCell{row: 5, mask: 0x08},
+	KEY_I: keyCell{row: 5, mask: 0x04},
+	KEY_O: keyCell{row: 5, mask: 0x02},
+	KEY_P: keyCell{row: 5, mask: 0x01},
 
-	97: keyCell{row: 1, mask: 0x01}, /* A */
-	115: keyCell{row: 1, mask: 0x02}, /* S */
-	100: keyCell{row: 1, mask: 0x04}, /* D */
-	102: keyCell{row: 1, mask: 0x08}, /* F */
-	103: keyCell{row: 1, mask: 0x10}, /* G */
-	104: keyCell{row: 6, mask: 0x10}, /* H */
-	106: keyCell{row: 6, mask: 0x08}, /* J */
-	107: keyCell{row: 6, mask: 0x04}, /* K */
-	108: keyCell{row: 6, mask: 0x02}, /* L */
-	13: keyCell{row: 6, mask: 0x01}, /* enter */
+	KEY_A: keyCell{row: 1, mask: 0x01},
+	KEY_S: keyCell{row: 1, mask: 0x02},
+	KEY_D: keyCell{row: 1, mask: 0x04},
+	KEY_F: keyCell{row: 1, mask: 0x08},
+	KEY_G: keyCell{row: 1, mask: 0x10},
+	KEY_H: keyCell{row: 6, mask: 0x10},
+	KEY_J: keyCell{row: 6, mask: 0x08},
+	KEY_K: keyCell{row: 6, mask: 0x04},
+	KEY_L: keyCell{row: 6, mask: 0x02},
+	KEY_Enter: keyCell{row: 6, mask: 0x01},
 
-	304/*left shift*/:  keyCell{row: 0, mask: 0x01}, /* caps */
-	122:  keyCell{row: 0, mask: 0x02}, /* Z */
-	120:  keyCell{row: 0, mask: 0x04}, /* X */
-	99:  keyCell{row: 0, mask: 0x08}, /* C */
-	118:  keyCell{row: 0, mask: 0x10}, /* V */
-	98:  keyCell{row: 7, mask: 0x10}, /* B */
-	110:  keyCell{row: 7, mask: 0x08}, /* N */
-	109:  keyCell{row: 7, mask: 0x04}, /* M */
-	306:  keyCell{row: 7, mask: 0x02}, /* sym - gah, firefox screws up ctrl+key too */
-	32:  keyCell{row: 7, mask: 0x01} /* space */ }
+	KEY_CapsShift: keyCell{row: 0, mask: 0x01},
+	KEY_Z: keyCell{row: 0, mask: 0x02},
+	KEY_X: keyCell{row: 0, mask: 0x04},
+	KEY_C: keyCell{row: 0, mask: 0x08},
+	KEY_V: keyCell{row: 0, mask: 0x10},
+	KEY_B: keyCell{row: 7, mask: 0x10},
+	KEY_N: keyCell{row: 7, mask: 0x08},
+	KEY_M: keyCell{row: 7, mask: 0x04},
+	KEY_SymbolShift: keyCell{row: 7, mask: 0x02},
+	KEY_Space: keyCell{row: 7, mask: 0x01},
+}
+
+
+
+var SDL_KeyMap = map[string] []uint {
+	"0": []uint{KEY_0},
+	"1": []uint{KEY_1},
+	"2": []uint{KEY_2},
+	"3": []uint{KEY_3},
+	"4": []uint{KEY_4},
+	"5": []uint{KEY_5},
+	"6": []uint{KEY_6},
+	"7": []uint{KEY_7},
+	"8": []uint{KEY_8},
+	"9": []uint{KEY_9},
+
+	"a": []uint{KEY_A},
+	"b": []uint{KEY_B},
+	"c": []uint{KEY_C},
+	"d": []uint{KEY_D},
+	"e": []uint{KEY_E},
+	"f": []uint{KEY_F},
+	"g": []uint{KEY_G},
+	"h": []uint{KEY_H},
+	"i": []uint{KEY_I},
+	"j": []uint{KEY_J},
+	"k": []uint{KEY_K},
+	"l": []uint{KEY_L},
+	"m": []uint{KEY_M},
+	"n": []uint{KEY_N},
+	"o": []uint{KEY_O},
+	"p": []uint{KEY_P},
+	"q": []uint{KEY_Q},
+	"r": []uint{KEY_R},
+	"s": []uint{KEY_S},
+	"t": []uint{KEY_T},
+	"u": []uint{KEY_U},
+	"v": []uint{KEY_V},
+	"w": []uint{KEY_W},
+	"x": []uint{KEY_X},
+	"y": []uint{KEY_Y},
+	"z": []uint{KEY_Z},
+
+	"return": []uint{KEY_Enter},
+	"space": []uint{KEY_Space},
+	"left shift": []uint{KEY_CapsShift},
+	"right shift": []uint{KEY_CapsShift},
+	"left ctrl": []uint{KEY_SymbolShift},
+	"right ctrl": []uint{KEY_SymbolShift},
+
+	//"escape": []uint{KEY_CapsShift, KEY_1},
+	//"caps lock": []uint{KEY_CapsShift, KEY_2}, // FIXME: SDL never sends the sdl.KEYUP event
+	"left": []uint{KEY_CapsShift, KEY_5},
+	"down": []uint{KEY_CapsShift, KEY_6},
+	"up": []uint{KEY_CapsShift, KEY_7},
+	"right": []uint{KEY_CapsShift, KEY_8},
+	"backspace": []uint{KEY_CapsShift, KEY_0},
+
+	"-": []uint{KEY_SymbolShift, KEY_J},
+	//"_": []uint{KEY_SymbolShift, KEY_0},
+	"=": []uint{KEY_SymbolShift, KEY_L},
+	//"+": []uint{KEY_SymbolShift, KEY_K},
+	"[": []uint{KEY_SymbolShift, KEY_8}, // Maps to "("
+	"]": []uint{KEY_SymbolShift, KEY_9}, // Maps to ")"
+	";": []uint{KEY_SymbolShift, KEY_O},
+	//":": []uint{KEY_SymbolShift, KEY_Z},
+	"'": []uint{KEY_SymbolShift, KEY_7},
+	//"\"": []uint{KEY_SymbolShift, KEY_P},
+	",": []uint{KEY_SymbolShift, KEY_N},
+	".": []uint{KEY_SymbolShift, KEY_M},
+	"/": []uint{KEY_SymbolShift, KEY_V},
+	//"<": []uint{KEY_SymbolShift, KEY_R},
+	//">": []uint{KEY_SymbolShift, KEY_T},
+	//"?": []uint{KEY_SymbolShift, KEY_C},
+
+	// Keypad
+	"[0]": []uint{KEY_0},
+	"[1]": []uint{KEY_1},
+	"[2]": []uint{KEY_2},
+	"[3]": []uint{KEY_3},
+	"[4]": []uint{KEY_4},
+	"[5]": []uint{KEY_5},
+	"[6]": []uint{KEY_6},
+	"[7]": []uint{KEY_7},
+	"[8]": []uint{KEY_8},
+	"[9]": []uint{KEY_9},
+	"[*]": []uint{KEY_SymbolShift, KEY_B},
+	"[-]": []uint{KEY_SymbolShift, KEY_J},
+	"[+]": []uint{KEY_SymbolShift, KEY_K},
+	"[/]": []uint{KEY_SymbolShift, KEY_V},
+}
+
+
+
+func init() {
+	if len(keyCodes) != 40 {
+		panic("invalid keyboard specification")
+	}
+
+	// Make sure we are able to press every button on the Spectrum keyboard
+	used := make(map[uint]bool)
+	for logicalKeyCode := range keyCodes {
+		used[logicalKeyCode] = false
+	}
+	for _,seq := range SDL_KeyMap {
+		if len(seq) == 1 {
+			used[seq[0]] = true
+		}
+	}
+	for _,isUsed := range used {
+		if !isUsed {
+			panic("some key is missing in the SDL keymap")
+		}
+	}
+}
+

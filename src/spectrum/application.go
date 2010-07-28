@@ -8,7 +8,7 @@ import (
 type Application struct {
 	exitApp        chan byte		// If [this channel is closed] then [the whole application should terminate]
 	HasTerminated  chan byte		// This channel is closed after the whole application has terminated
-	
+
 	// A vector of *EventLoop
 	eventLoops vector.Vector
 
@@ -17,13 +17,13 @@ type Application struct {
 
 func NewApplication() *Application {
 	app := &Application{make(chan byte), make(chan byte), vector.Vector{}, false}
-	
+
 	go func() {
 		select {
 			case <-app.exitApp:
 				// Make a copy of the 'eventLoops' array
 				eventLoops := app.eventLoops.Slice(0,app.eventLoops.Len())
-				
+
 				// This is a procedure of two phases:
 				//
 				//	1. Pause all event loops (i.e: stop all tickers)
@@ -55,11 +55,11 @@ func NewApplication() *Application {
 					}
 				}
 		}
-		
+
 		if app.Verbose { println("application has terminated") }
 		close(app.HasTerminated)
 	}()
-	
+
 	return app
 }
 
@@ -91,7 +91,7 @@ func (app *Application) NewEventLoop() *EventLoop {
 	if closed(app.exitApp) {
 		panic("cannot create a new event-loop because the application has been terminated")
 	}
-	
+
 	e := &EventLoop{app, make(chan byte), make(chan byte)}
 	app.addEventLoop(e)
 	return e;

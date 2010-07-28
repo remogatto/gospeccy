@@ -1,5 +1,7 @@
-gospeccy: _obj _obj/spectrum.a _obj/gospeccy.8
-	8l -L./_obj -o $@ _obj/gospeccy.8
+include $(GOROOT)/src/Make.$(GOARCH)
+
+gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)
+	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)
 
 clean:
 	rm -f gospeccy
@@ -9,12 +11,12 @@ clean:
 _obj:
 	mkdir _obj
 
-_obj/gospeccy.8: src/gospeccy.go _obj/spectrum.a
-	8g -I./_obj -o $@ src/gospeccy.go
+_obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a
+	$(GC) -I./_obj -o $@ src/gospeccy.go
 
 _obj/spectrum.a:
-	8g -o _obj/spectrum.8 $^
-	gopack grc $@ _obj/spectrum.8
+	$(GC) -o _obj/spectrum.$(O) $^
+	gopack grc $@ _obj/spectrum.$(O)
 
 _obj/spectrum.a: src/spectrum/application.go
 _obj/spectrum.a: src/spectrum/display.go

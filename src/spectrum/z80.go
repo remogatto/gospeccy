@@ -96,7 +96,7 @@ type Z80 struct {
 	bc, bc_, hl, hl_, af, de, de_, ix, iy register16
 
 	sz53Table, sz53pTable, parityTable [0x100]byte
-	
+
 	// Number of tstates since the beginning of the last frame.
 	// The value of this variable is usually smaller than TStatesPerFrame,
 	// but in some unlikely circumstances it may be >= than that.
@@ -169,7 +169,7 @@ func (z80 *Z80) Reset() {
 	z80.sp, z80.i, z80.r, z80.r7, z80.pc, z80.iff1, z80.iff2, z80.im = 0, 0, 0, 0, 0, 0, 0, 0
 
 	z80.tstates = 0
-	
+
 	z80.halted = false
 
 	for i := 0; i < 0x10000; i++ {
@@ -188,7 +188,7 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 		if len(bytes) != 49179 {
 			return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
 		}
-		
+
 		// Populate registers
 		z80.i = bytes[0]
 		z80.l_ = bytes[1]
@@ -222,7 +222,7 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 		z80.a = bytes[22]
 		z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
 		z80.im = uint16(bytes[25])
-		
+
 		// Border color
 		z80.writePort(0xfe, bytes[26]&0x07)
 
@@ -240,10 +240,10 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 		// Send a RETN
 		z80.iff1 = z80.iff2
 		z80.ret()
-		
+
 		z80.tstates = InterruptLength
 	}
-	
+
 	return nil
 }
 
@@ -294,7 +294,7 @@ func (z80 *Z80) interrupt() {
 		default:
 			panic("Unknown interrupt mode")
 		}
-		
+
 		z80.tstates = InterruptLength
 	}
 }

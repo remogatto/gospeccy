@@ -30,7 +30,7 @@ package spectrum
 type PortAccessor interface {
 	frame_begin(borderColor byte)
 	frame_releaseMemory()
-	
+
 	readPort(address uint16) byte
 	writePort(address uint16, b byte)
 	contendPortPreio(address uint16)
@@ -43,10 +43,10 @@ type BorderEvent struct {
 	// The moment when the border color was changed.
 	// It is the number of T-states since the beginning of the frame.
 	tstate uint
-	
+
 	// The new border color
 	color byte
-	
+
 	// Previous event, if any.
 	// Constraint: (tstate >= previous_orNil.tstate)
 	previous_orNil *BorderEvent
@@ -103,14 +103,14 @@ func (p *Ports) writePort(address uint16, b byte) {
 
 	if ((address & 0x0001) == 0) {
 		color := (b & 0x07)
-		
+
 		// Modify the border only if it really changed
 		if p.memory.getBorder() != color {
 			p.memory.setBorder(color)
 			p.borderEvents = &BorderEvent{p.z80.tstates, color, p.borderEvents}
 		}
 	}
-	
+
 	p.contendPortPostio(address)
 }
 

@@ -24,7 +24,7 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 	keyboard := NewKeyboard()
 	ports    := NewPorts(memory, keyboard)
 	z80      := NewZ80(memory, ports)
-	
+
 	ports.z80 = z80
 	memory.z80 = z80
 
@@ -37,14 +37,14 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 		if len(rom48k) != 0x4000 {
 			return nil, os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", Spectrum48k_ROM_filepath));
 		}
-		
+
 		for address, b := range rom48k {
 			memory.set(uint16(address), b)
 		}
 	}
-	
+
 	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Display: nil, Ports: ports}
-	
+
 	return speccy, nil
 }
 

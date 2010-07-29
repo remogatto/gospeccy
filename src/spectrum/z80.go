@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -29,7 +29,9 @@ import (
 	"io/ioutil"
 	"container/vector"
 	"fmt"
+	"perf"
 	"os"
+	"syscall"
 )
 
 /* The flags */
@@ -111,6 +113,11 @@ type Z80 struct {
 	PortAccessor
 
 	LogEvents bool
+
+	z80_instructionCounter     uint64 // Number of Z80 instructions executed
+	z80_instructionsMeasured   uint64 // Number of Z80 instrs that can be related to 'hostCpu_instructionCounter'
+	hostCpu_instructionCounter uint64
+	perfCounter_hostCpuInstr   *perf.PerfCounter // Can be nil (if creating the counter fails)
 }
 
 var initialMemory [0x10000]byte
@@ -131,7 +138,28 @@ func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 
 	z80.initTables()
 
+	z80.perfCounter_hostCpuInstr = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)
+
 	return z80
+}
+
+func (z80 *Z80) Close() {
+	if z80.perfCounter_hostCpuInstr != nil {
+		z80.perfCounter_hostCpuInstr.Close()
+		z80.perfCounter_hostCpuInstr = nil
+	}
+}
+
+// Returns the average number of host-CPU instructions required to execute one Z80 instruction.
+// Returns zero if this information is not available.
+func (z80 *Z80) GetEmulationEfficiency() uint {
+	var eff uint
+	if z80.z80_instructionsMeasured > 0 {
+		eff = uint(z80.hostCpu_instructionCounter / z80.z80_instructionsMeasured)
+	} else {
+		eff = 0
+	}
+	return eff
 }
 
 func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
@@ -957,6 +985,17 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 }
 
 func (z80 *Z80) doOpcodes() {
+	ttid_start := syscall.Gettid()
+
+	var hostCpu_instrCount_start uint64
+	if z80.perfCounter_hostCpuInstr != nil {
+		hostCpu_instrCount_start, _ = z80.perfCounter_hostCpuInstr.Read()
+	} else {
+		hostCpu_instrCount_start = 0
+	}
+
+	var z80_localInstructionCounter uint = 0
+
 	for z80.tstates < eventNextEvent {
 
 		z80.memory.contendRead(z80.pc, 4)
@@ -966,6 +1005,8 @@ func (z80 *Z80) doOpcodes() {
 	EndOpcode:
 		z80.r = (z80.r + 1) & 0x7f
 		z80.pc++
+
+		z80_localInstructionCounter++
 
 		switch opcode {
 
@@ -1504,7 +1545,7 @@ func (z80 *Z80) doOpcodes() {
 		case 0x76: /* HALT */
 			z80.halted = true
 			z80.pc--
-			return
+			goto end
 		case 0x77: /* LD (HL),A */
 			z80.memory.writeByte(z80.HL(), z80.a)
 			break
@@ -7324,6 +7365,49 @@ func (z80 *Z80) doOpcodes() {
 			z80.rst(0x38)
 			break
 
+		}
+	}
+
+end:
+	// Update emulation efficiency counters
+	{
+		ttid_end := syscall.Gettid()
+
+		var hostCpu_instrCount_end uint64
+		if z80.perfCounter_hostCpuInstr != nil {
+			hostCpu_instrCount_end, _ = z80.perfCounter_hostCpuInstr.Read()
+		} else {
+			hostCpu_instrCount_end = 0
+		}
+
+		z80.z80_instructionCounter += uint64(z80_localInstructionCounter)
+
+		/*if z80_localInstructionCounter > 0 {
+			println( z80_localInstructionCounter, hostCpu_instrCount_start, hostCpu_instrCount_end,
+					hostCpu_instrCount_end-hostCpu_instrCount_start,
+					(hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter) )
+		}*/
+
+		if (ttid_start == ttid_end) &&
+			(z80_localInstructionCounter > 0) &&
+			(hostCpu_instrCount_start > 0) &&
+			(hostCpu_instrCount_end > 0) &&
+			(hostCpu_instrCount_end > hostCpu_instrCount_start) {
+
+			avg := uint((hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter))
+
+			// It may happen that the measured values are invalid.
+			// The primary cause of this is that the Go runtime
+			// can move a goroutine to a different OS thread,
+			// without notifying us when it does so.
+			// The majority of these cases is detected by (ttid_start == ttid_end) constraint.
+			eff := z80.GetEmulationEfficiency()
+			bogusMeasurement := (avg < eff/4) || ((eff > 0) && (avg > eff*4))
+
+			if !bogusMeasurement {
+				z80.z80_instructionsMeasured += uint64(z80_localInstructionCounter)
+				z80.hostCpu_instructionCounter += (hostCpu_instrCount_end - hostCpu_instrCount_start)
+			}
 		}
 	}
 }

@@ -119,6 +119,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, dis
 		select {
 			case <-evtLoop.Pause:
 				ticker.Stop()
+				speccy.Close(evtLoop.App.Verbose)
 				spectrum.Drain(ticker)
 				evtLoop.Pause <- 0
 
@@ -188,35 +189,17 @@ func main() {
 			panic(sdl.GetError())
 		}
 
-		var sdlMode uint32
 		if *fullscreen {
-			sdlMode = sdl.FULLSCREEN
 			*scale2x = true
-		} else {
-			sdlMode = 0
 		}
 
-		var display spectrum.DisplayChannel
-
 		if *scale2x {
-			screenSurface := sdl.SetVideoMode(2*spectrum.TotalScreenWidth, 2*spectrum.TotalScreenHeight, 32, sdlMode)
-			if screenSurface == nil {
-				panic(sdl.GetError())
-			}
-
-			display = spectrum.NewSDLScreen2x(app, screenSurface)
+			speccy.AddDisplay(spectrum.NewSDLScreen2x(app, *fullscreen))
 		} else {
-			screenSurface := sdl.SetVideoMode(spectrum.TotalScreenWidth, spectrum.TotalScreenHeight, 32, sdlMode)
-			if screenSurface == nil {
-				panic(sdl.GetError())
-			}
-
-			display = spectrum.NewSDLScreen(app, screenSurface)
+			speccy.AddDisplay(spectrum.NewSDLScreen(app))
 		}
 
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
-
-		speccy.SetDisplay(display)
 	}
 
 	// Begin speccy emulation

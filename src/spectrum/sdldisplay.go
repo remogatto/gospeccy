@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -30,37 +30,42 @@ import (
 	"unsafe"
 )
 
+
+
+
+
 type SDLSurface struct {
-	Surface *sdl.Surface
+	surface *sdl.Surface
 }
 
-func (s *SDLSurface) Width() uint {
-	return uint(s.Surface.W)
+func (s SDLSurface) Width() uint {
+	return uint(s.surface.W)
 }
 
-func (s *SDLSurface) Height() uint {
-	return uint(s.Surface.H)
+func (s SDLSurface) Height() uint {
+	return uint(s.surface.H)
 }
 
-func (s *SDLSurface) Bpp() uint {
-	return uint(s.Surface.Format.BytesPerPixel)
+func (s SDLSurface) Bpp() uint {
+	return uint(s.surface.Format.BytesPerPixel)
 }
 
-func (s *SDLSurface) Pitch() uint {
-	return uint(s.Surface.Pitch)
+func (s SDLSurface) Pitch() uint {
+	return uint(s.surface.Pitch)
 }
 
 // Return the address of pixel at (x,y)
-func (s *SDLSurface) addrXY(x, y uint) uintptr {
-	pixels := uintptr(unsafe.Pointer(s.Surface.Pixels))
+func (s SDLSurface) addrXY(x, y uint) uintptr {
+	pixels := uintptr(unsafe.Pointer(s.surface.Pixels))
 	offset := uintptr(y*s.Pitch() + x*s.Bpp())
 
 	return uintptr(unsafe.Pointer(pixels+offset))
 }
 
-func (s *SDLSurface) setPixel(addr uintptr, color uint32) {
+func (s SDLSurface) setPixel(addr uintptr, color uint32) {
 	*(*uint32)(unsafe.Pointer(addr)) = color
 }
+
 
 
 
@@ -96,15 +101,24 @@ type SDLScreen struct {
 	screenChannel  chan *Screen
 
 	// The whole screen, borders included
-	ScreenSurface SDLSurface
+	screenSurface SDLSurface
+
+	unscaledDisplay *UnscaledDisplay
 }
 
 type screen_renderer_t interface {
 	render(screen, oldScreen_orNil *Screen)
 }
 
-func NewSDLScreen(app *Application, screenSurface *sdl.Surface) *SDLScreen {
-	SDL_screen := &SDLScreen{ make(chan *Screen), SDLSurface{ screenSurface } }
+func NewSDLScreen(app *Application) *SDLScreen {
+	// NOTE: sdl.SetVideoMode has to be called from the programs's main OS thread
+	var sdlMode uint32 = 0
+	surface := sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, sdlMode)
+	if surface == nil {
+		panic(sdl.GetError())
+	}
+
+	SDL_screen := &SDLScreen{ make(chan *Screen), SDLSurface{surface}, newUnscaledDisplay() }
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -118,13 +132,14 @@ func (display *SDLScreen) getScreenChannel() chan *Screen {
 
 // Implement screen_renderer_t
 func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
+	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen, oldScreen_orNil)
 
-	surface := display.ScreenSurface
+	surface := display.screenSurface
 	bpp     := surface.Bpp()
 	pixels  := &unscaledDisplay.pixels
-	
+
 	for _,r := range *unscaledDisplay.changedRegions {
 		end_x := uint(r.X) + uint(r.W)
 		end_y := uint(r.Y) + uint(r.H)
@@ -140,10 +155,10 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
 	}
 
 	if unscaledDisplay.border_orNil != nil {
-		SDL_renderBorder(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/1, *unscaledDisplay.border_orNil)
+		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/1, *unscaledDisplay.border_orNil)
 	}
 
-	SDL_updateRects(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/1)
+	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/1)
 
 	unscaledDisplay.releaseMemory()
 }
@@ -157,11 +172,26 @@ type SDLScreen2x struct {
 	screenChannel  chan *Screen
 
 	// The whole screen, borders included
-	ScreenSurface SDLSurface
+	screenSurface SDLSurface
+
+	unscaledDisplay *UnscaledDisplay
 }
 
-func NewSDLScreen2x(app *Application, screenSurface *sdl.Surface) *SDLScreen2x {
-	SDL_screen := &SDLScreen2x{ make(chan *Screen), SDLSurface{ screenSurface } }
+func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
+	var sdlMode uint32
+	if fullscreen {
+		sdlMode = sdl.FULLSCREEN
+	} else {
+		sdlMode = 0
+	}
+
+	// NOTE: sdl.SetVideoMode has to be called from the programs's main OS thread
+	surface := sdl.SetVideoMode(2*TotalScreenWidth, 2*TotalScreenHeight, 32, sdlMode)
+	if surface == nil {
+		panic(sdl.GetError())
+	}
+
+	SDL_screen := &SDLScreen2x{ make(chan *Screen), SDLSurface{surface}, newUnscaledDisplay() }
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -175,15 +205,16 @@ func (display *SDLScreen2x) getScreenChannel() chan *Screen {
 
 // Implement screen_renderer_t
 func (display *SDLScreen2x) render(screen, oldScreen_orNil *Screen) {
+	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen, oldScreen_orNil)
 
-	surface := display.ScreenSurface
+	surface := display.screenSurface
 	bpp     := uintptr(surface.Bpp())
 	bpp2    := 2*bpp
 	pitch   := uintptr(surface.Pitch())
 	pixels  := &unscaledDisplay.pixels
-	
+
 	for _,r := range *unscaledDisplay.changedRegions {
 		end_x := uint(r.X) + uint(r.W)
 		end_y := uint(r.Y) + uint(r.H)
@@ -191,25 +222,25 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *Screen) {
 		for y:=uint(r.Y) ; y<end_y ; y++ {
 			addr := surface.addrXY(2*uint(r.X), 2*y)
 			wy := TotalScreenWidth*y
-			
+
 			for x:=uint(r.X) ; x<end_x ; x++ {
 				color := palette[pixels[wy+x]]
-				
+
 				surface.setPixel(addr+0, color)
 				surface.setPixel(addr+bpp, color)
 				surface.setPixel(addr+pitch+0, color)
 				surface.setPixel(addr+pitch+bpp, color)
-				
+
 				addr += bpp2
 			}
 		}
 	}
 
 	if unscaledDisplay.border_orNil != nil {
-		SDL_renderBorder(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/2, *unscaledDisplay.border_orNil)
+		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/2, *unscaledDisplay.border_orNil)
 	}
 
-	SDL_updateRects(display.ScreenSurface.Surface, unscaledDisplay.changedRegions, /*scale*/2)
+	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/2)
 
 	unscaledDisplay.releaseMemory()
 }
@@ -313,8 +344,6 @@ type UnscaledDisplay struct {
 	changedRegions *ListOfRects
 	border_orNil   *byte	// Valid in case the whole border has a single color
 }
-
-var unscaledDisplay = newUnscaledDisplay()
 
 func newUnscaledDisplay() *UnscaledDisplay {
 	return &UnscaledDisplay{changedRegions:newListOfRects(), border_orNil:nil}
@@ -464,11 +493,11 @@ func init() {
 func (disp *UnscaledDisplay) render(screen, oldScreen_orNil *Screen) {
 	const X0 = ScreenBorderX
 	const Y0 = ScreenBorderY
-	
+
 	screen_dirty := &screen.dirty
 	screen_attr := &screen.attr
 	screen_bitmap := &screen.bitmap
-	
+
 	pixels := &disp.pixels
 
 	var attr_x, attr_y uint

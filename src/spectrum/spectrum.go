@@ -4,26 +4,27 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"container/vector"
 )
 
 const Spectrum48k_ROM_filepath = "roms/48.rom"
-const TStatesPerFrame = 69888	// Number of T-states per frame
-const InterruptLength = 32		// How long does an interrupt last in T-states
+const TStatesPerFrame = 69888 // Number of T-states per frame
+const InterruptLength = 32    // How long does an interrupt last in T-states
 
 type Spectrum48k struct {
 	Cpu      *Z80
 	Memory   MemoryAccessor
-	Display  DisplayChannel		// Initially nil
+	Displays vector.Vector // A vector of DisplayChannel, initially empty
 	Keyboard *Keyboard
 	Ports    *Ports
 }
 
 // Create a new speccy object.
 func NewSpectrum48k() (*Spectrum48k, os.Error) {
-	memory   := NewMemory()
+	memory := NewMemory()
 	keyboard := NewKeyboard()
-	ports    := NewPorts(memory, keyboard)
-	z80      := NewZ80(memory, ports)
+	ports := NewPorts(memory, keyboard)
+	z80 := NewZ80(memory, ports)
 
 	ports.z80 = z80
 	memory.z80 = z80
@@ -35,7 +36,7 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 			return nil, err
 		}
 		if len(rom48k) != 0x4000 {
-			return nil, os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", Spectrum48k_ROM_filepath));
+			return nil, os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", Spectrum48k_ROM_filepath))
 		}
 
 		for address, b := range rom48k {
@@ -43,13 +44,26 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 		}
 	}
 
-	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Display: nil, Ports: ports}
+	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Displays: vector.Vector{}, Ports: ports}
 
 	return speccy, nil
 }
 
-func (speccy *Spectrum48k) SetDisplay(display DisplayChannel) {
-	speccy.Display = display
+func (speccy *Spectrum48k) Close(verbose bool) {
+	speccy.Cpu.Close()
+
+	if verbose {
+		eff := speccy.Cpu.GetEmulationEfficiency()
+		if eff != 0 {
+			fmt.Printf("emulation efficiency: %d host-CPU instructions per Z80 instruction\n", eff)
+		} else {
+			fmt.Printf("emulation efficiency: -\n")
+		}
+	}
+}
+
+func (speccy *Spectrum48k) AddDisplay(display DisplayChannel) {
+	speccy.Displays.Push(display)
 }
 
 // Execute the number of T-states corresponding to one screen frame
@@ -68,8 +82,8 @@ func (speccy *Spectrum48k) RenderFrame() {
 	speccy.Memory.frame_begin()
 	speccy.interrupt()
 	speccy.doOpcodes()
-	if speccy.Display != nil  {
-		speccy.Memory.sendScreenToDisplay(speccy.Display, speccy.Ports.borderEvents)
+	for _, display := range speccy.Displays {
+		speccy.Memory.sendScreenToDisplay(display.(DisplayChannel), speccy.Ports.borderEvents)
 	}
 	speccy.Ports.frame_releaseMemory()
 }

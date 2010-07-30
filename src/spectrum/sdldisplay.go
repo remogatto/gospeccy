@@ -69,7 +69,6 @@ func (s SDLSurface) setPixel(addr uintptr, color uint32) {
 
 
 
-
 func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *Screen, renderer screen_renderer_t) {
 	var screen    *Screen = nil
 	var oldScreen *Screen = nil
@@ -100,7 +99,8 @@ type SDLScreen struct {
 	// Channel for receiving screen data
 	screenChannel  chan *Screen
 
-	// The whole screen, borders included
+	// The whole screen, borders included.
+	// Initially nil.
 	screenSurface SDLSurface
 
 	unscaledDisplay *UnscaledDisplay
@@ -111,14 +111,7 @@ type screen_renderer_t interface {
 }
 
 func NewSDLScreen(app *Application) *SDLScreen {
-	// NOTE: sdl.SetVideoMode has to be called from the programs's main OS thread
-	var sdlMode uint32 = 0
-	surface := sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, sdlMode)
-	if surface == nil {
-		panic(sdl.GetError())
-	}
-
-	SDL_screen := &SDLScreen{ make(chan *Screen), SDLSurface{surface}, newUnscaledDisplay() }
+	SDL_screen := &SDLScreen{ make(chan *Screen), SDLSurface{nil}, newUnscaledDisplay() }
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -135,6 +128,17 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen, oldScreen_orNil)
+
+	if display.screenSurface.surface == nil {
+		var sdlMode uint32 = 0
+		
+		surface := sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, sdlMode)
+		if surface == nil {
+			panic(sdl.GetError())
+		}
+
+		display.screenSurface.surface = surface
+	}
 
 	surface := display.screenSurface
 	bpp     := surface.Bpp()
@@ -171,27 +175,17 @@ type SDLScreen2x struct {
 	// Channel for receiving screen data
 	screenChannel  chan *Screen
 
-	// The whole screen, borders included
+	fullscreen bool
+
+	// The whole screen, borders included.
+	// Initially nil.
 	screenSurface SDLSurface
 
 	unscaledDisplay *UnscaledDisplay
 }
 
 func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
-	var sdlMode uint32
-	if fullscreen {
-		sdlMode = sdl.FULLSCREEN
-	} else {
-		sdlMode = 0
-	}
-
-	// NOTE: sdl.SetVideoMode has to be called from the programs's main OS thread
-	surface := sdl.SetVideoMode(2*TotalScreenWidth, 2*TotalScreenHeight, 32, sdlMode)
-	if surface == nil {
-		panic(sdl.GetError())
-	}
-
-	SDL_screen := &SDLScreen2x{ make(chan *Screen), SDLSurface{surface}, newUnscaledDisplay() }
+	SDL_screen := &SDLScreen2x{ make(chan *Screen), fullscreen, SDLSurface{nil}, newUnscaledDisplay() }
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -208,6 +202,22 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *Screen) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen, oldScreen_orNil)
+
+	if display.screenSurface.surface == nil {
+		var sdlMode uint32
+		if display.fullscreen {
+			sdlMode = sdl.FULLSCREEN
+		} else {
+			sdlMode = 0
+		}
+
+		surface := sdl.SetVideoMode(2*TotalScreenWidth, 2*TotalScreenHeight, 32, sdlMode)
+		if surface == nil {
+			panic(sdl.GetError())
+		}
+
+		display.screenSurface.surface = surface
+	}
 
 	surface := display.screenSurface
 	bpp     := uintptr(surface.Bpp())

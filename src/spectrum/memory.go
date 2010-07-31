@@ -30,11 +30,11 @@ type MemoryAccessor interface {
 type attr_4bit byte
 
 type Screen struct {
-	bitmap       [BytesPerLine*ScreenHeight] byte			// Linear y-coordinate
-	attr         [BytesPerLine*ScreenHeight] attr_4bit		// Linear y-coordinate
-	dirty        [ScreenWidth_Attr*ScreenHeight_Attr] bool	// The 8x8 rectangular region was modified, either the bitmap or the attr
+	bitmap       [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
+	attr         [BytesPerLine * ScreenHeight]attr_4bit     // Linear y-coordinate
+	dirty        [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
 	border       byte
-	borderEvents *BorderEvent	// Might be nil
+	borderEvents *BorderEvent // Might be nil
 }
 
 type ula_byte_t struct {
@@ -43,31 +43,31 @@ type ula_byte_t struct {
 }
 
 type ula_attr_t struct {
-	valid bool
-	value uint8
+	valid  bool
+	value  uint8
 	tstate uint
 }
 
 type Memory struct {
-	data         [0x10000]byte
-	
+	data [0x10000]byte
+
 	// Frame number
-	frame        uint
-	
-	borderColor  byte
-	
+	frame uint
+
+	borderColor byte
+
 	// Screen bitmap data read by ULA, if they differ from data in memory at the end of a frame.
 	// Spectrum y-coordinate.
-	ula_bitmap   [BytesPerLine*ScreenHeight] ula_byte_t
-	
+	ula_bitmap [BytesPerLine * ScreenHeight]ula_byte_t
+
 	// Screen attributes read by ULA, if they differ from data in memory at the end of a frame.
 	// Linear y-coordinate.
-	ula_attr     [BytesPerLine*ScreenHeight] ula_attr_t
-	
+	ula_attr [BytesPerLine * ScreenHeight]ula_attr_t
+
 	// Whether the 8x8 rectangular screen area was modified during the current frame
-	dirtyScreen  [ScreenWidth_Attr*ScreenHeight_Attr] bool
-	
-	z80          *Z80
+	dirtyScreen [ScreenWidth_Attr * ScreenHeight_Attr]bool
+
+	z80 *Z80
 }
 
 func NewMemory() *Memory {
@@ -93,12 +93,12 @@ func (memory *Memory) writeByteInternal(address uint16, b byte) {
 		if memory.data[address] != b {
 			memory.screenBitmapWrite(address)
 
-			rel_addr := address-SCREEN_BASE_ADDR
-			screenline_start_tstate := screenline_start_tstates[rel_addr >> BytesPerLine_log2]
+			rel_addr := address - SCREEN_BASE_ADDR
+			screenline_start_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
 			x, _ := screenAddr_to_xy(address)
-			screen_tstate := screenline_start_tstate + uint(x >> PIXELS_PER_TSTATE_LOG2)
+			screen_tstate := screenline_start_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
 			if memory.z80.tstates > screen_tstate {
-				// Remember the value read by ULA 
+				// Remember the value read by ULA
 				memory.ula_bitmap[rel_addr] = ula_byte_t{true, memory.data[address]}
 			}
 		}
@@ -108,11 +108,11 @@ func (memory *Memory) writeByteInternal(address uint16, b byte) {
 		attr_x := (address & 0x001f)
 		attr_y := (address - ATTR_BASE_ADDR) / ScreenWidth_Attr
 
-		x := uint(8*attr_x)
-		y := uint(8*attr_y)
-		for i:=0; i<8; i++ {
+		x := uint(8 * attr_x)
+		y := uint(8 * attr_y)
+		for i := 0; i < 8; i++ {
 			screenline_start_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE
-			screen_tstate := screenline_start_tstate + (x>>PIXELS_PER_TSTATE_LOG2)
+			screen_tstate := screenline_start_tstate + (x >> PIXELS_PER_TSTATE_LOG2)
 			if memory.z80.tstates > screen_tstate {
 				ofs := (y << BytesPerLine_log2) + uint(attr_x)
 				ula_attr := &memory.ula_attr[ofs]
@@ -130,9 +130,9 @@ func (memory *Memory) writeByteInternal(address uint16, b byte) {
 func (memory *Memory) screenBitmapWrite(address uint16) {
 	// address: [0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0]
 	var attr_x = (address & 0x001f)
-	var attr_y = ( ((address & 0x0700) >> 8) | ((address & 0x00e0) >> 2) | ((address & 0x1800) >> 5) ) / 8
+	var attr_y = (((address & 0x0700) >> 8) | ((address & 0x00e0) >> 2) | ((address & 0x1800) >> 5)) / 8
 
-	memory.dirtyScreen[attr_y*ScreenWidth_Attr + attr_x] = true
+	memory.dirtyScreen[attr_y*ScreenWidth_Attr+attr_x] = true
 }
 
 func (memory *Memory) screenAttrWrite(address uint16) {
@@ -151,18 +151,18 @@ func (memory *Memory) setBorder(borderColor byte) {
 func (memory *Memory) frame_begin() {
 	memory.frame++
 	if memory.frame == 1 {
-		// The very first frame --> repaint the whole screen 
-		for i:=0 ; i < ScreenWidth_Attr*ScreenHeight_Attr ; i++ {
+		// The very first frame --> repaint the whole screen
+		for i := 0; i < ScreenWidth_Attr*ScreenHeight_Attr; i++ {
 			memory.dirtyScreen[i] = true
 		}
 	} else {
-		for i:=0 ; i < ScreenWidth_Attr*ScreenHeight_Attr ; i++ {
+		for i := 0; i < ScreenWidth_Attr*ScreenHeight_Attr; i++ {
 			memory.dirtyScreen[i] = false
 		}
 	}
-	
+
 	ula_bitmap := &memory.ula_bitmap
-	for ofs:=uint16(0) ; ofs < BytesPerLine*ScreenHeight ; ofs++ {
+	for ofs := uint16(0); ofs < BytesPerLine*ScreenHeight; ofs++ {
 		if ula_bitmap[ofs].valid {
 			memory.screenBitmapWrite(SCREEN_BASE_ADDR + ofs)
 		}
@@ -171,7 +171,7 @@ func (memory *Memory) frame_begin() {
 	}
 
 	ula_attr := &memory.ula_attr
-	for ofs:=uint16(0) ; ofs < BytesPerLine*ScreenHeight ; ofs++ {
+	for ofs := uint16(0); ofs < BytesPerLine*ScreenHeight; ofs++ {
 		if ula_attr[ofs].valid {
 			linearY := (ofs >> BytesPerLine_log2)
 			attr_y := (linearY >> 3)
@@ -187,7 +187,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 	var screen Screen
 	{
 		flash := (memory.frame & 0x10) != 0
-		flash_previous := ((memory.frame-1) & 0x10) != 0
+		flash_previous := ((memory.frame - 1) & 0x10) != 0
 		flash_diff := (flash != flash_previous)
 
 		// Fill screen.bitmap & screen.attr, but only the dirty regions.
@@ -198,7 +198,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 		screen_bitmap := &screen.bitmap
 		screen_attr := &screen.attr
 		for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
-			attr_y8 := 8*attr_y
+			attr_y8 := 8 * attr_y
 
 			for attr_x := uint(0); attr_x < ScreenWidth_Attr; attr_x++ {
 				attr_ofs := attr_y*ScreenWidth_Attr + attr_x
@@ -210,7 +210,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 					for y := 0; y < 8; y++ {
 						var attr byte
 						if !memory_ulaAttr[linearY_ofs].valid {
-							attr = memory_data[ATTR_BASE_ADDR + attr_ofs]
+							attr = memory_data[ATTR_BASE_ADDR+attr_ofs]
 						} else {
 							attr = memory_ulaAttr[linearY_ofs].value
 						}
@@ -240,7 +240,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 							screen_bitmap[linearY_ofs] = memory_ulaBitmap[screen_addr-SCREEN_BASE_ADDR].value
 						}
 
-						screen_addr += 8*BytesPerLine
+						screen_addr += 8 * BytesPerLine
 						linearY_ofs += BytesPerLine
 					}
 				}
@@ -252,17 +252,17 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 					for y := 0; y < 8; y++ {
 						var attr byte
 						if !memory_ulaAttr[linearY_ofs].valid {
-							attr = memory_data[ATTR_BASE_ADDR + attr_ofs]
+							attr = memory_data[ATTR_BASE_ADDR+attr_ofs]
 						} else {
 							attr = memory_ulaAttr[linearY_ofs].value
 						}
 
-						ink := ((attr&0x40)>>3)|(attr&0x07)
-						paper := (attr&0x78)>>3
+						ink := ((attr & 0x40) >> 3) | (attr & 0x07)
+						paper := (attr & 0x78) >> 3
 
 						if flash && ((attr & 0x80) != 0) {
 							/* invert flashing attributes */
-							ink,paper = paper,ink
+							ink, paper = paper, ink
 						}
 
 						screen_attr[linearY_ofs] = attr_4bit((ink << 4) | paper)
@@ -280,7 +280,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 		screen.border = memory.borderColor
 
 		// screen.borderEvents
-		if (borderEvents != nil) && (borderEvents.previous_orNil==nil) {
+		if (borderEvents != nil) && (borderEvents.previous_orNil == nil) {
 			// Only the one event which was added there at the start of the frame - ignore it
 			screen.borderEvents = nil
 		} else {
@@ -326,13 +326,11 @@ func (memory *Memory) Data() []byte {
 }
 
 
-
-
 // Number of T-states to delay, for each possible T-state within a frame.
 // The array is extended at the end - this covers the case when the emulator
 // begins to execute an instruction at Tstate=(TStatesPerFrame-1). Such an
 // instruction will finish at (TStatesPerFrame-1+4) or later.
-var delay_table [TStatesPerFrame+100]byte;
+var delay_table [TStatesPerFrame + 100]byte
 
 // Initialize 'delay_table' at program startup
 func init() {
@@ -340,10 +338,10 @@ func init() {
 	//       of the 'delay_table' array to zeroes. So, we only
 	//       have to modify the non-zero elements.
 
-	tstate := FIRST_SCREEN_BYTE-1
-	for y:=0; y<ScreenHeight; y++ {
-		for x:=0; x<ScreenWidth; x+=16 {
-			tstate_x := x/PIXELS_PER_TSTATE
+	tstate := FIRST_SCREEN_BYTE - 1
+	for y := 0; y < ScreenHeight; y++ {
+		for x := 0; x < ScreenWidth; x += 16 {
+			tstate_x := x / PIXELS_PER_TSTATE
 			delay_table[tstate+tstate_x+0] = 6
 			delay_table[tstate+tstate_x+1] = 5
 			delay_table[tstate+tstate_x+2] = 4
@@ -354,4 +352,3 @@ func init() {
 		tstate += TSTATES_PER_LINE
 	}
 }
-

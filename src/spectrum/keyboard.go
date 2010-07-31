@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -28,10 +28,9 @@ package spectrum
 import "sync"
 
 
-
 type Keyboard struct {
 	keyStates [8]byte
-	mutex sync.RWMutex
+	mutex     sync.RWMutex
 }
 
 func NewKeyboard() *Keyboard {
@@ -78,7 +77,6 @@ func (keyboard *Keyboard) KeyUp(logicalKeyCode uint) {
 		keyboard.mutex.Unlock()
 	}
 }
-
 
 
 // Logical key codes
@@ -155,32 +153,31 @@ var keyCodes = map[uint]keyCell{
 	KEY_O: keyCell{row: 5, mask: 0x02},
 	KEY_P: keyCell{row: 5, mask: 0x01},
 
-	KEY_A: keyCell{row: 1, mask: 0x01},
-	KEY_S: keyCell{row: 1, mask: 0x02},
-	KEY_D: keyCell{row: 1, mask: 0x04},
-	KEY_F: keyCell{row: 1, mask: 0x08},
-	KEY_G: keyCell{row: 1, mask: 0x10},
-	KEY_H: keyCell{row: 6, mask: 0x10},
-	KEY_J: keyCell{row: 6, mask: 0x08},
-	KEY_K: keyCell{row: 6, mask: 0x04},
-	KEY_L: keyCell{row: 6, mask: 0x02},
+	KEY_A:     keyCell{row: 1, mask: 0x01},
+	KEY_S:     keyCell{row: 1, mask: 0x02},
+	KEY_D:     keyCell{row: 1, mask: 0x04},
+	KEY_F:     keyCell{row: 1, mask: 0x08},
+	KEY_G:     keyCell{row: 1, mask: 0x10},
+	KEY_H:     keyCell{row: 6, mask: 0x10},
+	KEY_J:     keyCell{row: 6, mask: 0x08},
+	KEY_K:     keyCell{row: 6, mask: 0x04},
+	KEY_L:     keyCell{row: 6, mask: 0x02},
 	KEY_Enter: keyCell{row: 6, mask: 0x01},
 
-	KEY_CapsShift: keyCell{row: 0, mask: 0x01},
-	KEY_Z: keyCell{row: 0, mask: 0x02},
-	KEY_X: keyCell{row: 0, mask: 0x04},
-	KEY_C: keyCell{row: 0, mask: 0x08},
-	KEY_V: keyCell{row: 0, mask: 0x10},
-	KEY_B: keyCell{row: 7, mask: 0x10},
-	KEY_N: keyCell{row: 7, mask: 0x08},
-	KEY_M: keyCell{row: 7, mask: 0x04},
+	KEY_CapsShift:   keyCell{row: 0, mask: 0x01},
+	KEY_Z:           keyCell{row: 0, mask: 0x02},
+	KEY_X:           keyCell{row: 0, mask: 0x04},
+	KEY_C:           keyCell{row: 0, mask: 0x08},
+	KEY_V:           keyCell{row: 0, mask: 0x10},
+	KEY_B:           keyCell{row: 7, mask: 0x10},
+	KEY_N:           keyCell{row: 7, mask: 0x08},
+	KEY_M:           keyCell{row: 7, mask: 0x04},
 	KEY_SymbolShift: keyCell{row: 7, mask: 0x02},
-	KEY_Space: keyCell{row: 7, mask: 0x01},
+	KEY_Space:       keyCell{row: 7, mask: 0x01},
 }
 
 
-
-var SDL_KeyMap = map[string] []uint {
+var SDL_KeyMap = map[string][]uint{
 	"0": []uint{KEY_0},
 	"1": []uint{KEY_1},
 	"2": []uint{KEY_2},
@@ -219,19 +216,19 @@ var SDL_KeyMap = map[string] []uint {
 	"y": []uint{KEY_Y},
 	"z": []uint{KEY_Z},
 
-	"return": []uint{KEY_Enter},
-	"space": []uint{KEY_Space},
-	"left shift": []uint{KEY_CapsShift},
+	"return":      []uint{KEY_Enter},
+	"space":       []uint{KEY_Space},
+	"left shift":  []uint{KEY_CapsShift},
 	"right shift": []uint{KEY_CapsShift},
-	"left ctrl": []uint{KEY_SymbolShift},
-	"right ctrl": []uint{KEY_SymbolShift},
+	"left ctrl":   []uint{KEY_SymbolShift},
+	"right ctrl":  []uint{KEY_SymbolShift},
 
-	//"escape": []uint{KEY_CapsShift, KEY_1},
+	//"escape":    []uint{KEY_CapsShift, KEY_1},
 	//"caps lock": []uint{KEY_CapsShift, KEY_2}, // FIXME: SDL never sends the sdl.KEYUP event
-	"left": []uint{KEY_CapsShift, KEY_5},
-	"down": []uint{KEY_CapsShift, KEY_6},
-	"up": []uint{KEY_CapsShift, KEY_7},
-	"right": []uint{KEY_CapsShift, KEY_8},
+	"left":      []uint{KEY_CapsShift, KEY_5},
+	"down":      []uint{KEY_CapsShift, KEY_6},
+	"up":        []uint{KEY_CapsShift, KEY_7},
+	"right":     []uint{KEY_CapsShift, KEY_8},
 	"backspace": []uint{KEY_CapsShift, KEY_0},
 
 	"-": []uint{KEY_SymbolShift, KEY_J},
@@ -269,7 +266,6 @@ var SDL_KeyMap = map[string] []uint {
 }
 
 
-
 func init() {
 	if len(keyCodes) != 40 {
 		panic("invalid keyboard specification")
@@ -280,15 +276,14 @@ func init() {
 	for logicalKeyCode := range keyCodes {
 		used[logicalKeyCode] = false
 	}
-	for _,seq := range SDL_KeyMap {
+	for _, seq := range SDL_KeyMap {
 		if len(seq) == 1 {
 			used[seq[0]] = true
 		}
 	}
-	for _,isUsed := range used {
+	for _, isUsed := range used {
 		if !isUsed {
 			panic("some key is missing in the SDL keymap")
 		}
 	}
 }
-

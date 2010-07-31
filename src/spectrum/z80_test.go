@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -288,7 +288,6 @@ func TestDoOpcodes(t *testing.T) {
 			z80.Reset()
 		}
 	}
-
 
 	// Read the tests.expected file
 

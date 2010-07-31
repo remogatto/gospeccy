@@ -12,6 +12,7 @@ const TStatesPerFrame = 69888 // Number of T-states per frame
 const InterruptLength = 32    // How long does an interrupt last in T-states
 
 type Spectrum48k struct {
+	app      *Application
 	Cpu      *Z80
 	Memory   MemoryAccessor
 	Displays vector.Vector // A vector of DisplayChannel, initially empty
@@ -20,7 +21,7 @@ type Spectrum48k struct {
 }
 
 // Create a new speccy object.
-func NewSpectrum48k() (*Spectrum48k, os.Error) {
+func NewSpectrum48k(app *Application) (*Spectrum48k, os.Error) {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
 	ports := NewPorts(memory, keyboard)
@@ -44,15 +45,15 @@ func NewSpectrum48k() (*Spectrum48k, os.Error) {
 		}
 	}
 
-	speccy := &Spectrum48k{Cpu: z80, Memory: memory, Keyboard: keyboard, Displays: vector.Vector{}, Ports: ports}
+	speccy := &Spectrum48k{app: app, Cpu: z80, Memory: memory, Keyboard: keyboard, Displays: vector.Vector{}, Ports: ports}
 
 	return speccy, nil
 }
 
-func (speccy *Spectrum48k) Close(verbose bool) {
+func (speccy *Spectrum48k) Close() {
 	speccy.Cpu.Close()
 
-	if verbose {
+	if speccy.app.Verbose {
 		eff := speccy.Cpu.GetEmulationEfficiency()
 		if eff != 0 {
 			fmt.Printf("emulation efficiency: %d host-CPU instructions per Z80 instruction\n", eff)
@@ -91,6 +92,10 @@ func (speccy *Spectrum48k) RenderFrame() {
 // Initialize state from the snapshot defined by the specified filename.
 // Returns nil on success.
 func (speccy *Spectrum48k) LoadSna(filename string) os.Error {
+	if speccy.app.Verbose {
+		fmt.Printf("loading snapshot \"%s\"\n", filename)
+	}
+
 	return speccy.Cpu.LoadSna(filename)
 }
 

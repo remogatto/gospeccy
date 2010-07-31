@@ -15,6 +15,18 @@ PERF_FILES=\
 	src/perf/perf_$(GOARCH).go\
 	src/perf/types.$(O).go\
 
+GOFMT_FILES=\
+	src/gospeccy.go\
+	src/spectrum/application.go\
+	src/spectrum/keyboard.go\
+	src/spectrum/memory.go\
+	src/spectrum/port.go\
+	src/spectrum/spectrum.go\
+	src/spectrum/z80.go\
+	src/spectrum/z80_test.go\
+	src/perf/perf.go\
+	src/perf/perf_386.go\
+
 
 gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)
@@ -22,6 +34,9 @@ gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)
 clean:
 	rm -f gospeccy
 	rm -rf _obj
+
+gofmt:
+	gofmt -w -l $(GOFMT_FILES)
 
 .PHONY:
 _obj:

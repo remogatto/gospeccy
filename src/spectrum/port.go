@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -26,7 +26,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 
-
 type PortAccessor interface {
 	frame_begin(borderColor byte)
 	frame_releaseMemory()
@@ -36,7 +35,6 @@ type PortAccessor interface {
 	contendPortPreio(address uint16)
 	contendPortPostio(address uint16)
 }
-
 
 
 type BorderEvent struct {
@@ -53,10 +51,10 @@ type BorderEvent struct {
 }
 
 type Ports struct {
-	memory MemoryAccessor
-	keyboard *Keyboard
-	borderEvents *BorderEvent		// Might be nil
-	z80 *Z80
+	memory       MemoryAccessor
+	keyboard     *Keyboard
+	borderEvents *BorderEvent // Might be nil
+	z80          *Z80
 }
 
 func NewPorts(memory MemoryAccessor, keyboard *Keyboard) *Ports {
@@ -64,7 +62,7 @@ func NewPorts(memory MemoryAccessor, keyboard *Keyboard) *Ports {
 }
 
 func (p *Ports) frame_begin(borderColor byte) {
-	p.borderEvents = &BorderEvent{tstate:0, color:borderColor, previous_orNil:nil}
+	p.borderEvents = &BorderEvent{tstate: 0, color: borderColor, previous_orNil: nil}
 }
 
 func (p *Ports) frame_releaseMemory() {
@@ -101,7 +99,7 @@ func (p *Ports) readPort(address uint16) byte {
 func (p *Ports) writePort(address uint16, b byte) {
 	p.contendPortPreio(address)
 
-	if ((address & 0x0001) == 0) {
+	if (address & 0x0001) == 0 {
 		color := (b & 0x07)
 
 		// Modify the border only if it really changed

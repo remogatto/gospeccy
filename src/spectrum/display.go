@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -26,21 +26,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 const (
-	ScreenWidth = 256
+	ScreenWidth  = 256
 	ScreenHeight = 192
 
-	BytesPerLine      = ScreenWidth/8	// =32
-	BytesPerLine_log2 = 5				// =log2(BytesPerLine)
+	BytesPerLine      = ScreenWidth / 8 // =32
+	BytesPerLine_log2 = 5               // =log2(BytesPerLine)
 
-	ScreenWidth_Attr = ScreenWidth/8	// =32
-	ScreenHeight_Attr = ScreenHeight/8	// =24
+	ScreenWidth_Attr  = ScreenWidth / 8  // =32
+	ScreenHeight_Attr = ScreenHeight / 8 // =24
 
 	ScreenBorderX = 32
 	ScreenBorderY = 24
 
 	// Screen dimensions, including the border
-	TotalScreenWidth = ScreenWidth + ScreenBorderX * 2
-	TotalScreenHeight = ScreenHeight + ScreenBorderY * 2
+	TotalScreenWidth  = ScreenWidth + ScreenBorderX*2
+	TotalScreenHeight = ScreenHeight + ScreenBorderY*2
 
 	SCREEN_BASE_ADDR = 0x4000
 	ATTR_BASE_ADDR   = 0x5800
@@ -48,18 +48,18 @@ const (
 
 // Spectrum 48k video timings
 const (
-	PIXELS_PER_TSTATE	   = 2	// The number of screen pixels painted per T-state
-	PIXELS_PER_TSTATE_LOG2 = 1	// = Log2(PIXELS_PER_TSTATE)
+	PIXELS_PER_TSTATE      = 2 // The number of screen pixels painted per T-state
+	PIXELS_PER_TSTATE_LOG2 = 1 // = Log2(PIXELS_PER_TSTATE)
 
 	// Horizontal
-	LINE_SCREEN       = ScreenWidth/PIXELS_PER_TSTATE	// 128 T states of screen
-	LINE_RIGHT_BORDER = 24		// 24 T states of right border
-	LINE_RETRACE      = 48		// 48 T states of horizontal retrace
-	LINE_LEFT_BORDER  = 24		// 24 T states of left border
+	LINE_SCREEN       = ScreenWidth / PIXELS_PER_TSTATE // 128 T states of screen
+	LINE_RIGHT_BORDER = 24                              // 24 T states of right border
+	LINE_RETRACE      = 48                              // 48 T states of horizontal retrace
+	LINE_LEFT_BORDER  = 24                              // 24 T states of left border
 
-	TSTATES_PER_LINE = (LINE_RIGHT_BORDER + LINE_SCREEN + LINE_LEFT_BORDER + LINE_RETRACE)	// 224 T states
+	TSTATES_PER_LINE = (LINE_RIGHT_BORDER + LINE_SCREEN + LINE_LEFT_BORDER + LINE_RETRACE) // 224 T states
 
-	FIRST_SCREEN_BYTE = 14336	// T states before the first byte of the screen (16384) is displayed
+	FIRST_SCREEN_BYTE = 14336 // T states before the first byte of the screen (16384) is displayed
 
 	// Vertical
 	LINES_TOP     = 64
@@ -70,13 +70,12 @@ const (
 
 	// The T-state which corresponds to pixel (0,0) on the (SDL) surface.
 	// That pixel belongs to the border.
-	DISPLAY_START = ( FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE )
+	DISPLAY_START = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE)
 )
 
 
-
 type RGBA struct {
-	R,G,B,A byte
+	R, G, B, A byte
 }
 
 func (color RGBA) value32() uint32 {
@@ -105,18 +104,17 @@ type DisplayChannel interface {
 	getScreenChannel() chan *Screen
 }
 
-func screenAddr_to_xy(screenAddr uint16) (x,y uint8) {
+func screenAddr_to_xy(screenAddr uint16) (x, y uint8) {
 	x = uint8((screenAddr & 0x001f) << 3)
 	y = uint8(((screenAddr & 0x0700) >> 8) | ((screenAddr & 0x00e0) >> 2) | ((screenAddr & 0x1800) >> 5))
 	return
 }
 
-func xy_to_screenAddr(x,y uint8) uint16 {
+func xy_to_screenAddr(x, y uint8) uint16 {
 	yy := uint(y)
-	addr_y := SCREEN_BASE_ADDR | 0x800*(yy>>6) | BytesPerLine*((yy&0x38)>>3) | ((yy&0x07) << 8)
-	return uint16(addr_y | uint(x >> 3))
+	addr_y := SCREEN_BASE_ADDR | 0x800*(yy>>6) | BytesPerLine*((yy&0x38)>>3) | ((yy & 0x07) << 8)
+	return uint16(addr_y | uint(x>>3))
 }
-
 
 
 // Let 'addr' be in range 0x4000 ... 0x5800-1.
@@ -125,8 +123,8 @@ func xy_to_screenAddr(x,y uint8) uint16 {
 var screenline_start_tstates [ScreenHeight]uint
 
 func init() {
-	for y:=uint8(0); y<ScreenHeight; y++ {
-		addr := xy_to_screenAddr(0,y)
+	for y := uint8(0); y < ScreenHeight; y++ {
+		addr := xy_to_screenAddr(0, y)
 		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
 		//println(y, ",", (addr-SCREEN_BASE_ADDR)/BytesPerLine, " = ", FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE)
 	}

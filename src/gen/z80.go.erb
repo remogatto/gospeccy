@@ -61,6 +61,8 @@ var overflowSubTable = []byte{0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0}
 
 var rzxInstructionsOffset int
 
+var opcodesMap map[int] func(z80 *Z80, tempaddr uint16)
+
 type register16 struct {
 	high, low *byte
 }
@@ -127,8 +129,9 @@ func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 	z80.iy = register16{&z80.iyh, &z80.iyl}
 	z80.de_ = register16{&z80.d_, &z80.e_}
 
+	z80.initOpcodes()
 	z80.initTables()
-
+	
 	return z80
 }
 
@@ -637,12 +640,110 @@ func (z80 *Z80) doOpcodes() {
 		z80.r = (z80.r + 1) & 0x7f
 		z80.pc++
 
-		switch(opcode) {
+		switch opcode {
+		case 0xcb:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
 
-			<%= opcodes.gsub("setSPHSPL", "setSP") %>
+			opcodeKey := 0xcb<<8 | int(opcode2)
+			opcodesMap[opcodeKey](z80, 0)
+		case 0xed:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
+			opcodeKey := 0xed<<8 | int(opcode2)
 
+			if f, ok := opcodesMap[opcodeKey]; ok {
+				f(z80, 0)
+			} else {
+				break
+			}
+		case 0xdd:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
+
+			switch opcode2 {
+			case 0xcb:
+				var tempaddr uint16
+				var opcode3 byte
+				z80.memory.contendRead(z80.pc, 3)
+				tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+				z80.pc++
+				z80.memory.contendRead(z80.pc, 3)
+				opcode3 = z80.memory.readByteInternal(z80.pc)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.pc++
+				opcodeKey := 0xcb<<16 | int(opcode3)
+				opcodesMap[opcodeKey](z80, tempaddr)
+			default:
+				opcodeKey := 0xdd<<8 | int(opcode2)
+
+				if f, ok := opcodesMap[opcodeKey]; ok {
+					f(z80, 0)
+				} else {
+					/* Instruction did not involve H or L, so backtrack
+					one instruction and parse again */
+					z80.pc--
+					z80.r--
+					opcode = opcode2
+
+					goto EndOpcode
+				}
+
+			}
+
+		case 0xfd:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
+
+			switch opcode2 {
+			case 0xcb:
+				var tempaddr uint16
+				var opcode3 byte
+				z80.memory.contendRead(z80.pc, 3)
+				tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+				z80.pc++
+				z80.memory.contendRead(z80.pc, 3)
+				opcode3 = z80.memory.readByteInternal(z80.pc)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.pc++
+
+				opcodeKey := 0xcb<<16 | int(opcode3)
+				opcodesMap[opcodeKey](z80, tempaddr)
+
+			default:
+				opcodeKey := 0xfd<<8 | int(opcode2)
+				if f, ok := opcodesMap[opcodeKey]; ok {
+					f(z80, 0)
+				} else {
+					/* Instruction did not involve H or L, so backtrack
+					one instruction and parse again */
+					z80.pc--
+					z80.r--
+					opcode = opcode2
+
+					goto EndOpcode
+				}
+
+
+			}
+
+		default:
+			opcodesMap[int(opcode)](z80, 0)
 		}
+
 	}
 }
-
-

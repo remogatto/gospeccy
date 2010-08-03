@@ -72,11 +72,11 @@ CODE
 	    my $increment = ( $register eq 'PC' ? 'z80.pc++' : '' );
 	    my $lcopcode = lc($opcode);
 	    print << "CODE";
-      {
+      
 	var bytetemp byte = z80.memory.readByte(z80.$register())
         $increment
 	z80.$lcopcode(bytetemp)
-      }
+      
 CODE
 	}
     } elsif( $opcode eq 'ADD' ) {
@@ -571,7 +571,7 @@ sub opcode_EX (@) {
 	 #04d1 as PC has already been incremented */
       /* 0x76 - Timex 2068 save routine in EXROM */
       if( z80.pc == 0x04d1 || z80.pc == 0x0077 ) {
-	  if( z80.tapeSaveTrap() == 0 ) { break }
+	  if( z80.tapeSaveTrap() == 0 ) { /*break*/ }
       }
 
       var olda, oldf = z80.a, z80.f
@@ -801,9 +801,9 @@ LD
         } elsif( $src eq '(nnnn)' ) {
 	    $low = lc($low); $high = lc($high);
             if($low eq 'spl') {
-		print "      sph, spl := splitWord(z80.sp)\nz80.ld16rrnn(&spl, &sph)\nz80.sp = joinBytes(sph, spl)\nbreak\n";
+		print "      sph, spl := splitWord(z80.sp)\nz80.ld16rrnn(&spl, &sph)\nz80.sp = joinBytes(sph, spl)\n // break\n";
 	    } else {
-		print "      z80.ld16rrnn(&z80.$low, &z80.$high)\nbreak\n";
+		print "      z80.ld16rrnn(&z80.$low, &z80.$high)\n // break\n";
 	    }
 	}
 
@@ -844,9 +844,9 @@ LD
 	    }
 	    $low = lc($low); $high = lc($high);
             if($low eq 'spl') {
-		print "      sph, spl := splitWord(z80.sp)\nz80.ld16nnrr(spl, sph)\nbreak\n";
+		print "      sph, spl := splitWord(z80.sp)\nz80.ld16nnrr(spl, sph)\n // break\n";
 	    } else {	       
-		print "      z80.ld16nnrr(z80.$low, z80.$high)\nbreak\n";
+		print "      z80.ld16nnrr(z80.$low, z80.$high)\n // break\n";
 	    }
 	}
     } elsif( $dest eq '(REGISTER+dd)' ) {
@@ -946,7 +946,7 @@ sub opcode_RET (@) {
 	if( $condition eq 'NZ' ) {
 	    print << "RET";
       if( z80.pc==0x056c || z80.pc == 0x0112 ) {
-	  if(z80.tapeLoadTrap() == 0) { break }
+	  if(z80.tapeLoadTrap() == 0) { /*break*/ }
       }
 RET
         }
@@ -1064,76 +1064,130 @@ sub opcode_slttrap ($) {
     print "      z80.sltTrap(int16(z80.HL()), z80.a)\n";
 }
 
+# sub opcode_shift (@) {
+
+#     my( $opcode ) = @_;
+
+#     my $lc_opcode = lc $opcode;
+
+#     if( $opcode eq 'DDFDCB' ) {
+
+# 	print << "shift";
+      
+# 	var tempaddr uint16
+# 	var opcode3 byte
+# 	z80.memory.contendRead( z80.pc, 3 )
+# 	tempaddr = uint16(int(z80.REGISTER()) + int(signExtend(z80.memory.readByteInternal( z80.pc ))))
+# 	z80.pc++; z80.memory.contendRead( z80.pc, 3 )
+# 	opcode3 = z80.memory.readByteInternal( z80.pc )
+# 	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++
+#     }
+#         <%= opcodes_ddfdcb %>
+      
+# shift
+#     } else {
+# 	print << "shift";
+
+# 	var opcode2 byte
+# 	z80.memory.contendRead( z80.pc, 4 )
+# 	opcode2 = z80.memory.readByteInternal( z80.pc ); z80.pc++
+# 	z80.r++
+# }
+
+# shift
+
+#     if( $opcode eq 'DD' or $opcode eq 'FD' ) {
+# 	my $register = ( $opcode eq 'DD' ? 'IX' : 'IY' );
+# 	my $lcregister = lc($register);
+# 	print << "shift";
+#         <% register = "$lcregister" %>
+#         <%= opcodes_ddfd.\
+#             gsub(/REGISTER/i, register).\
+#             gsub("ix()", "IX()").\
+#             gsub("setixHixL", "setIX").\
+#             gsub("incixH", "incIXH").\
+#             gsub("decixH", "decIXH").
+#             gsub("incixL", "incIXL").\
+#             gsub("decixL", "decIXL").\
+#             gsub("z80.ix()", "z80.IX()").\
+#             gsub("ixH", "z80.IXH()").\
+#             gsub("ixL", "z80.IXL()").\
+#             gsub("iy()", "IY()").\
+#             gsub("setiyHiyL", "setIY").\
+#             gsub("inciyH", "incIYH").\
+#             gsub("deciyH", "decIYH").
+#             gsub("inciyL", "incIYL").\
+#             gsub("deciyL", "decIYL").\
+#             gsub("z80.iy()", "z80.IY()").\
+#             gsub("iyH", "z80.IYL()").\
+#             gsub("iyL", "z80.IYH()")
+#         %>
+# shift
+#         } elsif( $opcode eq 'CB' or $opcode eq 'ED' ) {
+# 	    print "<%= opcodes_$lc_opcode.chop.chop %>\n";
+#         }
+
+# #         print << "shift"
+# # 	}
+# #       }
+# # shift
+#     }
+# }
+
 sub opcode_shift (@) {
 
-    my( $opcode ) = @_;
+#     my( $opcode ) = @_;
 
-    my $lc_opcode = lc $opcode;
+#     my $lc_opcode = lc $opcode;
 
-    if( $opcode eq 'DDFDCB' ) {
+#     if( $opcode eq 'DDFDCB' ) {
 
-	print << "shift";
+# 	print << "shift";
       
-	var tempaddr uint16
-	var opcode3 byte
-	z80.memory.contendRead( z80.pc, 3 )
-	tempaddr = uint16(int(z80.REGISTER()) + int(signExtend(z80.memory.readByteInternal( z80.pc ))))
-	z80.pc++; z80.memory.contendRead( z80.pc, 3 )
-	opcode3 = z80.memory.readByteInternal( z80.pc )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++
-
-	switch(opcode3) {
-        <%= opcodes_ddfdcb %>
-	}
+#         <%= opcodes_ddfdcb %>
       
-shift
-    } else {
-	print << "shift";
-      {
-	var opcode2 byte
-	z80.memory.contendRead( z80.pc, 4 )
-	opcode2 = z80.memory.readByteInternal( z80.pc ); z80.pc++
-	z80.r++
+# shift
+#     } else {
+# 	print << "shift";
 
-	switch(opcode2) {
-shift
+# shift
 
-    if( $opcode eq 'DD' or $opcode eq 'FD' ) {
-	my $register = ( $opcode eq 'DD' ? 'IX' : 'IY' );
-	my $lcregister = lc($register);
-	print << "shift";
-        <% register = "$lcregister" %>
-        <%= opcodes_ddfd.\
-            gsub(/REGISTER/i, register).\
-            gsub("ix()", "IX()").\
-            gsub("setixHixL", "setIX").\
-            gsub("incixH", "incIXH").\
-            gsub("decixH", "decIXH").
-            gsub("incixL", "incIXL").\
-            gsub("decixL", "decIXL").\
-            gsub("z80.ix()", "z80.IX()").\
-            gsub("ixH", "z80.IXH()").\
-            gsub("ixL", "z80.IXL()").\
-            gsub("iy()", "IY()").\
-            gsub("setiyHiyL", "setIY").\
-            gsub("inciyH", "incIYH").\
-            gsub("deciyH", "decIYH").
-            gsub("inciyL", "incIYL").\
-            gsub("deciyL", "decIYL").\
-            gsub("z80.iy()", "z80.IY()").\
-            gsub("iyH", "z80.IYL()").\
-            gsub("iyL", "z80.IYH()")
-        %>
-shift
-        } elsif( $opcode eq 'CB' or $opcode eq 'ED' ) {
-	    print "<%= opcodes_$lc_opcode %>\n";
-        }
+#     if( $opcode eq 'DD' or $opcode eq 'FD' ) {
+# 	my $register = ( $opcode eq 'DD' ? 'IX' : 'IY' );
+# 	my $lcregister = lc($register);
+# 	print << "shift";
+#         <% register = "$lcregister" %>
+#         <%= opcodes_ddfd.\
+#             gsub(/REGISTER/i, register).\
+#             gsub("ix()", "IX()").\
+#             gsub("setixHixL", "setIX").\
+#             gsub("incixH", "incIXH").\
+#             gsub("decixH", "decIXH").
+#             gsub("incixL", "incIXL").\
+#             gsub("decixL", "decIXL").\
+#             gsub("z80.ix()", "z80.IX()").\
+#             gsub("ixH", "z80.IXH()").\
+#             gsub("ixL", "z80.IXL()").\
+#             gsub("iy()", "IY()").\
+#             gsub("setiyHiyL", "setIY").\
+#             gsub("inciyH", "incIYH").\
+#             gsub("deciyH", "decIYH").
+#             gsub("inciyL", "incIYL").\
+#             gsub("deciyL", "decIYL").\
+#             gsub("z80.iy()", "z80.IY()").\
+#             gsub("iyH", "z80.IYL()").\
+#             gsub("iyL", "z80.IYH()")
+#         %>
+# shift
+#         } elsif( $opcode eq 'CB' or $opcode eq 'ED' ) {
+# 	    print "<%= opcodes_$lc_opcode.chop %>\n";
+#         }
 
-        print << "shift"
-	}
-      }
-shift
-    }
+# #         print << "shift"
+# # 	}
+# #       }
+# # shift
+#     }
 }
 
 # Description of each file
@@ -1152,14 +1206,16 @@ my %description = (
 
 ( my $data_file = $ARGV[0] ) =~ s!.*/!!;
 
-print Fuse::GPL( $description{ $data_file }, '1999-2003 Philip Kendall' );
+# print Fuse::GPL( $description{ $data_file }, '1999-2003 Philip Kendall' );
 
-print << "COMMENT";
+# print << "COMMENT";
 
-/* NB: this file is autogenerated by '$0' from '$data_file',
-   and included in 'z80_ops.c' */
+# /* NB: this file is autogenerated by '$0' from '$data_file',
+#    and included in 'z80_ops.c' */
 
-COMMENT
+# COMMENT
+
+my @fallthrough = ();
 
 while(<>) {
 
@@ -1172,21 +1228,34 @@ while(<>) {
     chomp;
 
     my( $number, $opcode, $arguments, $extra ) = split;
-
-    if( not defined $opcode ) {
-	print "    case $number: fallthrough \n";
-	next;
-    }
+    my $shift_op;
 
     $arguments = '' if not defined $arguments;
     my @arguments = split ',', $arguments;
 
-    print "    case $number:\t\t/* $opcode";
+    if($data_file eq "opcodes_cb.dat") {
+	$shift_op = "0xcb << 8 | $number";
+    } elsif($data_file eq "opcodes_ed.dat") {
+	$shift_op = "0xed << 8 | $number";
+    } elsif($data_file eq "opcodes_ddfd.dat") {
+	$shift_op = "0xdd << 8 | $number";
+    } elsif($data_file eq "opcodes_ddfdcb.dat") {
+	$shift_op = "0xcb << 16 | $number"
+    } else {
+	$shift_op = "$number";
+    }
 
-    print ' ', join ',', @arguments if @arguments;
-    print " $extra" if defined $extra;
+    if( defined $opcode ) {
+	print "/* $opcode";
+	print ' ', join ',', @arguments if @arguments;
+	print " $extra" if defined $extra;
+	print " */\n";
+    } else {
+	push(@fallthrough, $shift_op);
+	next;
+    }
 
-    print " */\n";
+    print "opcodesMap[$shift_op] = func (z80 *Z80, tempaddr uint16) {\n";
 
     # Handle the undocumented rotate-shift-or-bit and store-in-register
     # opcodes specially
@@ -1208,7 +1277,7 @@ while(<>) {
       z80.$lcregister = z80.memory.readByte(tempaddr) $operator $hexmask
       z80.memory.contendReadNoMreq(tempaddr, 1 )
       z80.memory.writeByte(tempaddr, z80.$lcregister)
-      break
+	}
 CODE
 	} else {
 
@@ -1217,7 +1286,7 @@ CODE
       z80.memory.contendReadNoMreq( tempaddr, 1 )
       z80.$lcopcode(&z80.$lcregister)
       z80.memory.writeByte(tempaddr, z80.$lcregister)
-      break
+    }
 CODE
 	}
 	next;
@@ -1231,24 +1300,33 @@ CODE
 	}
     }
 
-    print "      break\n";
+print "}\n";
+
+if(scalar(@fallthrough) > 0) {
+    print "// Fallthrough cases\n";
+    foreach (@fallthrough) {
+	print "opcodesMap[$_] = opcodesMap[$shift_op]\n";
+}
+    @fallthrough = ();
 }
 
-if( $data_file eq 'opcodes_ddfd.dat' ) {
-
-    print << "CODE";
-    default:		/* Instruction did not involve H or L, so backtrack
-			   one instruction and parse again */
-      z80.pc--
-      z80.r--
-      opcode = opcode2;
-
-      goto EndOpcode
-CODE
-
-} elsif( $data_file eq 'opcodes_ed.dat' ) {
-    print << "NOPD";
-    default:		/* All other opcodes are NOPD */
-      break;
-NOPD
 }
+
+# if( $data_file eq 'opcodes_ddfd.dat' ) {
+
+#     print << "CODE";
+#     default:		/* Instruction did not involve H or L, so backtrack
+# 			   one instruction and parse again */
+#       z80.pc--
+#       z80.r--
+#       opcode = opcode2;
+
+#       goto EndOpcode
+# CODE
+
+# } elsif( $data_file eq 'opcodes_ed.dat' ) {
+#     print << "NOPD";
+# //    default:		/* All other opcodes are NOPD */
+# //      break;
+# NOPD
+# }

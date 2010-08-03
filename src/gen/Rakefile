@@ -23,41 +23,39 @@
 require 'rake/clean'
 require 'erb'
 
-CLOBBER << 'z80.go' << 'z80_base_cb_ddfd_ed.go.erb'
+CLOBBER.concat(['z80.go', 'opcodes.go'])
 
-file "z80_base.go.erb" => ["opcodes_base.dat", "z80.pl", "z80.go.erb"] do
-  template = ERB.new(File.read('z80.go.erb'))
-  opcodes = `./z80.pl opcodes_base.dat`
-  puts "Write z80_base.go.erb"
-  File.open("z80_base.go.erb", 'w') { |f| f << template.result(binding) } 
-end
+file "opcodes.go" => ["z80.pl", "opcodes.go.erb"] do
+  template = ERB.new(File.read('opcodes.go.erb'))
 
-file "z80_base_cb_ddfd_ed.go.erb" => ["opcodes_cb.dat", "opcodes_ddfd.dat", "opcodes_ed.dat", "z80_base.go.erb"] do
-  template = ERB.new(File.read('z80_base.go.erb'))
+  opcodes_base = `./z80.pl opcodes_base.dat`
   opcodes_cb = `./z80.pl opcodes_cb.dat`
-  opcodes_ddfdcb = `./z80.pl opcodes_ddfdcb.dat`
-  opcodes_ddfd = `./z80.pl opcodes_ddfd.dat`
   opcodes_ed = `./z80.pl opcodes_ed.dat`
-  puts "Write z80_base_cb_ddfd_ed.go.erb"
-  File.open("z80_base_cb_ddfd_ed.go.erb", 'w') { |f| f << template.result(binding) } 
+  opcodes_dd = opcodes_fd = `./z80.pl opcodes_ddfd.dat`
+  opcodes_ddfdcb = `./z80.pl opcodes_ddfdcb.dat`
+
+  puts "Write opcodes.go"
+  File.open("opcodes.go", 'w') { |f| f << template.result(binding) }
+  `gofmt -w opcodes.go`
 end
 
-file "z80.go" => ["opcodes_cb.dat", "opcodes_ddfdcb.dat", "opcodes_ddfd.dat", "opcodes_ed.dat", "z80_base_cb_ddfd_ed.go.erb"] do
-  template = ERB.new(File.read("z80_base_cb_ddfd_ed.go.erb"))
-  opcodes_ddfdcb = `./z80.pl opcodes_ddfdcb.dat`
+file "z80.go" => ["z80.go.erb"] do
+  template = ERB.new(File.read('z80.go.erb'))
   puts "Write z80.go"
   File.open("z80.go", 'w') { |f| f << template.result(binding) } 
-end
-
-task :format => "z80.go" do
   `gofmt -w z80.go`
 end
 
-task :copy_z80 => :format do
+# task :format => "z80.go" do
+#   `gofmt -w z80.go`
+# end
+
+task :copy_all => ['z80.go', 'opcodes.go'] do
   cp "z80.go", "../spectrum/"
+  cp "opcodes.go", "../spectrum/"
   Dir.chdir("../spectrum") do
     sh "make && gotest"
   end
 end
 
-task :default => :format
+task :default => ['z80.go', 'opcodes.go']

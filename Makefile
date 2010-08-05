@@ -24,4 +24,4 @@ _obj/spectrum.a: src/spectrum/port.go
 _obj/spectrum.a: src/spectrum/sdldisplay.go
 _obj/spectrum.a: src/spectrum/spectrum.go
 _obj/spectrum.a: src/spectrum/z80.go
-
+_obj/spectrum.a: src/spectrum/opcodes.go

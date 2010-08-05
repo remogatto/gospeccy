@@ -27,8 +27,6 @@ package spectrum
 
 func (z80 *Z80) initOpcodes() {
 
-opcodesMap = make(map [int] func(z80 *Z80, tempaddr uint16))
-
 // BEGIN of non shifted opcodes
 
 <%= opcodes_base.gsub("setSPHSPL", "setSP") %>
@@ -77,7 +75,7 @@ opcodesMap = make(map [int] func(z80 *Z80, tempaddr uint16))
     gsub("z80.iy()", "z80.IY()").\
     gsub("iyH", "z80.IYH()").\
     gsub("iyL", "z80.IYL()").\
-    gsub("0xdd << 8 |", "0xfd << 8 |")
+    gsub("shift0xdd", "shift0xfd")
 %>
 
 // END of 0xfd shifted opcodes

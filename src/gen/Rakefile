@@ -46,10 +46,6 @@ file "z80.go" => ["z80.go.erb"] do
   `gofmt -w z80.go`
 end
 
-# task :format => "z80.go" do
-#   `gofmt -w z80.go`
-# end
-
 task :copy_all => ['z80.go', 'opcodes.go'] do
   cp "z80.go", "../spectrum/"
   cp "opcodes.go", "../spectrum/"

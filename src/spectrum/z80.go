@@ -61,7 +61,31 @@ var overflowSubTable = []byte{0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0}
 
 var rzxInstructionsOffset int
 
-var opcodesMap map[int]func(z80 *Z80, tempaddr uint16)
+var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
+
+func shift0xcb(opcode byte) int {
+	return 256 + int(opcode)
+}
+
+func shift0xed(opcode byte) int {
+	return 512 + int(opcode)
+}
+
+func shift0xdd(opcode byte) int {
+	return 768 + int(opcode)
+}
+
+func shift0xddcb(opcode byte) int {
+	return 1024 + int(opcode)
+}
+
+func shift0xfdcb(opcode byte) int {
+	return 1024 + int(opcode)
+}
+
+func shift0xfd(opcode byte) int {
+	return 1280 + int(opcode)
+}
 
 type register16 struct {
 	high, low *byte
@@ -948,18 +972,15 @@ func (z80 *Z80) doOpcodes() {
 			opcode2 = z80.memory.readByteInternal(z80.pc)
 			z80.pc++
 			z80.r++
-
-			opcodeKey := 0xcb<<8 | int(opcode2)
-			opcodesMap[opcodeKey](z80, 0)
+			opcodesMap[shift0xcb(opcode2)](z80, 0)
 		case 0xed:
 			var opcode2 byte
 			z80.memory.contendRead(z80.pc, 4)
 			opcode2 = z80.memory.readByteInternal(z80.pc)
 			z80.pc++
 			z80.r++
-			opcodeKey := 0xed<<8 | int(opcode2)
 
-			if f, ok := opcodesMap[opcodeKey]; ok {
+			if f := opcodesMap[shift0xed(opcode2)]; f != nil {
 				f(z80, 0)
 			} else {
 				break
@@ -983,12 +1004,9 @@ func (z80 *Z80) doOpcodes() {
 				z80.memory.contendReadNoMreq(z80.pc, 1)
 				z80.memory.contendReadNoMreq(z80.pc, 1)
 				z80.pc++
-				opcodeKey := 0xcb<<16 | int(opcode3)
-				opcodesMap[opcodeKey](z80, tempaddr)
+				opcodesMap[shift0xddcb(opcode3)](z80, tempaddr)
 			default:
-				opcodeKey := 0xdd<<8 | int(opcode2)
-
-				if f, ok := opcodesMap[opcodeKey]; ok {
+				if f := opcodesMap[shift0xdd(opcode2)]; f != nil {
 					f(z80, 0)
 				} else {
 					/* Instruction did not involve H or L, so backtrack
@@ -1022,12 +1040,10 @@ func (z80 *Z80) doOpcodes() {
 				z80.memory.contendReadNoMreq(z80.pc, 1)
 				z80.pc++
 
-				opcodeKey := 0xcb<<16 | int(opcode3)
-				opcodesMap[opcodeKey](z80, tempaddr)
+				opcodesMap[shift0xfdcb(opcode3)](z80, tempaddr)
 
 			default:
-				opcodeKey := 0xfd<<8 | int(opcode2)
-				if f, ok := opcodesMap[opcodeKey]; ok {
+				if f := opcodesMap[shift0xfd(opcode2)]; f != nil {
 					f(z80, 0)
 				} else {
 					/* Instruction did not involve H or L, so backtrack

@@ -1234,13 +1234,13 @@ while(<>) {
     my @arguments = split ',', $arguments;
 
     if($data_file eq "opcodes_cb.dat") {
-	$shift_op = "0xcb << 8 | $number";
+	$shift_op = "shift0xcb($number)";
     } elsif($data_file eq "opcodes_ed.dat") {
-	$shift_op = "0xed << 8 | $number";
+	$shift_op = "shift0xed($number)";
     } elsif($data_file eq "opcodes_ddfd.dat") {
-	$shift_op = "0xdd << 8 | $number";
+	$shift_op = "shift0xdd($number)";
     } elsif($data_file eq "opcodes_ddfdcb.dat") {
-	$shift_op = "0xcb << 16 | $number"
+	$shift_op = "shift0xddcb($number)"
     } else {
 	$shift_op = "$number";
     }

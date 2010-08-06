@@ -102,6 +102,7 @@ var palette [16]uint32 = [16]uint32{
 
 type DisplayChannel interface {
 	getScreenChannel() chan *Screen
+	close()
 }
 
 func screenAddr_to_xy(screenAddr uint16) (x, y uint8) {

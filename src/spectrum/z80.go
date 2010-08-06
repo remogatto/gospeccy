@@ -110,7 +110,7 @@ type Z80 struct {
 
 	memory MemoryAccessor
 
-	PortAccessor
+	ports PortAccessor
 
 	LogEvents bool
 
@@ -124,7 +124,7 @@ var initialMemory [0x10000]byte
 var eventNextEvent uint
 
 func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
-	z80 := &Z80{memory: memory, PortAccessor: port}
+	z80 := &Z80{memory: memory, ports: port}
 
 	z80.bc = register16{&z80.b, &z80.c}
 	z80.bc_ = register16{&z80.b_, &z80.c_}
@@ -189,7 +189,7 @@ func (z80 *Z80) DumpMemory(out *vector.StringVector) {
 	}
 }
 
-func (z80 *Z80) Reset() {
+func (z80 *Z80) reset() {
 	z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l = 0, 0, 0, 0, 0, 0, 0, 0
 	z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_ = 0, 0, 0, 0, 0, 0, 0, 0
 	z80.ixh, z80.ixl, z80.iyh, z80.iyl = 0, 0, 0, 0
@@ -199,10 +199,7 @@ func (z80 *Z80) Reset() {
 	z80.tstates = 0
 
 	z80.halted = false
-
-	for i := 0; i < 0x10000; i++ {
-		z80.memory.set(uint16(i), 0)
-	}
+	z80.interruptsEnabledAt = 0
 }
 
 // Initialize state from the snapshot defined by the specified filename.
@@ -212,65 +209,58 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 
 	if err != nil {
 		return err
-	} else {
-		if len(bytes) != 49179 {
-			return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
-		}
-
-		// Populate registers
-		z80.i = bytes[0]
-		z80.l_ = bytes[1]
-		z80.h_ = bytes[2]
-		z80.e_ = bytes[3]
-		z80.d_ = bytes[4]
-		z80.c_ = bytes[5]
-		z80.b_ = bytes[6]
-		z80.f_ = bytes[7]
-		z80.a_ = bytes[8]
-		z80.l = bytes[9]
-		z80.h = bytes[10]
-		z80.e = bytes[11]
-		z80.d = bytes[12]
-		z80.c = bytes[13]
-		z80.b = bytes[14]
-		z80.iyl = bytes[15]
-		z80.iyh = bytes[16]
-		z80.ixl = bytes[17]
-		z80.ixh = bytes[18]
-
-		z80.iff1 = uint16(ternOpB((bytes[19]&0x04) != 0, 1, 0))
-		z80.iff2 = z80.iff1
-
-		var r = uint16(bytes[20])
-
-		z80.r = r & 0x7f
-		z80.r7 = r & 0x80
-
-		z80.f = bytes[21]
-		z80.a = bytes[22]
-		z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
-		z80.im = uint16(bytes[25])
-
-		// Border color
-		z80.writePort(0xfe, bytes[26]&0x07)
-
-		// Populate memory
-		var i uint16
-		for i = 0; i < 0xc000; i++ {
-			z80.memory.set(uint16(i+0x4000), bytes[i+27])
-		}
-
-		// Set attribute bytes to force repaint of whole screen
-		for i = 0x5800; i < 0x5b00; i++ {
-			z80.memory.writeByte(i, z80.memory.At(uint(i)))
-		}
-
-		// Send a RETN
-		z80.iff1 = z80.iff2
-		z80.ret()
-
-		z80.tstates = InterruptLength
 	}
+	if len(bytes) != 49179 {
+		return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
+	}
+
+	// Populate registers
+	z80.i = bytes[0]
+	z80.l_ = bytes[1]
+	z80.h_ = bytes[2]
+	z80.e_ = bytes[3]
+	z80.d_ = bytes[4]
+	z80.c_ = bytes[5]
+	z80.b_ = bytes[6]
+	z80.f_ = bytes[7]
+	z80.a_ = bytes[8]
+	z80.l = bytes[9]
+	z80.h = bytes[10]
+	z80.e = bytes[11]
+	z80.d = bytes[12]
+	z80.c = bytes[13]
+	z80.b = bytes[14]
+	z80.iyl = bytes[15]
+	z80.iyh = bytes[16]
+	z80.ixl = bytes[17]
+	z80.ixh = bytes[18]
+
+	z80.iff1 = uint16(ternOpB((bytes[19]&0x04) != 0, 1, 0))
+	z80.iff2 = z80.iff1
+
+	var r = uint16(bytes[20])
+
+	z80.r = r & 0x7f
+	z80.r7 = r & 0x80
+
+	z80.f = bytes[21]
+	z80.a = bytes[22]
+	z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
+	z80.im = uint16(bytes[25])
+
+	// Border color
+	z80.writePort(0xfe, bytes[26]&0x07)
+
+	// Populate memory
+	for i := uint16(0); i < 0xc000; i++ {
+		z80.memory.set(uint16(i+0x4000), bytes[i+27])
+	}
+
+	// Send a RETN
+	z80.iff1 = z80.iff2
+	z80.ret()
+
+	z80.tstates = InterruptLength
 
 	return nil
 }
@@ -614,6 +604,14 @@ func (z80 *Z80) cp(value byte) {
 func (z80 *Z80) in(reg *byte, port uint16) {
 	*reg = z80.readPort(port)
 	z80.f = (z80.f & FLAG_C) | z80.sz53pTable[*reg]
+}
+
+func (z80 *Z80) readPort(address uint16) byte {
+	return z80.ports.readPort(address)
+}
+
+func (z80 *Z80) writePort(address uint16, b byte) {
+	z80.ports.writePort(address, b)
 }
 
 // Generated getters and INC/DEC functions for 8bit registers

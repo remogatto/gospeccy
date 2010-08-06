@@ -35,14 +35,15 @@ type Keyboard struct {
 
 func NewKeyboard() *Keyboard {
 	k := &Keyboard{}
+	k.reset()
+	return k
+}
 
-	// Initialize keyStates
-	var row uint
-	for row = 0; row < 8; row++ {
+func (k *Keyboard) reset() {
+	// Initialize 'k.keyStates'
+	for row := uint(0); row < 8; row++ {
 		k.SetKeyState(row, 0xff)
 	}
-
-	return k
 }
 
 func (keyboard *Keyboard) GetKeyState(row uint) byte {

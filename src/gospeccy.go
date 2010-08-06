@@ -38,7 +38,7 @@ import (
 //
 // Note: The first letter is uppercase, so this function is public, but it should not be.
 //       The Go language fails here.
-func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
+func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
 	ticker := time.NewTicker( /*10ms*/ 10 * 1e6)
 
 	// Better create the event-object here once, rather than multiple times within the loop
@@ -53,10 +53,9 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
-			if evtLoop.App.Verbose {
+			if evtLoop.App().Verbose {
 				println("SDL event loop: exit")
 			}
-			ticker.Stop()
 			evtLoop.Terminate <- 0
 			return
 
@@ -64,10 +63,10 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 			if event.Poll() {
 				switch event.Type {
 				case sdl.QUIT:
-					if evtLoop.App.Verbose {
+					if evtLoop.App().Verbose {
 						println("SDL quit -> request[exit the application]")
 					}
-					evtLoop.App.RequestExit()
+					evtLoop.App().RequestExit()
 
 				case sdl.KEYDOWN, sdl.KEYUP:
 					k := event.Keyboard()
@@ -90,10 +89,10 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 					}
 
 					if keyName == "escape" {
-						if evtLoop.App.Verbose {
+						if evtLoop.App().Verbose {
 							println("escape key -> request[exit the application]")
 						}
-						evtLoop.App.RequestExit()
+						evtLoop.App().RequestExit()
 					} else {
 						sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
 
@@ -118,20 +117,20 @@ func SDL_eventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ve
 	}
 }
 
-func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, displayRefreshFrequency float) {
-	ticker := time.NewTicker(int64(1e9 / displayRefreshFrequency))
+func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
+	fps := <-speccy.FPS
+	ticker := time.NewTicker(int64(1e9 / fps))
 
 	for {
 		select {
 		case <-evtLoop.Pause:
 			ticker.Stop()
-			speccy.Close()
 			spectrum.Drain(ticker)
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
-			if evtLoop.App.Verbose {
+			if evtLoop.App().Verbose {
 				println("emulator loop: exit")
 			}
 			evtLoop.Terminate <- 0
@@ -139,7 +138,18 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, dis
 
 		case <-ticker.C:
 			// if evtLoop.App.Verbose { fmt.Printf("%d ms\n", time.Nanoseconds()/1e6) }
-			speccy.RenderFrame()
+			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
+
+		case FPS_new := <-speccy.FPS:
+			if (FPS_new != fps) && (FPS_new > 0) {
+				if evtLoop.App().Verbose {
+					fmt.Printf("setting FPS to %f\n", FPS_new)
+				}
+				ticker.Stop()
+				spectrum.Drain(ticker)
+				ticker = time.NewTicker(int64(1e9 / FPS_new))
+				fps = FPS_new
+			}
 		}
 	}
 }
@@ -148,7 +158,7 @@ func main() {
 	help := flag.Bool("help", false, "Show usage")
 	scale2x := flag.Bool("2x", false, "2x display scaler")
 	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
-	fps := flag.Float("fps", 50.08, "Frames per second")
+	fps := flag.Float("fps", spectrum.DefaultFPS, "Frames per second")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseKeyboard := flag.Bool("verbose-keyboard", false, "Enable debugging messages (keyboard events)")
 
@@ -182,7 +192,9 @@ func main() {
 
 	// Load snapshot (if any)
 	if flag.Arg(0) != "" {
-		err := speccy.LoadSna(flag.Arg(0))
+		errChan := make(chan os.Error)
+		speccy.CommandChannel <- spectrum.Cmd_LoadSna{flag.Arg(0), errChan}
+		err := <-errChan
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			app.RequestExit()
@@ -201,17 +213,20 @@ func main() {
 		}
 
 		if *scale2x {
-			speccy.AddDisplay(spectrum.NewSDLScreen2x(app, *fullscreen))
+			speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen2x(app, *fullscreen)}
 		} else {
-			speccy.AddDisplay(spectrum.NewSDLScreen(app))
+			speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
 		}
 
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 	}
 
 	// Begin speccy emulation
-	go SDL_eventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
-	go emulatorLoop(app.NewEventLoop(), speccy, *fps)
+	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
+	go emulatorLoop(app.NewEventLoop(), speccy)
+	speccy.FPS <- *fps
+
+	go spectrum.RunConsole(app, speccy, true)
 
 quit:
 	<-app.HasTerminated

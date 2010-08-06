@@ -10,14 +10,30 @@ import (
 const Spectrum48k_ROM_filepath = "roms/48.rom"
 const TStatesPerFrame = 69888 // Number of T-states per frame
 const InterruptLength = 32    // How long does an interrupt last in T-states
+const DefaultFPS = 50.08
+
+type DisplayInfo struct {
+	displayChannel DisplayChannel
+
+	// The index of the last frame sent to the 'displayChannel', initially nil.
+	lastFrame *uint
+}
 
 type Spectrum48k struct {
-	app      *Application
-	Cpu      *Z80
-	Memory   MemoryAccessor
-	Displays vector.Vector // A vector of DisplayChannel, initially empty
+	app    *Application
+	Cpu    *Z80
+	Memory MemoryAccessor
+
+	displays vector.Vector // A vector of '*DisplayInfo', initially empty
+
 	Keyboard *Keyboard
 	Ports    *Ports
+
+	// Send a single value to this channel in order to change the display refresh frequency.
+	// By default, this channel initially receives the value 'DefaultFPS'.
+	FPS chan float
+
+	CommandChannel chan interface{}
 }
 
 // Create a new speccy object.
@@ -30,24 +46,95 @@ func NewSpectrum48k(app *Application) (*Spectrum48k, os.Error) {
 	ports.z80 = z80
 	memory.z80 = z80
 
+	speccy := &Spectrum48k{app: app, Cpu: z80, Memory: memory, Keyboard: keyboard, displays: vector.Vector{}, Ports: ports}
+
+	err := speccy.reset()
+	if err != nil {
+		return nil, err
+	}
+
+	speccy.FPS = make(chan float, 1)
+	speccy.FPS <- DefaultFPS
+
+	speccy.CommandChannel = make(chan interface{})
+	go commandLoop(speccy)
+
+	return speccy, nil
+}
+
+type Cmd_Reset struct{}
+type Cmd_LoadSna struct {
+	Filename string
+	ErrChan  chan os.Error
+}
+type Cmd_RenderFrame struct{}
+type Cmd_AddDisplay struct {
+	Display DisplayChannel
+}
+type Cmd_CloseAllDisplays struct{}
+
+func commandLoop(speccy *Spectrum48k) {
+	evtLoop := speccy.app.NewEventLoop()
+	for {
+		select {
+		case <-evtLoop.Pause:
+			speccy.Close()
+			evtLoop.Pause <- 0
+
+		case <-evtLoop.Terminate:
+			// Terminate this Go routine
+			if evtLoop.App().Verbose {
+				println("command loop: exit")
+			}
+			evtLoop.Terminate <- 0
+			return
+
+		case untyped_cmd := <-speccy.CommandChannel:
+			switch cmd := untyped_cmd.(type) {
+			case Cmd_Reset:
+				speccy.reset()
+
+			case Cmd_LoadSna:
+				err := speccy.loadSna(cmd.Filename)
+				if cmd.ErrChan != nil {
+					cmd.ErrChan <- err
+				}
+
+			case Cmd_RenderFrame:
+				speccy.renderFrame()
+
+			case Cmd_AddDisplay:
+				speccy.addDisplay(cmd.Display)
+
+			case Cmd_CloseAllDisplays:
+				speccy.closeAllDisplays()
+			}
+		}
+	}
+}
+
+func (speccy *Spectrum48k) reset() os.Error {
+	speccy.Cpu.reset()
+	speccy.Memory.reset()
+	speccy.Keyboard.reset()
+	speccy.Ports.reset()
+
 	// Load the first 16k of memory with the ROM image
 	{
 		rom48k, err := ioutil.ReadFile(Spectrum48k_ROM_filepath)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if len(rom48k) != 0x4000 {
-			return nil, os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", Spectrum48k_ROM_filepath))
+			return os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", Spectrum48k_ROM_filepath))
 		}
 
 		for address, b := range rom48k {
-			memory.set(uint16(address), b)
+			speccy.Memory.set(uint16(address), b)
 		}
 	}
 
-	speccy := &Spectrum48k{app: app, Cpu: z80, Memory: memory, Keyboard: keyboard, Displays: vector.Vector{}, Ports: ports}
-
-	return speccy, nil
+	return nil
 }
 
 func (speccy *Spectrum48k) Close() {
@@ -63,8 +150,20 @@ func (speccy *Spectrum48k) Close() {
 	}
 }
 
-func (speccy *Spectrum48k) AddDisplay(display DisplayChannel) {
-	speccy.Displays.Push(display)
+func (speccy *Spectrum48k) addDisplay(display DisplayChannel) {
+	speccy.displays.Push(&DisplayInfo{display, nil})
+}
+
+func (speccy *Spectrum48k) closeAllDisplays() {
+	var displays vector.Vector
+	{
+		displays = speccy.displays
+		speccy.displays = vector.Vector{}
+	}
+
+	for _, display := range displays {
+		display.(*DisplayInfo).displayChannel.close()
+	}
 }
 
 // Execute the number of T-states corresponding to one screen frame
@@ -74,40 +173,35 @@ func (speccy *Spectrum48k) doOpcodes() {
 	speccy.Cpu.doOpcodes()
 }
 
-func (speccy *Spectrum48k) interrupt() {
-	speccy.Cpu.interrupt()
-}
-
-func (speccy *Spectrum48k) RenderFrame() {
+func (speccy *Spectrum48k) renderFrame() {
 	speccy.Ports.frame_begin(speccy.Memory.getBorder())
 	speccy.Memory.frame_begin()
-	speccy.interrupt()
+	speccy.Cpu.interrupt()
 	speccy.doOpcodes()
-	for _, display := range speccy.Displays {
-		speccy.Memory.sendScreenToDisplay(display.(DisplayChannel), speccy.Ports.borderEvents)
+
+	for _, display := range speccy.displays {
+		speccy.Memory.sendScreenToDisplay(display.(*DisplayInfo), speccy.Ports.borderEvents)
 	}
+
 	speccy.Ports.frame_releaseMemory()
 }
 
 // Initialize state from the snapshot defined by the specified filename.
 // Returns nil on success.
-func (speccy *Spectrum48k) LoadSna(filename string) os.Error {
+func (speccy *Spectrum48k) loadSna(filename string) os.Error {
 	if speccy.app.Verbose {
 		fmt.Printf("loading snapshot \"%s\"\n", filename)
 	}
 
-	return speccy.Cpu.LoadSna(filename)
+	err := speccy.reset()
+	if err != nil {
+		return err
+	}
+
+	err = speccy.Cpu.LoadSna(filename)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
-
-// func dumpRegisters() {
-// 	fmt.Printf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
-// 		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc)
-// 	fmt.Printf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|(z80.r&0x7f),
-// 		z80.iff1, z80.iff2, z80.im, z80.halted, tstates)
-// }
-
-// func dumpMemory() {
-// 	for i, val := range memory {
-// 		fmt.Printf("%d %d\n", i, val)
-// 	}
-// }

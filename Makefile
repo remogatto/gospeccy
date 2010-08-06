@@ -2,6 +2,7 @@ include $(GOROOT)/src/Make.$(GOARCH)
 
 SPECTRUM_FILES=\
 	src/spectrum/application.go\
+	src/spectrum/console.go\
 	src/spectrum/display.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
@@ -18,6 +19,7 @@ PERF_FILES=\
 GOFMT_FILES=\
 	src/gospeccy.go\
 	src/spectrum/application.go\
+	src/spectrum/console.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
 	src/spectrum/port.go\
@@ -38,7 +40,6 @@ clean:
 gofmt:
 	gofmt -w -l $(GOFMT_FILES)
 
-.PHONY:
 _obj:
 	mkdir _obj
 

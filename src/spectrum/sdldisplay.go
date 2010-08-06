@@ -82,16 +82,20 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *Screen, renderer s
 
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
-			if evtLoop.App.Verbose {
+			if evtLoop.App().Verbose {
 				println("screen render loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
 
 		case screen = <-screenChannel:
-			renderer.render(screen, oldScreen)
-			oldScreen = screen
-			screen = nil
+			if screen != nil {
+				renderer.render(screen, oldScreen)
+				oldScreen = screen
+				screen = nil
+			} else {
+				evtLoop.Delete()
+			}
 		}
 	}
 }
@@ -127,6 +131,9 @@ func NewSDLScreen(app *Application) *SDLScreen {
 // Implement DisplayChannel
 func (display *SDLScreen) getScreenChannel() chan *Screen {
 	return display.screenChannel
+}
+func (display *SDLScreen) close() {
+	display.screenChannel <- nil
 }
 
 // Implement screen_renderer_t
@@ -202,6 +209,9 @@ func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
 // Implement DisplayChannel
 func (display *SDLScreen2x) getScreenChannel() chan *Screen {
 	return display.screenChannel
+}
+func (display *SDLScreen2x) close() {
+	display.screenChannel <- nil
 }
 
 // Implement screen_renderer_t

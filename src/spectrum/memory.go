@@ -18,7 +18,8 @@ type MemoryAccessor interface {
 	setBorder(borderColor byte)
 
 	frame_begin()
-	sendScreenToDisplay(display DisplayChannel, borderEvents *BorderEvent)
+	sendScreenToDisplay(display *DisplayInfo, borderEvents *BorderEvent)
+	reset()
 
 	At(addr uint) byte
 	Data() []byte
@@ -183,18 +184,40 @@ func (memory *Memory) frame_begin() {
 	}
 }
 
-func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *BorderEvent) {
+func (memory *Memory) reset() {
+	for i := 0; i < 0x10000; i++ {
+		memory.set(uint16(i), 0)
+	}
+
+	memory.frame = 0
+}
+
+func (memory *Memory) sendScreenToDisplay(display *DisplayInfo, borderEvents *BorderEvent) {
+	sendDiffOnly := false
+	if (display.lastFrame != nil) && (*display.lastFrame == memory.frame-1) {
+		sendDiffOnly = true
+	}
+
 	var screen Screen
 	{
 		flash := (memory.frame & 0x10) != 0
 		flash_previous := ((memory.frame - 1) & 0x10) != 0
 		flash_diff := (flash != flash_previous)
 
+		// screen.dirty
+		if sendDiffOnly {
+			screen.dirty = memory.dirtyScreen
+		} else {
+			for i := 0; i < ScreenWidth_Attr*ScreenHeight_Attr; i++ {
+				screen.dirty[i] = true
+			}
+		}
+
 		// Fill screen.bitmap & screen.attr, but only the dirty regions.
 		memory_data := &memory.data
 		memory_ulaBitmap := &memory.ula_bitmap
 		memory_ulaAttr := &memory.ula_attr
-		memory_dirtyScreen := &memory.dirtyScreen
+		screen_dirty := &screen.dirty
 		screen_bitmap := &screen.bitmap
 		screen_attr := &screen.attr
 		for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
@@ -216,7 +239,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 						}
 
 						if (attr & 0x80) != 0 {
-							memory_dirtyScreen[attr_ofs] = true
+							screen_dirty[attr_ofs] = true
 							break
 						}
 
@@ -224,7 +247,7 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 					}
 				}
 
-				if !memory_dirtyScreen[attr_ofs] {
+				if !screen_dirty[attr_ofs] {
 					continue
 				}
 
@@ -273,9 +296,6 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 			}
 		}
 
-		// screen.dirty
-		screen.dirty = memory.dirtyScreen
-
 		// screen.border
 		screen.border = memory.borderColor
 
@@ -288,7 +308,12 @@ func (memory *Memory) sendScreenToDisplay(display DisplayChannel, borderEvents *
 		}
 	}
 
-	display.getScreenChannel() <- &screen
+	if display.lastFrame == nil {
+		display.lastFrame = new(uint)
+	}
+	*display.lastFrame = memory.frame
+
+	display.displayChannel.getScreenChannel() <- &screen
 }
 
 func (memory *Memory) contend(address uint16, time uint) {

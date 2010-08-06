@@ -25,7 +25,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
-func init() {
+func initOpcodes() {
 
 	// BEGIN of non shifted opcodes
 

@@ -64,31 +64,40 @@ var overflowSubTable = []byte{0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0}
 
 var rzxInstructionsOffset int
 
+
 var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
 
+const SHIFT_0xCB = 256
+const SHIFT_0xED = 512
+const SHIFT_0xDD = 768
+const SHIFT_0xDDCB = 1024
+const SHIFT_0xFDCB = 1024
+const SHIFT_0xFD = 1280
+
 func shift0xcb(opcode byte) int {
-	return 256 + int(opcode)
+	return SHIFT_0xCB + int(opcode)
 }
 
 func shift0xed(opcode byte) int {
-	return 512 + int(opcode)
+	return SHIFT_0xED + int(opcode)
 }
 
 func shift0xdd(opcode byte) int {
-	return 768 + int(opcode)
+	return SHIFT_0xDD + int(opcode)
 }
 
 func shift0xddcb(opcode byte) int {
-	return 1024 + int(opcode)
+	return SHIFT_0xDDCB + int(opcode)
 }
 
 func shift0xfdcb(opcode byte) int {
-	return 1024 + int(opcode)
+	return SHIFT_0xFDCB + int(opcode)
 }
 
 func shift0xfd(opcode byte) int {
-	return 1280 + int(opcode)
+	return SHIFT_0xFD + int(opcode)
 }
+
 
 type register16 struct {
 	high, low *byte
@@ -1021,115 +1030,17 @@ func (z80 *Z80) doOpcodes() {
 	var z80_localInstructionCounter uint = 0
 
 	for (z80.tstates < eventNextEvent) && !z80.halted {
-
 		z80.memory.contendRead(z80.pc, 4)
-
 		opcode := z80.memory.readByteInternal(z80.pc)
 
-	EndOpcode:
 		z80.r = (z80.r + 1) & 0x7f
 		z80.pc++
 
 		z80_localInstructionCounter++
 
-		switch opcode {
-		case 0xcb:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
-			opcodesMap[shift0xcb(opcode2)](z80, 0)
-		case 0xed:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
-
-			if f := opcodesMap[shift0xed(opcode2)]; f != nil {
-				f(z80, 0)
-			} else {
-				break
-			}
-		case 0xdd:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
-
-			switch opcode2 {
-			case 0xcb:
-				var tempaddr uint16
-				var opcode3 byte
-				z80.memory.contendRead(z80.pc, 3)
-				tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
-				z80.pc++
-				z80.memory.contendRead(z80.pc, 3)
-				opcode3 = z80.memory.readByteInternal(z80.pc)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.pc++
-				opcodesMap[shift0xddcb(opcode3)](z80, tempaddr)
-			default:
-				if f := opcodesMap[shift0xdd(opcode2)]; f != nil {
-					f(z80, 0)
-				} else {
-					/* Instruction did not involve H or L, so backtrack
-					one instruction and parse again */
-					z80.pc--
-					z80.r--
-					opcode = opcode2
-
-					goto EndOpcode
-				}
-
-			}
-
-		case 0xfd:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
-
-			switch opcode2 {
-			case 0xcb:
-				var tempaddr uint16
-				var opcode3 byte
-				z80.memory.contendRead(z80.pc, 3)
-				tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
-				z80.pc++
-				z80.memory.contendRead(z80.pc, 3)
-				opcode3 = z80.memory.readByteInternal(z80.pc)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.pc++
-
-				opcodesMap[shift0xfdcb(opcode3)](z80, tempaddr)
-
-			default:
-				if f := opcodesMap[shift0xfd(opcode2)]; f != nil {
-					f(z80, 0)
-				} else {
-					/* Instruction did not involve H or L, so backtrack
-					one instruction and parse again */
-					z80.pc--
-					z80.r--
-					opcode = opcode2
-
-					goto EndOpcode
-				}
-
-			}
-
-		default:
-			opcodesMap[int(opcode)](z80, 0)
-		}
+		opcodesMap[opcode](z80, 0)
 	}
 
-end:
 	// Update emulation efficiency counters
 	{
 		ttid_end := syscall.Gettid()
@@ -1171,4 +1082,103 @@ end:
 			}
 		}
 	}
+}
+
+
+func invalidOpcode(z80 *Z80, tempaddr uint16) {
+	panic("invalid opcode")
+}
+
+func opcode_cb(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
+	opcodesMap[SHIFT_0xCB+int(opcode2)](z80, 0)
+}
+
+func opcode_ed(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
+
+	if f := opcodesMap[SHIFT_0xED+int(opcode2)]; f != nil {
+		f(z80, 0)
+	} else {
+		invalidOpcode(z80, 0)
+	}
+}
+
+func opcode_dd(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
+
+	switch opcode2 {
+	case 0xcb:
+		var tempaddr uint16
+		var opcode3 byte
+		z80.memory.contendRead(z80.pc, 3)
+		tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.pc++
+		z80.memory.contendRead(z80.pc, 3)
+		opcode3 = z80.memory.readByteInternal(z80.pc)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.pc++
+		opcodesMap[SHIFT_0xDDCB+int(opcode3)](z80, tempaddr)
+	default:
+		if f := opcodesMap[SHIFT_0xDD+int(opcode2)]; f != nil {
+			f(z80, 0)
+		} else {
+			/* Instruction did not involve H or L */
+			opcodesMap[opcode2](z80, 0)
+		}
+	}
+}
+
+func opcode_fd(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
+
+	switch opcode2 {
+	case 0xcb:
+		var tempaddr uint16
+		var opcode3 byte
+		z80.memory.contendRead(z80.pc, 3)
+		tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.pc++
+		z80.memory.contendRead(z80.pc, 3)
+		opcode3 = z80.memory.readByteInternal(z80.pc)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.pc++
+
+		opcodesMap[SHIFT_0xFDCB+int(opcode3)](z80, tempaddr)
+
+	default:
+		if f := opcodesMap[SHIFT_0xFD+int(opcode2)]; f != nil {
+			f(z80, 0)
+		} else {
+			/* Instruction did not involve H or L */
+			opcodesMap[opcode2](z80, 0)
+		}
+	}
+}
+
+
+func init() {
+	initOpcodes()
+	opcodesMap[0xcb] = opcode_cb
+	opcodesMap[0xdd] = opcode_dd
+	opcodesMap[0xed] = opcode_ed
+	opcodesMap[0xfd] = opcode_fd
 }

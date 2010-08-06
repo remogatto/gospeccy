@@ -1,4 +1,4 @@
-/* 
+/*
 
 Copyright (c) 2010 Andrea Fazzi
 
@@ -27,8 +27,8 @@ package spectrum
 
 import (
 	"io/ioutil"
-	"container/vector"
 	"fmt"
+	"os"
 )
 
 /* The flags */
@@ -51,15 +51,41 @@ var z80interruptEvent int
    result, 1 is the 3rd bit of the 1st argument and 2 is the
    third bit of the 2nd argument; the tables differ for add and subtract
    operations */
-var halfcarryAddTable = []byte{ 0, FLAG_H, FLAG_H, FLAG_H, 0, 0, 0, FLAG_H }
-var halfcarrySubTable = []byte{ 0, 0, FLAG_H, 0, FLAG_H, 0, FLAG_H, FLAG_H }
+var halfcarryAddTable = []byte{0, FLAG_H, FLAG_H, FLAG_H, 0, 0, 0, FLAG_H}
+var halfcarrySubTable = []byte{0, 0, FLAG_H, 0, FLAG_H, 0, FLAG_H, FLAG_H}
 
 /* Similarly, overflow can be determined by looking at the 7th bits; again
    the hash into this table is r12 */
-var overflowAddTable = []byte{ 0, 0, 0, FLAG_V, FLAG_V, 0, 0, 0 }
-var overflowSubTable = []byte{ 0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0 }
+var overflowAddTable = []byte{0, 0, 0, FLAG_V, FLAG_V, 0, 0, 0}
+var overflowSubTable = []byte{0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0}
 
 var rzxInstructionsOffset int
+
+var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
+
+func shift0xcb(opcode byte) int {
+	return 256 + int(opcode)
+}
+
+func shift0xed(opcode byte) int {
+	return 512 + int(opcode)
+}
+
+func shift0xdd(opcode byte) int {
+	return 768 + int(opcode)
+}
+
+func shift0xddcb(opcode byte) int {
+	return 1024 + int(opcode)
+}
+
+func shift0xfdcb(opcode byte) int {
+	return 1024 + int(opcode)
+}
+
+func shift0xfd(opcode byte) int {
+	return 1280 + int(opcode)
+}
 
 type register16 struct {
 	high, low *byte
@@ -86,94 +112,81 @@ func (r *register16) get() uint16 {
 }
 
 type Z80 struct {
-	a, f, b, c, d, e, h, i, l byte
+	a, f, b, c, d, e, h, i, l      byte
 	a_, f_, b_, c_, d_, e_, h_, l_ byte
-	ixh, ixl, iyh, iyl byte
+	ixh, ixl, iyh, iyl             byte
 
 	sp, r, r7, pc, iff1, iff2, im uint16
-	
+
 	bc, bc_, hl, hl_, af, de, de_, ix, iy register16
 
 	sz53Table, sz53pTable, parityTable [0x100]byte
 
-	halted byte
+	// Number of tstates since the beginning of the last frame.
+	// The value of this variable is usually smaller than TStatesPerFrame,
+	// but in same unlikely circumstances it may be >= than that.
+	tstates uint
+
+	halted bool
 
 	interruptsEnabledAt int
 
 	memory MemoryAccessor
-	
+
 	PortAccessor
 
 	LogEvents bool
 }
 
-var initialMemory [0x10000]byte
-var eventNextEvent, tstates uint
+var eventNextEvent uint
 
 func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
-	z80 := &Z80 { memory: memory, PortAccessor: port}
+	z80 := &Z80{memory: memory, PortAccessor: port}
 
-	z80.bc = register16{ &z80.b, &z80.c }
-	z80.bc_ = register16{ &z80.b_, &z80.c_ }
-	z80.hl = register16{ &z80.h, &z80.l }
-	z80.hl_ = register16{ &z80.h_, &z80.l_ }
-	z80.af = register16{ &z80.a, &z80.f }
-	z80.de = register16{ &z80.d, &z80.e }
-	z80.ix = register16{ &z80.ixh, &z80.ixl }
-	z80.iy = register16{ &z80.iyh, &z80.iyl }
-	z80.de_ = register16{ &z80.d_, &z80.e_ }
+	z80.bc = register16{&z80.b, &z80.c}
+	z80.bc_ = register16{&z80.b_, &z80.c_}
+	z80.hl = register16{&z80.h, &z80.l}
+	z80.hl_ = register16{&z80.h_, &z80.l_}
+	z80.af = register16{&z80.a, &z80.f}
+	z80.de = register16{&z80.d, &z80.e}
+	z80.ix = register16{&z80.ixh, &z80.ixl}
+	z80.iy = register16{&z80.iyh, &z80.iyl}
+	z80.de_ = register16{&z80.d_, &z80.e_}
 
+	z80.initOpcodes()
 	z80.initTables()
 	
 	return z80
-}
-
-func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
-	out.Push(fmt.Sprintf( "%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
-		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc ))
-	out.Push(fmt.Sprintf( "%02x %02x %d %d %d %d %d\n", z80.i, ( z80.r7 & 0x80 ) | ( z80.r & 0x7f ),
-		z80.iff1, z80.iff2, z80.im, z80.halted, tstates ))
-}
-
-func (z80 *Z80) DumpMemory(out *vector.StringVector) {
-	var i uint
-	for i = 0; i < 0x10000; i++ {
-		if z80.memory.At(i) == initialMemory[i] { continue }
-
-		line := fmt.Sprintf("%04x ", i)
-
-		for (i < 0x10000) && (z80.memory.At(i) != initialMemory[i]) {
-			line += fmt.Sprintf("%02x ", z80.memory.At(i))
-			i++
-		}
-
-		line += fmt.Sprintf("-1\n")
-
-		out.Push(line)
-	}
 }
 
 func (z80 *Z80) Reset() {
 	z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l = 0, 0, 0, 0, 0, 0, 0, 0
 	z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_ = 0, 0, 0, 0, 0, 0, 0, 0
 	z80.ixh, z80.ixl, z80.iyh, z80.iyl = 0, 0, 0, 0
-	
+
 	z80.sp, z80.i, z80.r, z80.r7, z80.pc, z80.iff1, z80.iff2, z80.im = 0, 0, 0, 0, 0, 0, 0, 0
 
-	z80.halted = 0
+	z80.tstates = 0
 
-	tstates = 0
+	z80.halted = false
 
-	var i uint
-	for i = 0; i < uint(len(z80.memory.Data())); i++ { z80.memory.set(i, 0) }
+	for i := 0; i < 0x10000; i++ {
+		z80.memory.set(uint16(i), 0)
+	}
 }
 
-func (z80 *Z80) LoadSna(filename string) {
+// Initialize state from the snapshot defined by the specified filename.
+// Returns nil on success.
+func (z80 *Z80) LoadSna(filename string) os.Error {
 	bytes, err := ioutil.ReadFile(filename)
 
 	if err != nil {
-		fmt.Println(err)
+		return err
 	} else {
+		if len(bytes) != 49179 {
+			return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
+		}
+
 		// Populate registers
 		z80.i = bytes[0]
 		z80.l_ = bytes[1]
@@ -195,7 +208,7 @@ func (z80 *Z80) LoadSna(filename string) {
 		z80.ixl = bytes[17]
 		z80.ixh = bytes[18]
 
-		z80.iff1 = uint16(ternOpB((bytes[19] & 0x04) != 0, 1, 0))
+		z80.iff1 = uint16(ternOpB((bytes[19]&0x04) != 0, 1, 0))
 		z80.iff2 = z80.iff1
 
 		var r = uint16(bytes[20])
@@ -207,12 +220,14 @@ func (z80 *Z80) LoadSna(filename string) {
 		z80.a = bytes[22]
 		z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
 		z80.im = uint16(bytes[25])
-		z80.writePort(0xfe, bytes[26] & 0x07)
+
+		// Border color
+		z80.writePort(0xfe, bytes[26]&0x07)
 
 		// Populate memory
 		var i uint16
 		for i = 0; i < 0xc000; i++ {
-			z80.memory.set(uint(i + 0x4000), bytes[i + 27])
+			z80.memory.set(uint16(i+0x4000), bytes[i+27])
 		}
 
 		// Set attribute bytes to force repaint of whole screen
@@ -220,13 +235,17 @@ func (z80 *Z80) LoadSna(filename string) {
 			z80.memory.writeByte(i, z80.memory.At(uint(i)))
 		}
 
+		z80.tstates = 0
+
 		// Send a RETN
 		z80.iff1 = z80.iff2
 		z80.ret()
 	}
+
+	return nil
 }
 
-func splitWord(word uint16) (byte , byte) {
+func splitWord(word uint16) (byte, byte) {
 	return byte(word >> 8), byte(word & 0xff)
 }
 func joinBytes(h, l byte) uint16 {
@@ -237,19 +256,20 @@ func joinBytes(h, l byte) uint16 {
 func (z80 *Z80) interrupt() {
 	if z80.iff1 != 0 {
 
-		if z80.halted != 0 {
+		if z80.halted {
+			z80.tstates = 0
 			z80.pc++
-			z80.halted = 0
+			z80.halted = false
 		}
 
 		z80.iff1, z80.iff2 = 0, 0
-		
+
 		pch, pcl := splitWord(z80.pc)
 
 		z80.sp--
 
 		z80.memory.writeByte(z80.sp, pch)
-		
+
 		z80.sp--
 
 		z80.memory.writeByte(z80.sp, pcl)
@@ -633,7 +653,7 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 }
 
 func (z80 *Z80) doOpcodes() {
-	for tstates < eventNextEvent {
+	for z80.tstates < eventNextEvent {
 
 		z80.memory.contendRead(z80.pc, 4)
 
@@ -644,12 +664,102 @@ func (z80 *Z80) doOpcodes() {
 		z80.r = (z80.r + 1) & 0x7f
 		z80.pc++
 
-		switch(opcode) {
+		switch opcode {
+		case 0xcb:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
+			opcodesMap[shift0xcb(opcode2)](z80, 0)
+		case 0xed:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
 
-			<%= opcodes.gsub("setSPHSPL", "setSP") %>
+			if f := opcodesMap[shift0xed(opcode2)]; f != nil {
+				f(z80, 0)
+			} else {
+				break
+			}
+		case 0xdd:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
 
+			switch opcode2 {
+			case 0xcb:
+				var tempaddr uint16
+				var opcode3 byte
+				z80.memory.contendRead(z80.pc, 3)
+				tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+				z80.pc++
+				z80.memory.contendRead(z80.pc, 3)
+				opcode3 = z80.memory.readByteInternal(z80.pc)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.pc++
+				opcodesMap[shift0xddcb(opcode3)](z80, tempaddr)
+			default:
+				if f := opcodesMap[shift0xdd(opcode2)]; f != nil {
+					f(z80, 0)
+				} else {
+					/* Instruction did not involve H or L, so backtrack
+					one instruction and parse again */
+					z80.pc--
+					z80.r--
+					opcode = opcode2
+
+					goto EndOpcode
+				}
+
+			}
+
+		case 0xfd:
+			var opcode2 byte
+			z80.memory.contendRead(z80.pc, 4)
+			opcode2 = z80.memory.readByteInternal(z80.pc)
+			z80.pc++
+			z80.r++
+
+			switch opcode2 {
+			case 0xcb:
+				var tempaddr uint16
+				var opcode3 byte
+				z80.memory.contendRead(z80.pc, 3)
+				tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+				z80.pc++
+				z80.memory.contendRead(z80.pc, 3)
+				opcode3 = z80.memory.readByteInternal(z80.pc)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.memory.contendReadNoMreq(z80.pc, 1)
+				z80.pc++
+
+				opcodesMap[shift0xfdcb(opcode3)](z80, tempaddr)
+
+			default:
+				if f := opcodesMap[shift0xfd(opcode2)]; f != nil {
+					f(z80, 0)
+				} else {
+					/* Instruction did not involve H or L, so backtrack
+					one instruction and parse again */
+					z80.pc--
+					z80.r--
+					opcode = opcode2
+
+					goto EndOpcode
+				}
+
+
+			}
+
+		default:
+			opcodesMap[int(opcode)](z80, 0)
 		}
+
 	}
 }
-
-

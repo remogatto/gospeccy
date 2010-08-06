@@ -6,6 +6,7 @@ SPECTRUM_FILES=\
 	src/spectrum/display.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
+	src/spectrum/opcodes.go\
 	src/spectrum/port.go\
 	src/spectrum/sdldisplay.go\
 	src/spectrum/spectrum.go\

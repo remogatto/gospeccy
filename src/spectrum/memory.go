@@ -25,19 +25,6 @@ type MemoryAccessor interface {
 	Data() []byte
 }
 
-// The lower 4 bits define the paper, the higher 4 bits define the ink.
-// Note that the paper is in the *lower* half.
-// There is no flash bit.
-type attr_4bit byte
-
-type Screen struct {
-	bitmap       [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
-	attr         [BytesPerLine * ScreenHeight]attr_4bit     // Linear y-coordinate
-	dirty        [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
-	border       byte
-	borderEvents *BorderEvent // Might be nil
-}
-
 type ula_byte_t struct {
 	valid bool
 	value uint8
@@ -198,7 +185,7 @@ func (memory *Memory) sendScreenToDisplay(display *DisplayInfo, borderEvents *Bo
 		sendDiffOnly = true
 	}
 
-	var screen Screen
+	var screen DisplayData
 	{
 		flash := (memory.frame & 0x10) != 0
 		flash_previous := ((memory.frame - 1) & 0x10) != 0
@@ -226,7 +213,7 @@ func (memory *Memory) sendScreenToDisplay(display *DisplayInfo, borderEvents *Bo
 			for attr_x := uint(0); attr_x < ScreenWidth_Attr; attr_x++ {
 				attr_ofs := attr_y*ScreenWidth_Attr + attr_x
 
-				// Make sure to send all changed flashing bytes to the DisplayChannel
+				// Make sure to send all changed flashing pixels to the DisplayReceiver
 				if flash_diff {
 					linearY_ofs := (attr_y8 << BytesPerLine_log2) + attr_x
 
@@ -313,7 +300,7 @@ func (memory *Memory) sendScreenToDisplay(display *DisplayInfo, borderEvents *Bo
 	}
 	*display.lastFrame = memory.frame
 
-	display.displayChannel.getScreenChannel() <- &screen
+	display.displayReceiver.getDisplayDataChannel() <- &screen
 }
 
 func (memory *Memory) contend(address uint16, time uint) {

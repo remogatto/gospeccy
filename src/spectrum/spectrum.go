@@ -13,9 +13,9 @@ const InterruptLength = 32    // How long does an interrupt last in T-states
 const DefaultFPS = 50.08
 
 type DisplayInfo struct {
-	displayChannel DisplayChannel
+	displayReceiver DisplayReceiver
 
-	// The index of the last frame sent to the 'displayChannel', initially nil.
+	// The index of the last frame sent to the 'displayReceiver', initially nil.
 	lastFrame *uint
 }
 
@@ -69,7 +69,7 @@ type Cmd_LoadSna struct {
 }
 type Cmd_RenderFrame struct{}
 type Cmd_AddDisplay struct {
-	Display DisplayChannel
+	Display DisplayReceiver
 }
 type Cmd_CloseAllDisplays struct{}
 
@@ -150,7 +150,7 @@ func (speccy *Spectrum48k) Close() {
 	}
 }
 
-func (speccy *Spectrum48k) addDisplay(display DisplayChannel) {
+func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
 	speccy.displays.Push(&DisplayInfo{display, nil})
 }
 
@@ -162,7 +162,7 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 	}
 
 	for _, display := range displays {
-		display.(*DisplayInfo).displayChannel.close()
+		display.(*DisplayInfo).displayReceiver.close()
 	}
 }
 

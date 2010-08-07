@@ -242,7 +242,7 @@ func RunConsole(app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool
 	no_more_code := make(chan byte)
 	go readCode(code_chan, no_more_code)
 
-	fmt.Printf("Input an empty line to see the available commands\n")
+	fmt.Printf("Hint: Input an empty line to see available commands\n")
 
 	// Loop pattern: (read code, run code)+ (terminate app)?
 	evtLoop := app.NewEventLoop()

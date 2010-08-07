@@ -98,12 +98,9 @@ var palette [16]uint32 = [16]uint32{
 	RGBA{0  , 255, 0  , 255}.value32(),
 	RGBA{0  , 255, 255, 255}.value32(),
 	RGBA{255, 255, 0  , 255}.value32(),
-	RGBA{255, 255, 255, 255}.value32()}
-
-type DisplayChannel interface {
-	getScreenChannel() chan *Screen
-	close()
+	RGBA{255, 255, 255, 255}.value32(),
 }
+
 
 func screenAddr_to_xy(screenAddr uint16) (x, y uint8) {
 	x = uint8((screenAddr & 0x001f) << 3)
@@ -115,6 +112,33 @@ func xy_to_screenAddr(x, y uint8) uint16 {
 	yy := uint(y)
 	addr_y := SCREEN_BASE_ADDR | 0x800*(yy>>6) | BytesPerLine*((yy&0x38)>>3) | ((yy & 0x07) << 8)
 	return uint16(addr_y | uint(x>>3))
+}
+
+
+// The lower 4 bits define the paper, the higher 4 bits define the ink.
+// Note that the paper is in the *lower* half.
+// There is no flash bit.
+type attr_4bit byte
+
+// This is the primary structure for sending display changes
+// from the Z80 CPU emulation core to a rendering backend.
+// The data is already preprocessed, to make the rendering-backend's code simpler and faster.
+//
+// The content of 'bitmap' and 'attr' corresponding to non-dirty regions is unspecified.
+type DisplayData struct {
+	bitmap       [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
+	attr         [BytesPerLine * ScreenHeight]attr_4bit     // Linear y-coordinate
+	dirty        [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
+	border       byte
+	borderEvents *BorderEvent // Might be nil
+}
+
+// Interface to a rendering backend waiting to receive display changes.
+type DisplayReceiver interface {
+	getDisplayDataChannel() chan *DisplayData
+
+	// Closes the display associated with this DisplayReceiver
+	close()
 }
 
 

@@ -52,7 +52,7 @@ func NewCounter_CpuCycles(user, kernel bool) *PerfCounter {
 // Returns a new performance counter for counting retired instructions
 //
 // @param user   Specifies whether to count instructions executed in user-space
-// @param kernel Specifies whether to count instructions executed spent in kernel-space
+// @param kernel Specifies whether to count instructions executed in kernel-space
 func NewCounter_Instructions(user, kernel bool) *PerfCounter {
 	counter := newPerfCounter()
 	counter.attr.init_HW(HW_INSTRUCTIONS, !user, !kernel)

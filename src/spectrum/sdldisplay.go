@@ -72,9 +72,9 @@ func (s SDLSurface) setPixel(addr uintptr, color uint32) {
 // Screen render loop (goroutine)
 // ==============================
 
-func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *Screen, renderer screen_renderer_t) {
-	var screen *Screen = nil
-	var oldScreen *Screen = nil
+func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DisplayData, renderer screen_renderer_t) {
+	var screen *DisplayData = nil
+	var oldScreen *DisplayData = nil
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -106,8 +106,8 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *Screen, renderer s
 // =========
 
 type SDLScreen struct {
-	// Channel for receiving screen data
-	screenChannel chan *Screen
+	// Channel for receiving display changes
+	screenChannel chan *DisplayData
 
 	// The whole screen, borders included.
 	// Initially nil.
@@ -117,19 +117,19 @@ type SDLScreen struct {
 }
 
 type screen_renderer_t interface {
-	render(screen, oldScreen_orNil *Screen)
+	render(screen, oldScreen_orNil *DisplayData)
 }
 
 func NewSDLScreen(app *Application) *SDLScreen {
-	SDL_screen := &SDLScreen{make(chan *Screen), SDLSurface{nil}, newUnscaledDisplay()}
+	SDL_screen := &SDLScreen{make(chan *DisplayData), SDLSurface{nil}, newUnscaledDisplay()}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
 	return SDL_screen
 }
 
-// Implement DisplayChannel
-func (display *SDLScreen) getScreenChannel() chan *Screen {
+// Implement DisplayReceiver
+func (display *SDLScreen) getDisplayDataChannel() chan *DisplayData {
 	return display.screenChannel
 }
 func (display *SDLScreen) close() {
@@ -137,7 +137,7 @@ func (display *SDLScreen) close() {
 }
 
 // Implement screen_renderer_t
-func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
+func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen, oldScreen_orNil)
@@ -186,8 +186,8 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *Screen) {
 // ===========
 
 type SDLScreen2x struct {
-	// Channel for receiving screen data
-	screenChannel chan *Screen
+	// Channel for receiving display changes
+	screenChannel chan *DisplayData
 
 	fullscreen bool
 
@@ -199,15 +199,15 @@ type SDLScreen2x struct {
 }
 
 func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
-	SDL_screen := &SDLScreen2x{make(chan *Screen), fullscreen, SDLSurface{nil}, newUnscaledDisplay()}
+	SDL_screen := &SDLScreen2x{make(chan *DisplayData), fullscreen, SDLSurface{nil}, newUnscaledDisplay()}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
 	return SDL_screen
 }
 
-// Implement DisplayChannel
-func (display *SDLScreen2x) getScreenChannel() chan *Screen {
+// Implement DisplayReceiver
+func (display *SDLScreen2x) getDisplayDataChannel() chan *DisplayData {
 	return display.screenChannel
 }
 func (display *SDLScreen2x) close() {
@@ -215,7 +215,7 @@ func (display *SDLScreen2x) close() {
 }
 
 // Implement screen_renderer_t
-func (display *SDLScreen2x) render(screen, oldScreen_orNil *Screen) {
+func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen, oldScreen_orNil)
@@ -389,7 +389,7 @@ func (disp *UnscaledDisplay) releaseMemory() {
 	disp.border_orNil = nil
 }
 
-func (disp *UnscaledDisplay) renderBorder(screen *Screen, oldScreen_orNil *Screen) {
+func (disp *UnscaledDisplay) renderBorder(screen, oldScreen_orNil *DisplayData) {
 	if (oldScreen_orNil == nil) || (screen.border != oldScreen_orNil.border) || (oldScreen_orNil.borderEvents != nil) {
 		var border byte = screen.border
 		disp.border_orNil = &border
@@ -526,7 +526,7 @@ func init() {
 	}
 }
 
-func (disp *UnscaledDisplay) render(screen, oldScreen_orNil *Screen) {
+func (disp *UnscaledDisplay) render(screen, oldScreen_orNil *DisplayData) {
 	const X0 = ScreenBorderX
 	const Y0 = ScreenBorderY
 

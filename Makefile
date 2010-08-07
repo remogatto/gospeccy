@@ -29,6 +29,7 @@ GOFMT_FILES=\
 	src/spectrum/z80_test.go\
 	src/perf/perf.go\
 	src/perf/perf_386.go\
+	src/perf/perf_amd64.go\
 
 
 gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)

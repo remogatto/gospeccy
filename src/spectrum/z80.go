@@ -166,7 +166,6 @@ func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 	z80.iy = register16{&z80.iyh, &z80.iyl}
 	z80.de_ = register16{&z80.d_, &z80.e_}
 
-	z80.initOpcodes()
 	z80.initTables()
 
 	z80.perfCounter_hostCpuInstr = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)

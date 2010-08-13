@@ -126,8 +126,12 @@ func (memory *Memory) screenAttrWrite(address uint16) {
 	memory.dirtyScreen[address-ATTR_BASE_ADDR] = true
 }
 
-func (memory *Memory) getDirtyScreen() []bool {
-	return &memory.dirtyScreen
+func (memory *Memory) getBorder() byte {
+        return memory.borderColor
+}
+
+func (memory *Memory) setBorder(borderColor byte) {
+        memory.borderColor = borderColor
 }
 
 // This function is called at the beginning of each frame

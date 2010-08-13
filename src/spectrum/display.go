@@ -29,6 +29,9 @@ const (
 	ScreenWidth  = 256
 	ScreenHeight = 192
 
+	BytesPerLine      = ScreenWidth / 8 // =32
+	BytesPerLine_log2 = 5               // =log2(BytesPerLine)
+
 	ScreenWidth_Attr  = ScreenWidth / 8  // =32
 	ScreenHeight_Attr = ScreenHeight / 8 // =24
 
@@ -38,14 +41,18 @@ const (
 	// Screen dimensions, including the border
 	TotalScreenWidth  = ScreenWidth + ScreenBorderX*2
 	TotalScreenHeight = ScreenHeight + ScreenBorderY*2
+
+	SCREEN_BASE_ADDR = 0x4000
+	ATTR_BASE_ADDR   = 0x5800
 )
 
 // Spectrum 48k video timings
 const (
-	TSTATES_PER_PIXEL = 2
+	PIXELS_PER_TSTATE      = 2 // The number of screen pixels painted per T-state
+	PIXELS_PER_TSTATE_LOG2 = 1 // = Log2(PIXELS_PER_TSTATE)
 
 	// Horizontal
-	LINE_SCREEN       = ScreenWidth / TSTATES_PER_PIXEL // 128 T states of screen
+	LINE_SCREEN       = ScreenWidth / PIXELS_PER_TSTATE // 128 T states of screen
 	LINE_RIGHT_BORDER = 24                              // 24 T states of right border
 	LINE_RETRACE      = 48                              // 48 T states of horizontal retrace
 	LINE_LEFT_BORDER  = 24                              // 24 T states of left border
@@ -63,7 +70,7 @@ const (
 
 	// The T-state which corresponds to pixel (0,0) on the (SDL) surface.
 	// That pixel belongs to the border.
-	DISPLAY_START = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/TSTATES_PER_PIXEL)
+	DISPLAY_START = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE)
 )
 
 type RGBA struct {
@@ -83,112 +90,67 @@ var palette [16]uint32 = [16]uint32{
 	RGBA{0, 192, 192, 255}.value32(),
 	RGBA{192, 192, 0, 255}.value32(),
 	RGBA{192, 192, 192, 255}.value32(),
-	RGBA{0, 0, 0, 255}.value32(),
-	RGBA{0, 0, 255, 255}.value32(),
-	RGBA{255, 0, 0, 255}.value32(),
-	RGBA{255, 0, 255, 255}.value32(),
-	RGBA{0, 255, 0, 255}.value32(),
-	RGBA{0, 255, 255, 255}.value32(),
-	RGBA{255, 255, 0, 255}.value32(),
+	RGBA{0  , 0  , 0  , 255}.value32(),
+	RGBA{0  , 0  , 255, 255}.value32(),
+	RGBA{255, 0  , 0  , 255}.value32(),
+	RGBA{255, 0  , 255, 255}.value32(),
+	RGBA{0  , 255, 0  , 255}.value32(),
+	RGBA{0  , 255, 255, 255}.value32(),
+	RGBA{255, 255, 0  , 255}.value32(),
 	RGBA{255, 255, 255, 255}.value32(),
 }
 
-type PaperInk [2]byte
 
-func equals(a, b PaperInk) bool {
-	return (a[0] == b[0]) && (a[1] == b[1])
+func screenAddr_to_xy(screenAddr uint16) (x, y uint8) {
+	x = uint8((screenAddr & 0x001f) << 3)
+	y = uint8(((screenAddr & 0x0700) >> 8) | ((screenAddr & 0x00e0) >> 2) | ((screenAddr & 0x1800) >> 5))
+	return
 }
 
-type Display struct {
-	systemMemory MemoryAccessor
-
-	// Portion of system memory used by the display
-	vram []byte
-
-	flashFrame, borderColor byte
+func xy_to_screenAddr(x, y uint8) uint16 {
+	yy := uint(y)
+	addr_y := SCREEN_BASE_ADDR | 0x800*(yy>>6) | BytesPerLine*((yy&0x38)>>3) | ((yy & 0x07) << 8)
+	return uint16(addr_y | uint(x>>3))
 }
 
+
+// The lower 4 bits define the paper, the higher 4 bits define the ink.
+// Note that the paper is in the *lower* half.
+// There is no flash bit.
+type attr_4bit byte
+
+// This is the primary structure for sending display changes
+// from the Z80 CPU emulation core to a rendering backend.
+// The data is already preprocessed, to make the rendering-backend's code simpler and faster.
+//
+// The content of 'bitmap' and 'attr' corresponding to non-dirty regions is unspecified.
 type DisplayData struct {
-	borderColor  byte
+	bitmap       [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
+	attr         [BytesPerLine * ScreenHeight]attr_4bit     // Linear y-coordinate
+	dirty        [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
+	border       byte
 	borderEvents *BorderEvent // Might be nil
-	flash        bool
-
-	bitmap [ScreenWidth / 8 * ScreenHeight]byte
-	attr   [ScreenWidth_Attr * ScreenHeight_Attr]PaperInk
-
-	// The 8x8 rectangular region was modified, either the bitmap
-	// or the attr
-	dirty []bool
 }
 
+// Interface to a rendering backend waiting to receive display changes.
 type DisplayReceiver interface {
-	getDisplayDataCh() chan *DisplayData
+	getDisplayDataChannel() chan *DisplayData
+
+	// Closes the display associated with this DisplayReceiver
+	close()
 }
 
-func NewDisplay(systemMemory MemoryAccessor) *Display {
-	display := &Display{systemMemory: systemMemory}
-	display.vram = systemMemory.Data()[0x4000:0x5b00]
-	return display
-}
 
-func (display *Display) getBorderColor() byte      { return display.borderColor }
-func (display *Display) setBorderColor(color byte) { display.borderColor = color }
+// Let 'addr' be in range 0x4000 ... 0x5800-1.
+// Then 'screenline_start_tstates[(addr-0x4000)/BytesPerLine]' is the T-state when the Spectrum
+// starts painting the screenline containing 'addr'.
+var screenline_start_tstates [ScreenHeight]uint
 
-func (display *Display) prepare() *DisplayData {
-
-	var decodedDisplay DisplayData
-
-	display.flashFrame = (display.flashFrame + 1) & 0x1f
-
-	// screen.bitmap
-	for ofs := 0; ofs < ScreenWidth/8*ScreenHeight; ofs++ {
-		decodedDisplay.bitmap[ofs] = display.vram[ofs]
+func init() {
+	for y := uint8(0); y < ScreenHeight; y++ {
+		addr := xy_to_screenAddr(0, y)
+		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
+		//println(y, ",", (addr-SCREEN_BASE_ADDR)/BytesPerLine, " = ", FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE)
 	}
-
-	// screen.flash
-	flash := (display.flashFrame&0x10 != 0)
-	decodedDisplay.flash = flash
-
-	// screen.attr
-	for attr_ofs := 0; attr_ofs < ScreenWidth_Attr*ScreenHeight_Attr; attr_ofs++ {
-		attr := display.vram[6144+attr_ofs]
-
-		var ink, paper byte
-
-		if flash && ((attr & 0x80) != 0) {
-			/* invert flashing attributes */
-			ink = (attr & 0x78) >> 3
-			paper = ((attr & 0x40) >> 3) | (attr & 0x07)
-		} else {
-			ink = ((attr & 0x40) >> 3) | (attr & 0x07)
-			paper = (attr & 0x78) >> 3
-
-		}
-
-		decodedDisplay.attr[attr_ofs] = PaperInk{paper, ink}
-	}
-
-	// screen.dirty
-	decodedDisplay.dirty = display.systemMemory.getDirtyScreen()
-
-	decodedDisplay.borderColor = display.getBorderColor()
-
-	return &decodedDisplay
-
-}
-
-func (display *Display) send(displayReceiver DisplayReceiver, borderEvents *BorderEvent) {
-
-	displayData := display.prepare()
-
-	// screen.borderEvents
-	if (borderEvents != nil) && (borderEvents.previous_orNil == nil) {
-		// Only the one event which was added there at the start of the frame - ignore it
-		displayData.borderEvents = nil
-	} else {
-		displayData.borderEvents = borderEvents
-	}
-
-	displayReceiver.getDisplayDataCh() <- displayData
 
 }

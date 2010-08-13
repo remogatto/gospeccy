@@ -28,7 +28,9 @@ package spectrum
 import (
 	"io/ioutil"
 	"fmt"
+	"perf"
 	"os"
+	"syscall"
 )
 
 /* The flags */
@@ -60,31 +62,37 @@ var overflowAddTable = []byte{0, 0, 0, FLAG_V, FLAG_V, 0, 0, 0}
 var overflowSubTable = []byte{0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0}
 
 var rzxInstructionsOffset int
-
 var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
 
+const SHIFT_0xCB = 256
+const SHIFT_0xED = 512
+const SHIFT_0xDD = 768
+const SHIFT_0xDDCB = 1024
+const SHIFT_0xFDCB = 1024
+const SHIFT_0xFD = 1280
+
 func shift0xcb(opcode byte) int {
-	return 256 + int(opcode)
+	return SHIFT_0xCB + int(opcode)
 }
 
 func shift0xed(opcode byte) int {
-	return 512 + int(opcode)
+	return SHIFT_0xED + int(opcode)
 }
 
 func shift0xdd(opcode byte) int {
-	return 768 + int(opcode)
+	return SHIFT_0xDD + int(opcode)
 }
 
 func shift0xddcb(opcode byte) int {
-	return 1024 + int(opcode)
+	return SHIFT_0xDDCB + int(opcode)
 }
 
 func shift0xfdcb(opcode byte) int {
-	return 1024 + int(opcode)
+	return SHIFT_0xFDCB + int(opcode)
 }
 
 func shift0xfd(opcode byte) int {
-	return 1280 + int(opcode)
+	return SHIFT_0xFD + int(opcode)
 }
 
 type register16 struct {
@@ -124,7 +132,7 @@ type Z80 struct {
 
 	// Number of tstates since the beginning of the last frame.
 	// The value of this variable is usually smaller than TStatesPerFrame,
-	// but in same unlikely circumstances it may be >= than that.
+	// but in some unlikely circumstances it may be >= than that.
 	tstates uint
 
 	halted bool
@@ -133,15 +141,20 @@ type Z80 struct {
 
 	memory MemoryAccessor
 
-	PortAccessor
+	ports PortAccessor
 
 	LogEvents bool
+
+	z80_instructionCounter     uint64 // Number of Z80 instructions executed
+	z80_instructionsMeasured   uint64 // Number of Z80 instrs that can be related to 'hostCpu_instructionCounter'
+	hostCpu_instructionCounter uint64
+	perfCounter_hostCpuInstr   *perf.PerfCounter // Can be nil (if creating the counter fails)
 }
 
 var eventNextEvent uint
 
 func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
-	z80 := &Z80{memory: memory, PortAccessor: port}
+	z80 := &Z80{memory: memory, ports: port}
 
 	z80.bc = register16{&z80.b, &z80.c}
 	z80.bc_ = register16{&z80.b_, &z80.c_}
@@ -156,10 +169,58 @@ func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 	z80.initOpcodes()
 	z80.initTables()
 
+	z80.perfCounter_hostCpuInstr = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)
+
 	return z80
 }
 
-func (z80 *Z80) Reset() {
+func (z80 *Z80) Close() {
+	if z80.perfCounter_hostCpuInstr != nil {
+		z80.perfCounter_hostCpuInstr.Close()
+		z80.perfCounter_hostCpuInstr = nil
+	}
+}
+
+// Returns the average number of host-CPU instructions required to execute one Z80 instruction.
+// Returns zero if this information is not available.
+func (z80 *Z80) GetEmulationEfficiency() uint {
+	var eff uint
+	if z80.z80_instructionsMeasured > 0 {
+		eff = uint(z80.hostCpu_instructionCounter / z80.z80_instructionsMeasured)
+	} else {
+		eff = 0
+	}
+	return eff
+}
+
+func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
+	out.Push(fmt.Sprintf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
+		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc))
+	out.Push(fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|(z80.r&0x7f),
+		z80.iff1, z80.iff2, z80.im, z80.halted, z80.tstates))
+}
+
+func (z80 *Z80) DumpMemory(out *vector.StringVector) {
+	var i uint
+	for i = 0; i < 0x10000; i++ {
+		if z80.memory.At(i) == initialMemory[i] {
+			continue
+		}
+
+		line := fmt.Sprintf("%04x ", i)
+
+		for (i < 0x10000) && (z80.memory.At(i) != initialMemory[i]) {
+			line += fmt.Sprintf("%02x ", z80.memory.At(i))
+			i++
+		}
+
+		line += fmt.Sprintf("-1\n")
+
+		out.Push(line)
+	}
+}
+
+func (z80 *Z80) reset() {
 	z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l = 0, 0, 0, 0, 0, 0, 0, 0
 	z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_ = 0, 0, 0, 0, 0, 0, 0, 0
 	z80.ixh, z80.ixl, z80.iyh, z80.iyl = 0, 0, 0, 0
@@ -169,10 +230,7 @@ func (z80 *Z80) Reset() {
 	z80.tstates = 0
 
 	z80.halted = false
-
-	for i := 0; i < 0x10000; i++ {
-		z80.memory.set(uint16(i), 0)
-	}
+	z80.interruptsEnabledAt = 0
 }
 
 // Initialize state from the snapshot defined by the specified filename.
@@ -182,65 +240,58 @@ func (z80 *Z80) LoadSna(filename string) os.Error {
 
 	if err != nil {
 		return err
-	} else {
-		if len(bytes) != 49179 {
-			return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
-		}
-
-		// Populate registers
-		z80.i = bytes[0]
-		z80.l_ = bytes[1]
-		z80.h_ = bytes[2]
-		z80.e_ = bytes[3]
-		z80.d_ = bytes[4]
-		z80.c_ = bytes[5]
-		z80.b_ = bytes[6]
-		z80.f_ = bytes[7]
-		z80.a_ = bytes[8]
-		z80.l = bytes[9]
-		z80.h = bytes[10]
-		z80.e = bytes[11]
-		z80.d = bytes[12]
-		z80.c = bytes[13]
-		z80.b = bytes[14]
-		z80.iyl = bytes[15]
-		z80.iyh = bytes[16]
-		z80.ixl = bytes[17]
-		z80.ixh = bytes[18]
-
-		z80.iff1 = uint16(ternOpB((bytes[19]&0x04) != 0, 1, 0))
-		z80.iff2 = z80.iff1
-
-		var r = uint16(bytes[20])
-
-		z80.r = r & 0x7f
-		z80.r7 = r & 0x80
-
-		z80.f = bytes[21]
-		z80.a = bytes[22]
-		z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
-		z80.im = uint16(bytes[25])
-
-		// Border color
-		z80.writePort(0xfe, bytes[26]&0x07)
-
-		// Populate memory
-		var i uint16
-		for i = 0; i < 0xc000; i++ {
-			z80.memory.set(uint16(i+0x4000), bytes[i+27])
-		}
-
-		// Set attribute bytes to force repaint of whole screen
-		for i = 0x5800; i < 0x5b00; i++ {
-			z80.memory.writeByte(i, z80.memory.At(uint(i)))
-		}
-
-		z80.tstates = 0
-
-		// Send a RETN
-		z80.iff1 = z80.iff2
-		z80.ret()
 	}
+	if len(bytes) != 49179 {
+		return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
+	}
+
+	// Populate registers
+	z80.i = bytes[0]
+	z80.l_ = bytes[1]
+	z80.h_ = bytes[2]
+	z80.e_ = bytes[3]
+	z80.d_ = bytes[4]
+	z80.c_ = bytes[5]
+	z80.b_ = bytes[6]
+	z80.f_ = bytes[7]
+	z80.a_ = bytes[8]
+	z80.l = bytes[9]
+	z80.h = bytes[10]
+	z80.e = bytes[11]
+	z80.d = bytes[12]
+	z80.c = bytes[13]
+	z80.b = bytes[14]
+	z80.iyl = bytes[15]
+	z80.iyh = bytes[16]
+	z80.ixl = bytes[17]
+	z80.ixh = bytes[18]
+
+	z80.iff1 = uint16(ternOpB((bytes[19]&0x04) != 0, 1, 0))
+	z80.iff2 = z80.iff1
+
+	var r = uint16(bytes[20])
+
+	z80.r = r & 0x7f
+	z80.r7 = r & 0x80
+
+	z80.f = bytes[21]
+	z80.a = bytes[22]
+	z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
+	z80.im = uint16(bytes[25])
+
+	// Border color
+	z80.writePort(0xfe, bytes[26]&0x07)
+
+	// Populate memory
+	for i := uint16(0); i < 0xc000; i++ {
+		z80.memory.set(uint16(i+0x4000), bytes[i+27])
+	}
+
+	// Send a RETN
+	z80.iff1 = z80.iff2
+	z80.ret()
+
+	z80.tstates = InterruptLength
 
 	return nil
 }
@@ -257,7 +308,6 @@ func (z80 *Z80) interrupt() {
 	if z80.iff1 != 0 {
 
 		if z80.halted {
-			z80.tstates = 0
 			z80.pc++
 			z80.halted = false
 		}
@@ -293,6 +343,8 @@ func (z80 *Z80) interrupt() {
 		default:
 			panic("Unknown interrupt mode")
 		}
+
+		z80.tstates = InterruptLength
 	}
 }
 
@@ -583,6 +635,14 @@ func (z80 *Z80) cp(value byte) {
 func (z80 *Z80) in(reg *byte, port uint16) {
 	*reg = z80.readPort(port)
 	z80.f = (z80.f & FLAG_C) | z80.sz53pTable[*reg]
+}
+
+func (z80 *Z80) readPort(address uint16) byte {
+	return z80.ports.readPort(address)
+}
+
+func (z80 *Z80) writePort(address uint16, b byte) {
+	z80.ports.writePort(address, b)
 }
 
 // Generated getters and INC/DEC functions for 8bit registers
@@ -954,112 +1014,168 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 }
 
 func (z80 *Z80) doOpcodes() {
-	for z80.tstates < eventNextEvent {
+	ttid_start := syscall.Gettid()
 
+	var hostCpu_instrCount_start uint64
+	if z80.perfCounter_hostCpuInstr != nil {
+		hostCpu_instrCount_start, _ = z80.perfCounter_hostCpuInstr.Read()
+	} else {
+		hostCpu_instrCount_start = 0
+	}
+
+	var z80_localInstructionCounter uint = 0
+
+	for (z80.tstates < eventNextEvent) && !z80.halted {
 		z80.memory.contendRead(z80.pc, 4)
-
 		opcode := z80.memory.readByteInternal(z80.pc)
-
-	EndOpcode:
 
 		z80.r = (z80.r + 1) & 0x7f
 		z80.pc++
 
-		switch opcode {
-		case 0xcb:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
-			opcodesMap[shift0xcb(opcode2)](z80, 0)
-		case 0xed:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
+		z80_localInstructionCounter++
 
-			if f := opcodesMap[shift0xed(opcode2)]; f != nil {
-				f(z80, 0)
-			} else {
-				break
+		opcodesMap[opcode](z80, 0)
+	}
+
+	// Update emulation efficiency counters
+	{
+		ttid_end := syscall.Gettid()
+
+		var hostCpu_instrCount_end uint64
+		if z80.perfCounter_hostCpuInstr != nil {
+			hostCpu_instrCount_end, _ = z80.perfCounter_hostCpuInstr.Read()
+		} else {
+			hostCpu_instrCount_end = 0
+		}
+
+		z80.z80_instructionCounter += uint64(z80_localInstructionCounter)
+
+		/*if z80_localInstructionCounter > 0 {
+			println( z80_localInstructionCounter, hostCpu_instrCount_start, hostCpu_instrCount_end,
+					hostCpu_instrCount_end-hostCpu_instrCount_start,
+					(hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter) )
+		}*/
+
+		if (ttid_start == ttid_end) &&
+			(z80_localInstructionCounter > 0) &&
+			(hostCpu_instrCount_start > 0) &&
+			(hostCpu_instrCount_end > 0) &&
+			(hostCpu_instrCount_end > hostCpu_instrCount_start) {
+
+			avg := uint((hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter))
+
+			// It may happen that the measured values are invalid.
+			// The primary cause of this is that the Go runtime
+			// can move a goroutine to a different OS thread,
+			// without notifying us when it does so.
+			// The majority of these cases is detected by (ttid_start == ttid_end) constraint.
+			eff := z80.GetEmulationEfficiency()
+			bogusMeasurement := (avg < eff/4) || ((eff > 0) && (avg > eff*4))
+
+			if !bogusMeasurement {
+				z80.z80_instructionsMeasured += uint64(z80_localInstructionCounter)
+				z80.hostCpu_instructionCounter += (hostCpu_instrCount_end - hostCpu_instrCount_start)
 			}
-		case 0xdd:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
+		}
+	}
+}
 
-			switch opcode2 {
-			case 0xcb:
-				var tempaddr uint16
-				var opcode3 byte
-				z80.memory.contendRead(z80.pc, 3)
-				tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
-				z80.pc++
-				z80.memory.contendRead(z80.pc, 3)
-				opcode3 = z80.memory.readByteInternal(z80.pc)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.pc++
-				opcodesMap[shift0xddcb(opcode3)](z80, tempaddr)
-			default:
-				if f := opcodesMap[shift0xdd(opcode2)]; f != nil {
-					f(z80, 0)
-				} else {
-					/* Instruction did not involve H or L, so backtrack
-					one instruction and parse again */
-					z80.pc--
-					z80.r--
-					opcode = opcode2
 
-					goto EndOpcode
-				}
+func invalidOpcode(z80 *Z80, tempaddr uint16) {
+	panic("invalid opcode")
+}
 
-			}
+func opcode_cb(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
+	opcodesMap[SHIFT_0xCB+int(opcode2)](z80, 0)
+}
 
-		case 0xfd:
-			var opcode2 byte
-			z80.memory.contendRead(z80.pc, 4)
-			opcode2 = z80.memory.readByteInternal(z80.pc)
-			z80.pc++
-			z80.r++
+func opcode_ed(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
 
-			switch opcode2 {
-			case 0xcb:
-				var tempaddr uint16
-				var opcode3 byte
-				z80.memory.contendRead(z80.pc, 3)
-				tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
-				z80.pc++
-				z80.memory.contendRead(z80.pc, 3)
-				opcode3 = z80.memory.readByteInternal(z80.pc)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.memory.contendReadNoMreq(z80.pc, 1)
-				z80.pc++
+	if f := opcodesMap[SHIFT_0xED+int(opcode2)]; f != nil {
+		f(z80, 0)
+	} else {
+		invalidOpcode(z80, 0)
+	}
+}
 
-				opcodesMap[shift0xfdcb(opcode3)](z80, tempaddr)
+func opcode_dd(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
 
-			default:
-				if f := opcodesMap[shift0xfd(opcode2)]; f != nil {
-					f(z80, 0)
-				} else {
-					/* Instruction did not involve H or L, so backtrack
-					one instruction and parse again */
-					z80.pc--
-					z80.r--
-					opcode = opcode2
+	switch opcode2 {
+	case 0xcb:
+		var tempaddr uint16
+		var opcode3 byte
+		z80.memory.contendRead(z80.pc, 3)
+		tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.pc++
+		z80.memory.contendRead(z80.pc, 3)
+		opcode3 = z80.memory.readByteInternal(z80.pc)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.pc++
+		opcodesMap[SHIFT_0xDDCB+int(opcode3)](z80, tempaddr)
+	default:
+		if f := opcodesMap[SHIFT_0xDD+int(opcode2)]; f != nil {
+			f(z80, 0)
+		} else {
+			/* Instruction did not involve H or L */
+			opcodesMap[opcode2](z80, 0)
+		}
+	}
+}
 
-					goto EndOpcode
-				}
+func opcode_fd(z80 *Z80, tempaddr uint16) {
+	var opcode2 byte
+	z80.memory.contendRead(z80.pc, 4)
+	opcode2 = z80.memory.readByteInternal(z80.pc)
+	z80.pc++
+	z80.r++
 
-			}
+	switch opcode2 {
+	case 0xcb:
+		var tempaddr uint16
+		var opcode3 byte
+		z80.memory.contendRead(z80.pc, 3)
+		tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.pc++
+		z80.memory.contendRead(z80.pc, 3)
+		opcode3 = z80.memory.readByteInternal(z80.pc)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.pc++
 
-		default:
-			opcodesMap[int(opcode)](z80, 0)
+		opcodesMap[SHIFT_0xFDCB+int(opcode3)](z80, tempaddr)
+
+	default:
+		if f := opcodesMap[SHIFT_0xFD+int(opcode2)]; f != nil {
+			f(z80, 0)
+		} else {
+			/* Instruction did not involve H or L */
+			opcodesMap[opcode2](z80, 0)
 		}
 
 	}
+}
+
+
+func init() {
+	initOpcodes()
+	opcodesMap[0xcb] = opcode_cb
+	opcodesMap[0xdd] = opcode_dd
+	opcodesMap[0xed] = opcode_ed
+	opcodesMap[0xfd] = opcode_fd
 }

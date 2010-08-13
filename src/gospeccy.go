@@ -53,10 +53,9 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
-			if evtLoop.App.Verbose {
+			if evtLoop.App().Verbose {
 				println("SDL event loop: exit")
 			}
-			ticker.Stop()
 			evtLoop.Terminate <- 0
 			return
 
@@ -64,17 +63,18 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 			if event.Poll() {
 				switch event.Type {
 				case sdl.QUIT:
-					if evtLoop.App.Verbose {
+					if evtLoop.App().Verbose {
 						println("SDL quit -> request[exit the application]")
 					}
-					evtLoop.App.RequestExit()
+					evtLoop.App().RequestExit()
 
 				case sdl.KEYDOWN, sdl.KEYUP:
 					k := event.Keyboard()
+					keyName := sdl.GetKeyName(sdl.Key(k.Keysym.Sym))
 
 					if verboseKeyboard {
 						println()
-						println(k.Keysym.Sym, ": ", sdl.GetKeyName(sdl.Key(k.Keysym.Sym)))
+						println(k.Keysym.Sym, ": ", keyName)
 
 						fmt.Printf("%04x ", event.Type)
 
@@ -87,29 +87,27 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 						fmt.Printf("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
 					}
 
-					switch k.Keysym.Sym {
-					/* Backspace*/
-					case 8:
-						if event.Type == sdl.KEYDOWN {
-							speccy.Keyboard.KeyDown(304)
-							speccy.Keyboard.KeyDown(48)
-						} else {
-							speccy.Keyboard.KeyUp(48)
-							speccy.Keyboard.KeyUp(304)
-						}
-
-					/* Escape*/
-					case 27:
-						if evtLoop.App.Verbose {
+					if keyName == "escape" {
+						if evtLoop.App().Verbose {
 							println("escape key -> request[exit the application]")
 						}
-						evtLoop.App.RequestExit()
+						evtLoop.App().RequestExit()
+					} else {
+						sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
 
-					default:
-						if k.State != 0 {
-							speccy.Keyboard.KeyDown(uint(k.Keysym.Sym))
-						} else {
-							speccy.Keyboard.KeyUp(uint(k.Keysym.Sym))
+						if haveMapping {
+							switch event.Type {
+							case sdl.KEYDOWN:
+								// Normal order
+								for i := 0; i < len(sequence); i++ {
+									speccy.Keyboard.KeyDown(sequence[i])
+								}
+							case sdl.KEYUP:
+								// Reverse order
+								for i := len(sequence) - 1; i >= 0; i-- {
+									speccy.Keyboard.KeyUp(sequence[i])
+								}
+							}
 						}
 					}
 				}
@@ -118,8 +116,9 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 	}
 }
 
-func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, displayRefreshFrequency float) {
-	ticker := time.NewTicker(int64(1e9 / displayRefreshFrequency))
+func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
+	fps := <-speccy.FPS
+	ticker := time.NewTicker(int64(1e9 / fps))
 
 	for {
 		select {
@@ -130,7 +129,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, dis
 
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
-			if evtLoop.App.Verbose {
+			if evtLoop.App().Verbose {
 				println("emulator loop: exit")
 			}
 			evtLoop.Terminate <- 0
@@ -138,7 +137,18 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, dis
 
 		case <-ticker.C:
 			// if evtLoop.App.Verbose { fmt.Printf("%d ms\n", time.Nanoseconds()/1e6) }
-			speccy.RenderFrame()
+			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
+
+		case FPS_new := <-speccy.FPS:
+			if (FPS_new != fps) && (FPS_new > 0) {
+				if evtLoop.App().Verbose {
+					fmt.Printf("setting FPS to %f\n", FPS_new)
+				}
+				ticker.Stop()
+				spectrum.Drain(ticker)
+				ticker = time.NewTicker(int64(1e9 / FPS_new))
+				fps = FPS_new
+			}
 		}
 	}
 }
@@ -147,7 +157,7 @@ func main() {
 	help := flag.Bool("help", false, "Show usage")
 	scale2x := flag.Bool("2x", false, "2x display scaler")
 	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
-	fps := flag.Float("fps", 50.08, "Frames per second")
+	fps := flag.Float("fps", spectrum.DefaultFPS, "Frames per second")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseKeyboard := flag.Bool("verbose-keyboard", false, "Enable debugging messages (keyboard events)")
 
@@ -172,7 +182,7 @@ func main() {
 	app.Verbose = *verbose
 
 	// Create new emulator core
-	speccy, err := spectrum.NewSpectrum48k()
+	speccy, err := spectrum.NewSpectrum48k(app)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		app.RequestExit()
@@ -181,10 +191,9 @@ func main() {
 
 	// Load snapshot (if any)
 	if flag.Arg(0) != "" {
-		if app.Verbose {
-			fmt.Printf("loading snapshot \"%s\"\n", flag.Arg(0))
-		}
-		err := speccy.LoadSna(flag.Arg(0))
+		errChan := make(chan os.Error)
+		speccy.CommandChannel <- spectrum.Cmd_LoadSna{flag.Arg(0), errChan}
+		err := <-errChan
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			app.RequestExit()
@@ -198,40 +207,25 @@ func main() {
 			panic(sdl.GetError())
 		}
 
-		var sdlMode uint32
 		if *fullscreen {
-			sdlMode = sdl.FULLSCREEN
 			*scale2x = true
-		} else {
-			sdlMode = 0
 		}
 
-		var display spectrum.DisplayReceiver
-
 		if *scale2x {
-			screenSurface := sdl.SetVideoMode(2*spectrum.TotalScreenWidth, 2*spectrum.TotalScreenHeight, 32, sdlMode)
-			if screenSurface == nil {
-				panic(sdl.GetError())
-			}
-
-			display = spectrum.NewSDLScreen2x(app, screenSurface)
+			speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen2x(app, *fullscreen)}
 		} else {
-			screenSurface := sdl.SetVideoMode(spectrum.TotalScreenWidth, spectrum.TotalScreenHeight, 32, sdlMode)
-			if screenSurface == nil {
-				panic(sdl.GetError())
-			}
-
-			display = spectrum.NewSDLScreen(app, screenSurface)
+			speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
 		}
 
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
-
-		speccy.SetDisplayReceiver(display)
 	}
 
 	// Begin speccy emulation
 	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
-	go emulatorLoop(app.NewEventLoop(), speccy, *fps)
+	go emulatorLoop(app.NewEventLoop(), speccy)
+	speccy.FPS <- *fps
+
+	go spectrum.RunConsole(app, speccy, true)
 
 quit:
 	<-app.HasTerminated

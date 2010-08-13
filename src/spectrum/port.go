@@ -27,6 +27,11 @@ package spectrum
 
 
 type PortAccessor interface {
+	frame_begin(borderColor byte)
+	frame_releaseMemory()
+
+	reset()
+
 	readPort(address uint16) byte
 	writePort(address uint16, b byte)
 	contendPortPreio(address uint16)
@@ -47,7 +52,7 @@ type BorderEvent struct {
 }
 
 type Ports struct {
-	display      *Display
+	memory       MemoryAccessor
 	keyboard     *Keyboard
 	borderEvents *BorderEvent // Might be nil
 	z80          *Z80
@@ -63,6 +68,10 @@ func (p *Ports) frame_begin(borderColor byte) {
 
 func (p *Ports) frame_releaseMemory() {
 	// Release memory
+	p.borderEvents = nil
+}
+
+func (p *Ports) reset() {
 	p.borderEvents = nil
 }
 

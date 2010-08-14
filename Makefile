@@ -13,11 +13,6 @@ SPECTRUM_FILES=\
 	src/spectrum/ula.go\
 	src/spectrum/z80.go\
 
-PERF_FILES=\
-	src/perf/perf.go\
-	src/perf/perf_$(GOARCH).go\
-	src/perf/types.$(O).go\
-
 GOFMT_FILES=\
 	src/gospeccy.go\
 	src/spectrum/application.go\
@@ -29,9 +24,6 @@ GOFMT_FILES=\
 	src/spectrum/ula.go\
 	src/spectrum/z80.go\
 	src/spectrum/z80_test.go\
-	src/perf/perf.go\
-	src/perf/perf_386.go\
-	src/perf/perf_amd64.go\
 
 
 gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)
@@ -50,11 +42,6 @@ _obj:
 _obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a 
 	$(GC) -I./_obj -o $@ src/gospeccy.go
 
-_obj/spectrum.a: $(SPECTRUM_FILES) _obj/perf.a
+_obj/spectrum.a: $(SPECTRUM_FILES)
 	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES)
 	gopack grc $@ _obj/spectrum.$(O)
-
-_obj/perf.a: $(PERF_FILES)
-	$(GC) -o _obj/perf.$(O) $(PERF_FILES)
-	gopack grc $@ _obj/perf.$(O)
-

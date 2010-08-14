@@ -57,6 +57,7 @@ to fork and send me patches, of course ;)
 # Dependencies
 
 * [banthar/Go-SDL](http://github.com/banthar/Go-SDL)
+* [0xe2-0x9a-0x9b/Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
 
 On Ubuntu Linux you'll need to install the following packages using synaptic:
 

@@ -25,20 +25,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
-
-type PortAccessor interface {
-	frame_begin(borderColor byte)
-	frame_releaseMemory()
-
-	reset()
-
-	readPort(address uint16) byte
-	writePort(address uint16, b byte)
-	contendPortPreio(address uint16)
-	contendPortPostio(address uint16)
-}
-
-
 type BorderEvent struct {
 	// The moment when the border color was changed.
 	// It is the number of T-states since the beginning of the frame.
@@ -53,17 +39,16 @@ type BorderEvent struct {
 }
 
 type Ports struct {
-	memory       MemoryAccessor
-	keyboard     *Keyboard
+	speccy       *Spectrum48k
 	borderEvents *BorderEvent // Might be nil
-	z80          *Z80
 }
 
-func NewPorts(memory MemoryAccessor, keyboard *Keyboard) *Ports {
-	return &Ports{memory, keyboard, nil, nil}
+func NewPorts() *Ports {
+	return &Ports{nil, nil}
 }
 
-func (p *Ports) frame_begin(borderColor byte) {
+func (p *Ports) frame_begin() {
+	borderColor := p.speccy.ula.getBorderColor()
 	p.borderEvents = &BorderEvent{tstate: 0, color: borderColor, previous_orNil: nil}
 }
 
@@ -85,7 +70,7 @@ func (p *Ports) readPort(address uint16) byte {
 		var row uint
 		for row = 0; row < 8; row++ {
 			if (address & (1 << (uint16(row) + 8))) == 0 { // bit held low, so scan this row
-				result &= p.keyboard.GetKeyState(row)
+				result &= p.speccy.Keyboard.GetKeyState(row)
 			}
 		}
 		return result
@@ -109,9 +94,9 @@ func (p *Ports) writePort(address uint16, b byte) {
 		color := (b & 0x07)
 
 		// Modify the border only if it really changed
-		if p.memory.getBorder() != color {
-			p.memory.setBorder(color)
-			p.borderEvents = &BorderEvent{p.z80.tstates, color, p.borderEvents}
+		if p.speccy.ula.getBorderColor() != color {
+			p.speccy.ula.setBorderColor(color)
+			p.borderEvents = &BorderEvent{p.speccy.Cpu.tstates, color, p.borderEvents}
 		}
 	}
 
@@ -119,7 +104,7 @@ func (p *Ports) writePort(address uint16, b byte) {
 }
 
 func (p *Ports) contend(time uint) {
-	tstates_p := &p.z80.tstates
+	tstates_p := &p.speccy.Cpu.tstates
 	*tstates_p += uint(delay_table[*tstates_p])
 	*tstates_p += time
 }
@@ -128,7 +113,7 @@ func (p *Ports) contendPortPreio(address uint16) {
 	if (address & 0xc000) == 0x4000 {
 		p.contend(1)
 	} else {
-		p.z80.tstates += 1
+		p.speccy.Cpu.tstates += 1
 	}
 }
 
@@ -139,7 +124,7 @@ func (p *Ports) contendPortPostio(address uint16) {
 			p.contend(1)
 			p.contend(1)
 		} else {
-			p.z80.tstates += 3
+			p.speccy.Cpu.tstates += 3
 		}
 
 	} else {

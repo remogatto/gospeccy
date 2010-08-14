@@ -10,6 +10,7 @@ SPECTRUM_FILES=\
 	src/spectrum/port.go\
 	src/spectrum/sdldisplay.go\
 	src/spectrum/spectrum.go\
+	src/spectrum/ula.go\
 	src/spectrum/z80.go\
 
 PERF_FILES=\
@@ -25,6 +26,7 @@ GOFMT_FILES=\
 	src/spectrum/memory.go\
 	src/spectrum/port.go\
 	src/spectrum/spectrum.go\
+	src/spectrum/ula.go\
 	src/spectrum/z80.go\
 	src/spectrum/z80_test.go\
 	src/perf/perf.go\

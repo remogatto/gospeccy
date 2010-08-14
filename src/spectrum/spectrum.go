@@ -22,7 +22,8 @@ type DisplayInfo struct {
 type Spectrum48k struct {
 	app    *Application
 	Cpu    *Z80
-	Memory MemoryAccessor
+	Memory *Memory
+	ula    *ULA
 
 	displays vector.Vector // A vector of '*DisplayInfo', initially empty
 
@@ -40,13 +41,15 @@ type Spectrum48k struct {
 func NewSpectrum48k(app *Application) (*Spectrum48k, os.Error) {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
-	ports := NewPorts(memory, keyboard)
+	ports := NewPorts()
 	z80 := NewZ80(memory, ports)
+	ula := NewULA()
 
-	ports.z80 = z80
-	memory.z80 = z80
+	speccy := &Spectrum48k{app: app, Cpu: z80, Memory: memory, ula: ula, Keyboard: keyboard, displays: vector.Vector{}, Ports: ports}
 
-	speccy := &Spectrum48k{app: app, Cpu: z80, Memory: memory, Keyboard: keyboard, displays: vector.Vector{}, Ports: ports}
+	memory.speccy = speccy
+	ula.speccy = speccy
+	ports.speccy = speccy
 
 	err := speccy.reset()
 	if err != nil {
@@ -116,6 +119,7 @@ func commandLoop(speccy *Spectrum48k) {
 func (speccy *Spectrum48k) reset() os.Error {
 	speccy.Cpu.reset()
 	speccy.Memory.reset()
+	speccy.ula.reset()
 	speccy.Keyboard.reset()
 	speccy.Ports.reset()
 
@@ -130,7 +134,7 @@ func (speccy *Spectrum48k) reset() os.Error {
 		}
 
 		for address, b := range rom48k {
-			speccy.Memory.set(uint16(address), b)
+			speccy.Memory.data[address] = b
 		}
 	}
 
@@ -174,13 +178,14 @@ func (speccy *Spectrum48k) doOpcodes() {
 }
 
 func (speccy *Spectrum48k) renderFrame() {
-	speccy.Ports.frame_begin(speccy.Memory.getBorder())
-	speccy.Memory.frame_begin()
+	speccy.Ports.frame_begin()
+	speccy.ula.frame_begin()
+
 	speccy.Cpu.interrupt()
 	speccy.doOpcodes()
 
 	for _, display := range speccy.displays {
-		speccy.Memory.sendScreenToDisplay(display.(*DisplayInfo), speccy.Ports.borderEvents)
+		speccy.ula.sendScreenToDisplay(display.(*DisplayInfo))
 	}
 
 	speccy.Ports.frame_releaseMemory()

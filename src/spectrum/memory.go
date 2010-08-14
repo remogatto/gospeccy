@@ -1,5 +1,24 @@
 package spectrum
 
+type MemoryAccessor interface {
+	readByte(address uint16) byte
+	readByteInternal(address uint16) byte
+
+	writeByte(address uint16, value byte)
+	writeByteInternal(address uint16, value byte)
+
+	contendRead(addr uint16, time uint)
+	contendReadNoMreq(addr uint16, time uint)
+
+	contendWriteNoMreq(addr uint16, time uint)
+
+	Read(addr uint16) byte
+	Write(addr uint16, value byte)
+	Data() *[0x10000]byte
+	
+	reset()
+}
+
 type Memory struct {
 	data [0x10000]byte
 
@@ -9,6 +28,10 @@ type Memory struct {
 
 func NewMemory() *Memory {
 	return &Memory{}
+}
+
+func (memory *Memory) init(speccy *Spectrum48k) {
+	memory.speccy = speccy
 }
 
 func (memory *Memory) reset() {
@@ -66,6 +89,17 @@ func (memory *Memory) contendWriteNoMreq(address uint16, time uint) {
 	memory.contend(address, time)
 }
 
+func (memory *Memory) Read(address uint16) byte {
+	return memory.data[address]
+}
+
+func (memory *Memory) Write(address uint16, value byte) {
+	memory.data[address] = value
+}
+
+func (memory *Memory) Data() *[0x10000]byte {
+	return &memory.data
+}
 
 // Number of T-states to delay, for each possible T-state within a frame.
 // The array is extended at the end - this covers the case when the emulator

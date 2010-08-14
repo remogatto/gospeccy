@@ -22,13 +22,13 @@ type DisplayInfo struct {
 type Spectrum48k struct {
 	app    *Application
 	Cpu    *Z80
-	Memory *Memory
+	Memory MemoryAccessor
 	ula    *ULA
 
 	displays vector.Vector // A vector of '*DisplayInfo', initially empty
 
 	Keyboard *Keyboard
-	Ports    *Ports
+	Ports    PortAccessor
 
 	// Send a single value to this channel in order to change the display refresh frequency.
 	// By default, this channel initially receives the value 'DefaultFPS'.
@@ -47,9 +47,9 @@ func NewSpectrum48k(app *Application) (*Spectrum48k, os.Error) {
 
 	speccy := &Spectrum48k{app: app, Cpu: z80, Memory: memory, ula: ula, Keyboard: keyboard, displays: vector.Vector{}, Ports: ports}
 
-	memory.speccy = speccy
-	ula.speccy = speccy
-	ports.speccy = speccy
+	memory.init(speccy)
+	ula.init(speccy)
+	ports.init(speccy)
 
 	err := speccy.reset()
 	if err != nil {
@@ -134,7 +134,7 @@ func (speccy *Spectrum48k) reset() os.Error {
 		}
 
 		for address, b := range rom48k {
-			speccy.Memory.data[address] = b
+			speccy.Memory.Write(uint16(address), b)
 		}
 	}
 

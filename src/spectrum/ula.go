@@ -37,6 +37,10 @@ func NewULA() *ULA {
 	return &ULA{}
 }
 
+func (ula *ULA) init(speccy *Spectrum48k) {
+	ula.speccy = speccy
+}
+
 func (ula *ULA) reset() {
 	ula.frame = 0
 }
@@ -109,7 +113,7 @@ func (ula *ULA) screenBitmapWrite(address uint16, b byte) {
 	screen_tstate := screenline_start_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
 	if ula.speccy.Cpu.tstates > screen_tstate {
 		// Remember the value read by ULA
-		ula.bitmap[rel_addr] = ula_byte_t{true, ula.speccy.Memory.data[address]}
+		ula.bitmap[rel_addr] = ula_byte_t{true, ula.speccy.Memory.Read(address)}
 	}
 }
 
@@ -131,7 +135,7 @@ func (ula *ULA) screenAttrWrite(address uint16, b byte) {
 			ofs := (y << BytesPerLine_log2) + uint(attr_x)
 			ula_attr := &ula.attr[ofs]
 			if !ula_attr.valid || (screen_tstate > ula_attr.tstate) {
-				*ula_attr = ula_attr_t{true, speccy.Memory.data[address], speccy.Cpu.tstates}
+				*ula_attr = ula_attr_t{true, speccy.Memory.Read(address), speccy.Cpu.tstates}
 			}
 		}
 		y++
@@ -160,7 +164,7 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo) {
 		}
 
 		// Fill screen.bitmap & screen.attr, but only the dirty regions.
-		memory_data := &ula.speccy.Memory.data
+		var memory_data *[0x10000]byte = ula.speccy.Memory.Data()
 		ula_bitmap := &ula.bitmap
 		ula_attr := &ula.attr
 		screen_dirty := &screen.dirty
@@ -246,7 +250,7 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo) {
 		screen.border = ula.borderColor
 
 		// screen.borderEvents
-		borderEvents := ula.speccy.Ports.borderEvents
+		borderEvents := ula.speccy.Ports.getBorderEvents()
 		if (borderEvents != nil) && (borderEvents.previous_orNil == nil) {
 			// Only the one event which was added there at the start of the frame - ignore it
 			screen.borderEvents = nil

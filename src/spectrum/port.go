@@ -25,6 +25,23 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
+
+type PortAccessor interface {
+	readPort(address uint16) byte
+	writePort(address uint16, b byte)
+	contendPortPreio(address uint16)
+	contendPortPostio(address uint16)
+
+	reset()
+
+	frame_begin()
+	frame_releaseMemory()
+	
+	// This method may return nil
+	getBorderEvents() *BorderEvent
+}
+
+
 type BorderEvent struct {
 	// The moment when the border color was changed.
 	// It is the number of T-states since the beginning of the frame.
@@ -43,9 +60,19 @@ type Ports struct {
 	borderEvents *BorderEvent // Might be nil
 }
 
+
 func NewPorts() *Ports {
-	return &Ports{nil, nil}
+	return &Ports{}
 }
+
+func (p *Ports) init(speccy *Spectrum48k) {
+	p.speccy = speccy
+}
+
+func (p *Ports) reset() {
+	p.borderEvents = nil
+}
+
 
 func (p *Ports) frame_begin() {
 	borderColor := p.speccy.ula.getBorderColor()
@@ -57,9 +84,10 @@ func (p *Ports) frame_releaseMemory() {
 	p.borderEvents = nil
 }
 
-func (p *Ports) reset() {
-	p.borderEvents = nil
+func (p *Ports) getBorderEvents() *BorderEvent {
+	return p.borderEvents
 }
+
 
 func (p *Ports) readPort(address uint16) byte {
 	var result byte = 0xff

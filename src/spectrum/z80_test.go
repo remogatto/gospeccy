@@ -306,7 +306,7 @@ func TestDoOpcodes(t *testing.T) {
 
 			event, _ := strconv.Btoui64(otherRegs[len(otherRegs)-1], 10)
 
-			eventNextEvent = uint(event)
+			z80.eventNextEvent = uint(event)
 
 			// Fill memory
 

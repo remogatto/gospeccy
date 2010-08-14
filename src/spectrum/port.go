@@ -38,6 +38,7 @@ type PortAccessor interface {
 	contendPortPostio(address uint16)
 }
 
+
 type BorderEvent struct {
 	// The moment when the border color was changed.
 	// It is the number of T-states since the beginning of the frame.
@@ -58,8 +59,8 @@ type Ports struct {
 	z80          *Z80
 }
 
-func NewPorts(display *Display, keyboard *Keyboard) *Ports {
-	return &Ports{display, keyboard, nil, nil}
+func NewPorts(memory MemoryAccessor, keyboard *Keyboard) *Ports {
+	return &Ports{memory, keyboard, nil, nil}
 }
 
 func (p *Ports) frame_begin(borderColor byte) {
@@ -108,8 +109,8 @@ func (p *Ports) writePort(address uint16, b byte) {
 		color := (b & 0x07)
 
 		// Modify the border only if it really changed
-		if p.display.getBorderColor() != color {
-			p.display.setBorderColor(color)
+		if p.memory.getBorder() != color {
+			p.memory.setBorder(color)
 			p.borderEvents = &BorderEvent{p.z80.tstates, color, p.borderEvents}
 		}
 	}

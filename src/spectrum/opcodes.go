@@ -2633,7 +2633,7 @@ func initOpcodes() {
 	opcodesMap[shift0xed(0x4f)] = func(z80 *Z80, tempaddr uint16) {
 		z80.memory.contendReadNoMreq(z80.IR(), 1)
 		/* Keep the RZX instruction counter right */
-		rzxInstructionsOffset += (int(z80.r) - int(z80.a))
+		z80.rzxInstructionsOffset += (int(z80.r) - int(z80.a))
 		z80.r, z80.r7 = uint16(z80.a), uint16(z80.a)
 	}
 	/* IN D,(C) */

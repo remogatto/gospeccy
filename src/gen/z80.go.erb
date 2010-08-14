@@ -43,8 +43,6 @@ const FLAG_5 = 0x20
 const FLAG_Z = 0x40
 const FLAG_S = 0x80
 
-var z80interruptEvent int
-
 /* Whether a half carry occurred or not can be determined by looking at
    the 3rd bit of the two arguments and the result; these are hashed
    into this table in the form r12, where r is the 3rd bit of the
@@ -58,8 +56,6 @@ var halfcarrySubTable = []byte{0, 0, FLAG_H, 0, FLAG_H, 0, FLAG_H, FLAG_H}
    the hash into this table is r12 */
 var overflowAddTable = []byte{0, 0, 0, FLAG_V, FLAG_V, 0, 0, 0}
 var overflowSubTable = []byte{0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0}
-
-var rzxInstructionsOffset int
 
 var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
 
@@ -133,12 +129,14 @@ type Z80 struct {
 
 	memory MemoryAccessor
 
-	PortAccessor
+	ports PortAccessor
+
+	rzxInstructionsOffset int
+
+	eventNextEvent uint
 
 	LogEvents bool
 }
-
-var eventNextEvent uint
 
 func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 	z80 := &Z80{memory: memory, PortAccessor: port}
@@ -653,7 +651,7 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 }
 
 func (z80 *Z80) doOpcodes() {
-	for z80.tstates < eventNextEvent {
+	for z80.tstates < z80.eventNextEvent {
 
 		z80.memory.contendRead(z80.pc, 4)
 

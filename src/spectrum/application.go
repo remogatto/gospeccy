@@ -100,6 +100,7 @@ func (app *Application) RequestExit() {
 	close(app.exitApp)
 }
 
+
 // =========
 // EventLoop
 // =========

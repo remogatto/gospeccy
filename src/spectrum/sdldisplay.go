@@ -30,6 +30,7 @@ import (
 	"unsafe"
 )
 
+
 // ==========
 // SDLSurface
 // ==========
@@ -98,6 +99,7 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DisplayData, rende
 		}
 	}
 }
+
 
 // =========
 // SDLScreen
@@ -357,11 +359,12 @@ func (l *ListOfRects) addBorder(scale uint) {
 	const BH = ScreenBorderY
 	const TW = TotalScreenWidth
 
-	l.add(int(s*0), int(s*0), s*TW, s*BH)
-	l.add(int(s*0), int(s*(BH+H)), s*TW, s*BH)
-	l.add(int(s*0), int(s*BH), s*BW, s*H)
-	l.add(int(s*(BW+W)), int(s*BH), s*BW, s*H)
+	l.add( int(s*0)     , int(s*0)     , s*TW, s*BH )
+	l.add( int(s*0)     , int(s*(BH+H)), s*TW, s*BH )
+	l.add( int(s*0)     , int(s*BH)    , s*BW, s*H  )
+	l.add( int(s*(BW+W)), int(s*BH)    , s*BW, s*H  )
 }
+
 
 // ===============
 // UnspacedDisplay
@@ -499,7 +502,8 @@ func (disp *UnscaledDisplay) renderBorderEvents(lastEvent_orNil *BorderEvent) {
 		}
 	}
 
-	// Note; If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil. But this is OK.
+	// Note: If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil. But this is OK.
+
 	for i := 0; i < numEvents; i++ {
 		disp.renderBorderBetweenTwoEvents(&events[i], &events[i+1])
 	}

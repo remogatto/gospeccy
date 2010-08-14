@@ -27,6 +27,7 @@ package spectrum
 
 import "sync"
 
+
 type Keyboard struct {
 	keyStates [8]byte
 	mutex     sync.RWMutex
@@ -77,6 +78,7 @@ func (keyboard *Keyboard) KeyUp(logicalKeyCode uint) {
 		keyboard.mutex.Unlock()
 	}
 }
+
 
 // Logical key codes
 const (
@@ -174,6 +176,7 @@ var keyCodes = map[uint]keyCell{
 	KEY_SymbolShift: keyCell{row: 7, mask: 0x02},
 	KEY_Space:       keyCell{row: 7, mask: 0x01},
 }
+
 
 var SDL_KeyMap = map[string][]uint{
 	"0": []uint{KEY_0},

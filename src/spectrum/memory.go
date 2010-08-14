@@ -22,7 +22,7 @@ type MemoryAccessor interface {
 	reset()
 
 	At(addr uint) byte
-        Data() []byte
+	Data() []byte
 }
 
 type ula_byte_t struct {
@@ -119,6 +119,7 @@ func (memory *Memory) screenBitmapWrite(address uint16) {
 	// address: [0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0]
 	var attr_x = (address & 0x001f)
 	var attr_y = (((address & 0x0700) >> 8) | ((address & 0x00e0) >> 2) | ((address & 0x1800) >> 5)) / 8
+
 	memory.dirtyScreen[attr_y*ScreenWidth_Attr+attr_x] = true
 }
 
@@ -127,11 +128,11 @@ func (memory *Memory) screenAttrWrite(address uint16) {
 }
 
 func (memory *Memory) getBorder() byte {
-        return memory.borderColor
+	return memory.borderColor
 }
 
 func (memory *Memory) setBorder(borderColor byte) {
-        memory.borderColor = borderColor
+	memory.borderColor = borderColor
 }
 
 // This function is called at the beginning of each frame
@@ -335,6 +336,7 @@ func (memory *Memory) At(address uint) byte {
 func (memory *Memory) Data() []byte {
 	return &memory.data
 }
+
 
 // Number of T-states to delay, for each possible T-state within a frame.
 // The array is extended at the end - this covers the case when the emulator

@@ -168,7 +168,7 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 
 // Execute the number of T-states corresponding to one screen frame
 func (speccy *Spectrum48k) doOpcodes() {
-	eventNextEvent = TStatesPerFrame
+	speccy.Cpu.eventNextEvent = TStatesPerFrame
 	speccy.Cpu.tstates = (speccy.Cpu.tstates % TStatesPerFrame)
 	speccy.Cpu.doOpcodes()
 }

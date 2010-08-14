@@ -722,7 +722,7 @@ sub opcode_LD (@) {
 		print << "LD";
       z80.memory.contendReadNoMreq( z80.IR(), 1 );
       /* Keep the RZX instruction counter right */
-      rzxInstructionsOffset += ( int(z80.r) - int(z80.a))
+      z80.rzxInstructionsOffset += ( int(z80.r) - int(z80.a))
       z80.r, z80.r7 = uint16(z80.a), uint16(z80.a)
 LD
             } elsif( $dest eq 'A' and $src eq 'R' ) {

@@ -45,8 +45,6 @@ const FLAG_5 = 0x20
 const FLAG_Z = 0x40
 const FLAG_S = 0x80
 
-var z80interruptEvent int
-
 /* Whether a half carry occurred or not can be determined by looking at
    the 3rd bit of the two arguments and the result; these are hashed
    into this table in the form r12, where r is the 3rd bit of the
@@ -61,7 +59,6 @@ var halfcarrySubTable = []byte{0, 0, FLAG_H, 0, FLAG_H, 0, FLAG_H, FLAG_H}
 var overflowAddTable = []byte{0, 0, 0, FLAG_V, FLAG_V, 0, 0, 0}
 var overflowSubTable = []byte{0, FLAG_V, 0, 0, 0, 0, FLAG_V, 0}
 
-var rzxInstructionsOffset int
 var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
 
 const SHIFT_0xCB = 256
@@ -94,6 +91,7 @@ func shift0xfdcb(opcode byte) int {
 func shift0xfd(opcode byte) int {
 	return SHIFT_0xFD + int(opcode)
 }
+
 
 type register16 struct {
 	high, low *byte
@@ -143,6 +141,10 @@ type Z80 struct {
 
 	ports PortAccessor
 
+	rzxInstructionsOffset int
+
+	eventNextEvent uint
+
 	LogEvents bool
 
 	z80_instructionCounter     uint64 // Number of Z80 instructions executed
@@ -150,8 +152,6 @@ type Z80 struct {
 	hostCpu_instructionCounter uint64
 	perfCounter_hostCpuInstr   *perf.PerfCounter // Can be nil (if creating the counter fails)
 }
-
-var eventNextEvent uint
 
 func NewZ80(memory MemoryAccessor, port PortAccessor) *Z80 {
 	z80 := &Z80{memory: memory, ports: port}
@@ -997,7 +997,7 @@ func (z80 *Z80) doOpcodes() {
 
 	var z80_localInstructionCounter uint = 0
 
-	for (z80.tstates < eventNextEvent) && !z80.halted {
+	for (z80.tstates < z80.eventNextEvent) && !z80.halted {
 		z80.memory.contendRead(z80.pc, 4)
 		opcode := z80.memory.readByteInternal(z80.pc)
 
@@ -1139,7 +1139,6 @@ func opcode_fd(z80 *Z80, tempaddr uint16) {
 			/* Instruction did not involve H or L */
 			opcodesMap[opcode2](z80, 0)
 		}
-
 	}
 }
 

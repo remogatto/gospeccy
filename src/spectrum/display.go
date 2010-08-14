@@ -73,6 +73,7 @@ const (
 	DISPLAY_START = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE)
 )
 
+
 type RGBA struct {
 	R, G, B, A byte
 }
@@ -82,13 +83,13 @@ func (color RGBA) value32() uint32 {
 }
 
 var palette [16]uint32 = [16]uint32{
-	RGBA{0, 0, 0, 255}.value32(),
-	RGBA{0, 0, 192, 255}.value32(),
-	RGBA{192, 0, 0, 255}.value32(),
-	RGBA{192, 0, 192, 255}.value32(),
-	RGBA{0, 192, 0, 255}.value32(),
-	RGBA{0, 192, 192, 255}.value32(),
-	RGBA{192, 192, 0, 255}.value32(),
+	RGBA{0  , 0  , 0  , 255}.value32(),
+	RGBA{0  , 0  , 192, 255}.value32(),
+	RGBA{192, 0  , 0  , 255}.value32(),
+	RGBA{192, 0  , 192, 255}.value32(),
+	RGBA{0  , 192, 0  , 255}.value32(),
+	RGBA{0  , 192, 192, 255}.value32(),
+	RGBA{192, 192, 0  , 255}.value32(),
 	RGBA{192, 192, 192, 255}.value32(),
 	RGBA{0  , 0  , 0  , 255}.value32(),
 	RGBA{0  , 0  , 255, 255}.value32(),
@@ -152,5 +153,4 @@ func init() {
 		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
 		//println(y, ",", (addr-SCREEN_BASE_ADDR)/BytesPerLine, " = ", FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE)
 	}
-
 }

@@ -51,7 +51,6 @@ func NewSpectrum48k(app *Application) (*Spectrum48k, os.Error) {
 	ula := NewULA()
 
 	speccy := &Spectrum48k{
-		RomPath:  defaultRomPath,
 		app:      app,
 		Cpu:      z80,
 		Memory:   memory,

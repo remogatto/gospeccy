@@ -12,11 +12,11 @@ import (
 )
 
 func (s *SDLSurface) At(x, y int) image.Color {
-	var bpp = int(s.Surface.Format.BytesPerPixel)
+	var bpp = int(s.surface.Format.BytesPerPixel)
 
-	var pixel = uintptr(unsafe.Pointer(s.Surface.Pixels))
+	var pixel = uintptr(unsafe.Pointer(s.surface.Pixels))
 
-	pixel += uintptr(y*int(s.Surface.Pitch) + x*bpp)
+	pixel += uintptr(y*int(s.surface.Pitch) + x*bpp)
 
 	var color = *((*uint32)(unsafe.Pointer(pixel)))
 
@@ -25,7 +25,7 @@ func (s *SDLSurface) At(x, y int) image.Color {
 	var b uint8
 	var a uint8
 
-	sdl.GetRGBA(color, s.Surface.Format, &r, &g, &b, &a)
+	sdl.GetRGBA(color, s.surface.Format, &r, &g, &b, &a)
 
 	return image.RGBAColor{uint8(r), uint8(g), uint8(b), uint8(a)}
 }
@@ -40,7 +40,7 @@ func newSurface() *sdl.Surface {
 	return sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, 0)
 }
 
-func readOutputImage(filename string) image.Image {
+func loadExpectedImage(filename string) image.Image {
 	var file *os.File
 	var err os.Error
 	var image image.Image
@@ -55,11 +55,16 @@ func readOutputImage(filename string) image.Image {
 	return image
 }
 
-func readInputImage(filename string) *Display {
+func loadScreen(filename string, speccy *Spectrum48k) *ULA {
 	memory := NewMemory()
-	display := NewDisplay(memory)
-	display.vram, _ = ioutil.ReadFile(filename)
-	return display
+	memory.init(speccy)
+	ula := NewULA()
+	ula.init(speccy)
+	image, _ := ioutil.ReadFile(filename)
+	for offset, value := range image {
+		speccy.Memory.Write(0x4000+uint16(offset), value)
+	}
+	return ula
 }
 
 func colorsAreNotEqual(got, expected image.Color) bool {
@@ -77,7 +82,7 @@ func imagesAreNotEqual(got *SDLScreen, expected image.Image) image.Image {
 
 	for y := 0; y < TotalScreenHeight; y++ {
 		for x := 0; x < TotalScreenWidth; x++ {
-			if colorsAreNotEqual(got.ScreenSurface.At(x, y), expected.At(x, y)) {
+			if colorsAreNotEqual(got.screenSurface.At(x, y), expected.At(x, y)) {
 				diff = true
 				diffImage.Set(x, y, image.Red)
 			}
@@ -99,24 +104,26 @@ type RenderTest struct {
 	diffImage   image.Image
 }
 
-func (r *RenderTest) renderInputImage() bool {
-	renderedScreen := &SDLScreen{nil, SDLSurface{newSurface()}}
+func (r *RenderTest) renderScreen(speccy *Spectrum48k) bool {
+	renderedSDLScreen := &SDLScreen{nil, SDLSurface{newSurface()}, newUnscaledDisplay()}
 
-	expectedImage := readOutputImage(r.out)
-	inputImage := readInputImage(r.in)
+	speccy.addDisplay(renderedSDLScreen)
 
-	inputImage.borderColor = r.borderColor
+	expectedImage := loadExpectedImage(r.out)
+	inputScreen := loadScreen(r.in, speccy)
+
+	inputScreen.borderColor = r.borderColor
 
 	if r.flash {
-		inputImage.flashFrame = 0x10
-		inputImage.prepare()
+		inputScreen.frame = 0x10
+		inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
 	}
 
-	displayData := inputImage.prepare()
+	displayData := inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
 
-	renderedScreen.render(displayData, nil)
+	renderedSDLScreen.render(displayData, nil)
 
-	if diffImage := imagesAreNotEqual(renderedScreen, expectedImage); diffImage != nil {
+	if diffImage := imagesAreNotEqual(renderedSDLScreen, expectedImage); diffImage != nil {
 		r.diffImage = diffImage
 		return true
 	}
@@ -150,9 +157,17 @@ func TestSDLRenderer(t *testing.T) {
 
 	initSDL()
 
-	for _, r := range RenderTests {
-		if notEqual := r.renderInputImage(); notEqual {
-			r.reportError(t)
+	defaultRomPath = "testdata/48.rom"
+
+	app := NewApplication()
+
+	if speccy, err := NewSpectrum48k(app); err != nil {
+		panic(err)
+	} else {
+		for _, r := range RenderTests {
+			if notEqual := r.renderScreen(speccy); notEqual {
+				r.reportError(t)
+			}
 		}
 	}
 
@@ -166,6 +181,9 @@ func BenchmarkRender(b *testing.B) {
 
 	initSDL()
 
+	defaultRomPath = "testdata/48.rom"
+
+	app := NewApplication()
 	surface := newSurface()
 
 	const numFrames = 1000
@@ -175,22 +193,22 @@ func BenchmarkRender(b *testing.B) {
 		prevFrame *DisplayData = nil
 	)
 
-	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{surface}}
+	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{surface}, newUnscaledDisplay()}
 
-	if speccy, err := NewSpectrum48k(); err != nil {
+	if speccy, err := NewSpectrum48k(app); err != nil {
 		panic(err)
 	} else {
-		speccy.SetDisplayReceiver(sdlScreen)
-		speccy.LoadSna("testdata/fire.sna")
+		speccy.addDisplay(sdlScreen)
+		speccy.loadSna("testdata/fire.sna")
 
 		go func() {
 			for i := 0; i < numFrames; i++ {
-				speccy.RenderFrame()
+				speccy.renderFrame()
 			}
 		}()
 
 		for i := 0; i < numFrames; i++ {
-			frames[i] = *<-sdlScreen.getDisplayDataCh()
+			frames[i] = *<-sdlScreen.getDisplayDataChannel()
 		}
 
 		var j int

@@ -142,106 +142,105 @@ func (ula *ULA) screenAttrWrite(address uint16, b byte) {
 	}
 }
 
-func (ula *ULA) sendScreenToDisplay(display *DisplayInfo) {
+func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 	sendDiffOnly := false
 	if (display.lastFrame != nil) && (*display.lastFrame == ula.frame-1) {
 		sendDiffOnly = true
 	}
 
 	var screen DisplayData
-	{
-		flash := (ula.frame & 0x10) != 0
-		flash_previous := ((ula.frame - 1) & 0x10) != 0
-		flash_diff := (flash != flash_previous)
 
-		// screen.dirty
-		if sendDiffOnly {
-			screen.dirty = ula.dirtyScreen
-		} else {
-			for i := 0; i < ScreenWidth_Attr*ScreenHeight_Attr; i++ {
-				screen.dirty[i] = true
-			}
+	flash := (ula.frame & 0x10) != 0
+	flash_previous := ((ula.frame - 1) & 0x10) != 0
+	flash_diff := (flash != flash_previous)
+
+	// screen.dirty
+	if sendDiffOnly {
+		screen.dirty = ula.dirtyScreen
+	} else {
+		for i := 0; i < ScreenWidth_Attr*ScreenHeight_Attr; i++ {
+			screen.dirty[i] = true
 		}
+	}
 
-		// Fill screen.bitmap & screen.attr, but only the dirty regions.
-		var memory_data *[0x10000]byte = ula.speccy.Memory.Data()
-		ula_bitmap := &ula.bitmap
-		ula_attr := &ula.attr
-		screen_dirty := &screen.dirty
-		screen_bitmap := &screen.bitmap
-		screen_attr := &screen.attr
-		for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
-			attr_y8 := 8 * attr_y
+	// Fill screen.bitmap & screen.attr, but only the dirty regions.
+	var memory_data *[0x10000]byte = ula.speccy.Memory.Data()
+	ula_bitmap := &ula.bitmap
+	ula_attr := &ula.attr
+	screen_dirty := &screen.dirty
+	screen_bitmap := &screen.bitmap
+	screen_attr := &screen.attr
+	for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
+		attr_y8 := 8 * attr_y
 
-			for attr_x := uint(0); attr_x < ScreenWidth_Attr; attr_x++ {
-				attr_ofs := attr_y*ScreenWidth_Attr + attr_x
+		for attr_x := uint(0); attr_x < ScreenWidth_Attr; attr_x++ {
+			attr_ofs := attr_y*ScreenWidth_Attr + attr_x
 
-				// Make sure to send all changed flashing pixels to the DisplayReceiver
-				if flash_diff {
-					linearY_ofs := (attr_y8 << BytesPerLine_log2) + attr_x
+			// Make sure to send all changed flashing pixels to the DisplayReceiver
+			if flash_diff {
+				linearY_ofs := (attr_y8 << BytesPerLine_log2) + attr_x
 
-					for y := 0; y < 8; y++ {
-						var attr byte
-						if !ula_attr[linearY_ofs].valid {
-							attr = memory_data[ATTR_BASE_ADDR+attr_ofs]
-						} else {
-							attr = ula_attr[linearY_ofs].value
-						}
-
-						if (attr & 0x80) != 0 {
-							screen_dirty[attr_ofs] = true
-							break
-						}
-
-						linearY_ofs += BytesPerLine
+				for y := 0; y < 8; y++ {
+					var attr byte
+					if !ula_attr[linearY_ofs].valid {
+						attr = memory_data[ATTR_BASE_ADDR+attr_ofs]
+					} else {
+						attr = ula_attr[linearY_ofs].value
 					}
-				}
 
-				if !screen_dirty[attr_ofs] {
-					continue
-				}
-
-				// screen.bitmap
-				{
-					screen_addr := xy_to_screenAddr(uint8(8*attr_x), uint8(attr_y8))
-					linearY_ofs := (attr_y8 << BytesPerLine_log2) + attr_x
-
-					for y := 0; y < 8; y++ {
-						if !ula_bitmap[screen_addr-SCREEN_BASE_ADDR].valid {
-							screen_bitmap[linearY_ofs] = memory_data[screen_addr]
-						} else {
-							screen_bitmap[linearY_ofs] = ula_bitmap[screen_addr-SCREEN_BASE_ADDR].value
-						}
-
-						screen_addr += 8 * BytesPerLine
-						linearY_ofs += BytesPerLine
+					if (attr & 0x80) != 0 {
+						screen_dirty[attr_ofs] = true
+						break
 					}
+
+					linearY_ofs += BytesPerLine
 				}
+			}
 
-				// screen.attr
-				{
-					linearY_ofs := (attr_y8 << BytesPerLine_log2) + attr_x
+			if !screen_dirty[attr_ofs] {
+				continue
+			}
 
-					for y := 0; y < 8; y++ {
-						var attr byte
-						if !ula_attr[linearY_ofs].valid {
-							attr = memory_data[ATTR_BASE_ADDR+attr_ofs]
-						} else {
-							attr = ula_attr[linearY_ofs].value
-						}
+			// screen.bitmap
+			{
+				screen_addr := xy_to_screenAddr(uint8(8*attr_x), uint8(attr_y8))
+				linearY_ofs := (attr_y8 << BytesPerLine_log2) + attr_x
 
-						ink := ((attr & 0x40) >> 3) | (attr & 0x07)
-						paper := (attr & 0x78) >> 3
-
-						if flash && ((attr & 0x80) != 0) {
-							/* invert flashing attributes */
-							ink, paper = paper, ink
-						}
-
-						screen_attr[linearY_ofs] = attr_4bit((ink << 4) | paper)
-
-						linearY_ofs += BytesPerLine
+				for y := 0; y < 8; y++ {
+					if !ula_bitmap[screen_addr-SCREEN_BASE_ADDR].valid {
+						screen_bitmap[linearY_ofs] = memory_data[screen_addr]
+					} else {
+						screen_bitmap[linearY_ofs] = ula_bitmap[screen_addr-SCREEN_BASE_ADDR].value
 					}
+
+					screen_addr += 8 * BytesPerLine
+					linearY_ofs += BytesPerLine
+				}
+			}
+
+			// screen.attr
+			{
+				linearY_ofs := (attr_y8 << BytesPerLine_log2) + attr_x
+
+				for y := 0; y < 8; y++ {
+					var attr byte
+					if !ula_attr[linearY_ofs].valid {
+						attr = memory_data[ATTR_BASE_ADDR+attr_ofs]
+					} else {
+						attr = ula_attr[linearY_ofs].value
+					}
+
+					ink := ((attr & 0x40) >> 3) | (attr & 0x07)
+					paper := (attr & 0x78) >> 3
+
+					if flash && ((attr & 0x80) != 0) {
+						/* invert flashing attributes */
+						ink, paper = paper, ink
+					}
+
+					screen_attr[linearY_ofs] = attr_4bit((ink << 4) | paper)
+
+					linearY_ofs += BytesPerLine
 				}
 			}
 		}
@@ -262,7 +261,13 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo) {
 	if display.lastFrame == nil {
 		display.lastFrame = new(uint)
 	}
+
 	*display.lastFrame = ula.frame
 
-	display.displayReceiver.getDisplayDataChannel() <- &screen
+	return &screen
+}
+
+func (ula *ULA) sendScreenToDisplay(display *DisplayInfo) {
+	displayData := ula.prepare(display)
+	display.displayReceiver.getDisplayDataChannel() <- displayData
 }

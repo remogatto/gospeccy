@@ -15,7 +15,7 @@ type MemoryAccessor interface {
 	Read(addr uint16) byte
 	Write(addr uint16, value byte)
 	Data() *[0x10000]byte
-	
+
 	reset()
 }
 
@@ -39,7 +39,6 @@ func (memory *Memory) reset() {
 		memory.data[i] = 0
 	}
 }
-
 
 func (memory *Memory) readByteInternal(addr uint16) byte {
 	return memory.data[addr]

@@ -184,16 +184,15 @@ func BenchmarkRender(b *testing.B) {
 	defaultRomPath = "testdata/48.rom"
 
 	app := NewApplication()
-	surface := newSurface()
 
 	const numFrames = 1000
 
 	var (
-		frames    [numFrames]DisplayData
+		frames    [numFrames]*DisplayData
 		prevFrame *DisplayData = nil
 	)
 
-	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{surface}, newUnscaledDisplay()}
+	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}, newUnscaledDisplay()}
 
 	if speccy, err := NewSpectrum48k(app); err != nil {
 		panic(err)
@@ -208,7 +207,7 @@ func BenchmarkRender(b *testing.B) {
 		}()
 
 		for i := 0; i < numFrames; i++ {
-			frames[i] = *<-sdlScreen.getDisplayDataChannel()
+			frames[i] = <-sdlScreen.getDisplayDataChannel()
 		}
 
 		var j int
@@ -216,8 +215,8 @@ func BenchmarkRender(b *testing.B) {
 		b.StartTimer()
 		for i := 0; i < b.N; i++ {
 			j %= numFrames
-			sdlScreen.render(&frames[j], prevFrame)
-			prevFrame = &frames[j]
+			sdlScreen.render(frames[j], prevFrame)
+			prevFrame = frames[j]
 			j++
 		}
 

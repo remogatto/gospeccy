@@ -24,6 +24,7 @@ GOFMT_FILES=\
 	src/spectrum/ula.go\
 	src/spectrum/z80.go\
 	src/spectrum/z80_test.go\
+	src/spectrum/sdldisplay_test.go\
 
 
 gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)

@@ -137,9 +137,9 @@ type Z80 struct {
 
 	interruptsEnabledAt int
 
-	memory *Memory
+	memory MemoryAccessor
 
-	ports *Ports
+	ports PortAccessor
 
 	rzxInstructionsOffset int
 
@@ -153,7 +153,7 @@ type Z80 struct {
 	perfCounter_hostCpuInstr   *perf.PerfCounter // Can be nil (if creating the counter fails)
 }
 
-func NewZ80(memory *Memory, ports *Ports) *Z80 {
+func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
 	z80 := &Z80{memory: memory, ports: ports}
 
 	z80.bc = register16{&z80.b, &z80.c}
@@ -256,7 +256,7 @@ func (z80 *Z80) loadSna(filename string) os.Error {
 
 	// Populate memory
 	for i := 0; i < 0xc000; i++ {
-		z80.memory.data[i+0x4000] = bytes[i+27]
+		z80.memory.Data()[i+0x4000] = bytes[i+27]
 	}
 
 	// Send a RETN

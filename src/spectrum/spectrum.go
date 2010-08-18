@@ -7,34 +7,39 @@ import (
 	"container/vector"
 )
 
-const Spectrum48k_ROM_filepath = "roms/48.rom"
 const TStatesPerFrame = 69888 // Number of T-states per frame
 const InterruptLength = 32    // How long does an interrupt last in T-states
 const DefaultFPS = 50.08
 
+// This is not a const because we need to change it in tests. We
+// should provide a better solution though.
+var defaultRomPath string = "roms/48.rom"
+
 type DisplayInfo struct {
 	displayReceiver DisplayReceiver
 
-	// The index of the last frame sent to the 'displayReceiver', initially nil.
+	// The index of the last frame sent to the 'displayReceiver',
+	// initially nil.
 	lastFrame *uint
 }
 
 type Spectrum48k struct {
-	app    *Application
-	Cpu    *Z80
-	Memory MemoryAccessor
-	ula    *ULA
-
-	displays vector.Vector // A vector of '*DisplayInfo', initially empty
-
+	Cpu      *Z80
+	Memory   MemoryAccessor
+	ula      *ULA
 	Keyboard *Keyboard
 	Ports    PortAccessor
 
-	// Send a single value to this channel in order to change the display refresh frequency.
-	// By default, this channel initially receives the value 'DefaultFPS'.
+	// Send a single value to this channel in order to change the
+	// display refresh frequency.  By default, this channel
+	// initially receives the value 'DefaultFPS'.
 	FPS chan float
 
 	CommandChannel chan interface{}
+
+	displays vector.Vector // A vector of '*DisplayInfo',
+	// initially empty
+	app *Application
 }
 
 // Create a new speccy object.
@@ -45,7 +50,15 @@ func NewSpectrum48k(app *Application) (*Spectrum48k, os.Error) {
 	z80 := NewZ80(memory, ports)
 	ula := NewULA()
 
-	speccy := &Spectrum48k{app: app, Cpu: z80, Memory: memory, ula: ula, Keyboard: keyboard, displays: vector.Vector{}, Ports: ports}
+	speccy := &Spectrum48k{
+		app:      app,
+		Cpu:      z80,
+		Memory:   memory,
+		ula:      ula,
+		Keyboard: keyboard,
+		displays: vector.Vector{},
+		Ports:    ports,
+	}
 
 	memory.init(speccy)
 	ula.init(speccy)
@@ -131,12 +144,12 @@ func (speccy *Spectrum48k) reset() os.Error {
 
 	// Load the first 16k of memory with the ROM image
 	{
-		rom48k, err := ioutil.ReadFile(Spectrum48k_ROM_filepath)
+		rom48k, err := ioutil.ReadFile(defaultRomPath)
 		if err != nil {
 			return err
 		}
 		if len(rom48k) != 0x4000 {
-			return os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", Spectrum48k_ROM_filepath))
+			return os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", defaultRomPath))
 		}
 
 		for address, b := range rom48k {

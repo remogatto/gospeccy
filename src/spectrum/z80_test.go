@@ -60,19 +60,18 @@ func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
 func (z80 *Z80) DumpMemory(out *vector.StringVector) {
 	var i uint
 	for i = 0; i < 0x10000; i++ {
-		if z80.memory.At(i) == initialMemory[i] {
+		if z80.memory.Read(uint16(i)) == initialMemory[uint16(i)] {
 			continue
 		}
 
 		line := fmt.Sprintf("%04x ", i)
 
-		for (i < 0x10000) && (z80.memory.At(i) != initialMemory[i] || (dirtyMemory[i])) {
-			line += fmt.Sprintf("%02x ", z80.memory.At(i))
+		for (i < 0x10000) && (z80.memory.Read(uint16(i)) != initialMemory[uint16(i)] || (dirtyMemory[uint16(i)])) {
+			line += fmt.Sprintf("%02x ", z80.memory.Read(uint16(i)))
 			i++
 		}
 
 		line += fmt.Sprintf("-1\n")
-
 		out.Push(line)
 	}
 }
@@ -133,16 +132,22 @@ func (memory *testMemory) renderScreen() {
 
 }
 
-func (memory *testMemory) At(address uint) byte {
+func (memory *testMemory) Read(address uint16) byte {
 	return memory.data[address]
 }
 
-func (memory *testMemory) set(address uint16, value byte) {
+func (memory *testMemory) Write(address uint16, value byte) {
 	memory.data[address] = value
 }
 
-func (memory *testMemory) Data() []byte {
+func (memory *testMemory) Data() *[0x10000]byte {
 	return &memory.data
+}
+
+func (memory *testMemory) reset() {
+	for i := 0; i < 0x10000; i++ {
+		memory.data[i] = 0
+	}
 }
 
 type testPort struct {
@@ -195,6 +200,22 @@ func (p *testPort) contendPortPostio(port uint16) {
 		p.z80.tstates += 3
 
 	}
+
+}
+
+func (p *testPort) frame_begin() {
+
+}
+
+func (p *testPort) frame_releaseMemory() {
+
+}
+
+func (p *testPort) getBorderEvents() *BorderEvent {
+	return nil
+}
+
+func (p *testPort) reset() {
 
 }
 
@@ -319,7 +340,7 @@ func TestDoOpcodes(t *testing.T) {
 					byte := memWrites[i]
 					if byte != "-1" {
 						value, _ := strconv.Btoui64(byte, 16)
-						z80.memory.set(uint16(addr), uint8(value))
+						z80.memory.Write(uint16(addr), uint8(value))
 						addr++
 					}
 				}
@@ -349,7 +370,11 @@ func TestDoOpcodes(t *testing.T) {
 
 			currLine++
 
-			z80.Reset()
+			z80.reset()
+			memory.reset()
+			for i, _ := range dirtyMemory {
+				dirtyMemory[i] = false
+			}
 		}
 	}
 
@@ -405,10 +430,13 @@ func BenchmarkZ80(b *testing.B) {
 
 	b.StopTimer()
 
-	if speccy, err := NewSpectrum48k(); err != nil {
+	defaultRomPath = "testdata/48.rom"
+	app := NewApplication()
+
+	if speccy, err := NewSpectrum48k(app); err != nil {
 		panic(err)
 	} else {
-		speccy.LoadSna("testdata/fire.sna")
+		speccy.loadSna("testdata/fire.sna")
 
 		b.StartTimer()
 

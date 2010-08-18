@@ -18,6 +18,11 @@ type ULA struct {
 
 	borderColor byte
 
+	// Whether to discern between [data read by ULA] and [data in memory at the end of a frame].
+	// If the value is 'false', then fields 'bitmap' and 'attr' will contain no information.
+	// The default value is 'true'.
+	accurateEmulation bool
+
 	// Screen bitmap data read by ULA, if they differ from data in memory at the end of a frame.
 	// Spectrum y-coordinate.
 	bitmap [BytesPerLine * ScreenHeight]ula_byte_t
@@ -34,7 +39,7 @@ type ULA struct {
 
 
 func NewULA() *ULA {
-	return &ULA{}
+	return &ULA{accurateEmulation: true}
 }
 
 func (ula *ULA) init(speccy *Spectrum48k) {
@@ -52,6 +57,11 @@ func (ula *ULA) getBorderColor() byte {
 
 func (ula *ULA) setBorderColor(borderColor byte) {
 	ula.borderColor = borderColor
+}
+
+
+func (ula *ULA) setEmulationAccuracy(accurateEmulation bool) {
+	ula.accurateEmulation = accurateEmulation
 }
 
 
@@ -107,13 +117,15 @@ func (ula *ULA) screenAttrTouch(address uint16) {
 func (ula *ULA) screenBitmapWrite(address uint16, b byte) {
 	ula.screenBitmapTouch(address)
 
-	rel_addr := address - SCREEN_BASE_ADDR
-	screenline_start_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
-	x, _ := screenAddr_to_xy(address)
-	screen_tstate := screenline_start_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
-	if ula.speccy.Cpu.tstates > screen_tstate {
-		// Remember the value read by ULA
-		ula.bitmap[rel_addr] = ula_byte_t{true, ula.speccy.Memory.Read(address)}
+	if ula.accurateEmulation {
+		rel_addr := address - SCREEN_BASE_ADDR
+		screenline_start_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
+		x, _ := screenAddr_to_xy(address)
+		screen_tstate := screenline_start_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
+		if ula.speccy.Cpu.tstates > screen_tstate {
+			// Remember the value read by ULA
+			ula.bitmap[rel_addr] = ula_byte_t{true, ula.speccy.Memory.Read(address)}
+		}
 	}
 }
 
@@ -121,24 +133,26 @@ func (ula *ULA) screenBitmapWrite(address uint16, b byte) {
 func (ula *ULA) screenAttrWrite(address uint16, b byte) {
 	ula.screenAttrTouch(address)
 
-	speccy := ula.speccy
+	if ula.accurateEmulation {
+		speccy := ula.speccy
 
-	attr_x := (address & 0x001f)
-	attr_y := (address - ATTR_BASE_ADDR) / ScreenWidth_Attr
+		attr_x := (address & 0x001f)
+		attr_y := (address - ATTR_BASE_ADDR) / ScreenWidth_Attr
 
-	x := uint(8 * attr_x)
-	y := uint(8 * attr_y)
-	for i := 0; i < 8; i++ {
-		screenline_start_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE
-		screen_tstate := screenline_start_tstate + (x >> PIXELS_PER_TSTATE_LOG2)
-		if speccy.Cpu.tstates > screen_tstate {
-			ofs := (y << BytesPerLine_log2) + uint(attr_x)
-			ula_attr := &ula.attr[ofs]
-			if !ula_attr.valid || (screen_tstate > ula_attr.tstate) {
-				*ula_attr = ula_attr_t{true, speccy.Memory.Read(address), speccy.Cpu.tstates}
+		x := uint(8 * attr_x)
+		y := uint(8 * attr_y)
+		for i := 0; i < 8; i++ {
+			screenline_start_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE
+			screen_tstate := screenline_start_tstate + (x >> PIXELS_PER_TSTATE_LOG2)
+			if speccy.Cpu.tstates > screen_tstate {
+				ofs := (y << BytesPerLine_log2) + uint(attr_x)
+				ula_attr := &ula.attr[ofs]
+				if !ula_attr.valid || (screen_tstate > ula_attr.tstate) {
+					*ula_attr = ula_attr_t{true, speccy.Memory.Read(address), speccy.Cpu.tstates}
+				}
 			}
+			y++
 		}
-		y++
 	}
 }
 

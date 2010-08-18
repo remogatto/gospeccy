@@ -75,6 +75,9 @@ type Cmd_AddDisplay struct {
 	Display DisplayReceiver
 }
 type Cmd_CloseAllDisplays struct{}
+type Cmd_SetUlaEmulationAccuracy struct {
+	accurateEmulation bool
+}
 
 func commandLoop(speccy *Spectrum48k) {
 	evtLoop := speccy.app.NewEventLoop()
@@ -111,6 +114,9 @@ func commandLoop(speccy *Spectrum48k) {
 
 			case Cmd_CloseAllDisplays:
 				speccy.closeAllDisplays()
+
+			case Cmd_SetUlaEmulationAccuracy:
+				speccy.ula.setEmulationAccuracy(cmd.accurateEmulation)
 			}
 		}
 	}
@@ -203,7 +209,7 @@ func (speccy *Spectrum48k) loadSna(filename string) os.Error {
 		return err
 	}
 
-	err = speccy.Cpu.LoadSna(filename)
+	err = speccy.Cpu.loadSna(filename)
 	if err != nil {
 		return err
 	}

@@ -207,7 +207,7 @@ func (z80 *Z80) reset() {
 
 // Initialize state from the snapshot defined by the specified filename.
 // Returns nil on success.
-func (z80 *Z80) LoadSna(filename string) os.Error {
+func (z80 *Z80) loadSna(filename string) os.Error {
 	bytes, err := ioutil.ReadFile(filename)
 
 	if err != nil {

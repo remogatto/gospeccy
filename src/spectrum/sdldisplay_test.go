@@ -157,11 +157,11 @@ func TestSDLRenderer(t *testing.T) {
 
 	initSDL()
 
-	defaultRomPath = "testdata/48.rom"
+	romPath := "testdata/48.rom"
 
 	app := NewApplication()
 
-	if speccy, err := NewSpectrum48k(app); err != nil {
+	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
 		panic(err)
 	} else {
 		for _, r := range RenderTests {
@@ -181,7 +181,7 @@ func BenchmarkRender(b *testing.B) {
 
 	initSDL()
 
-	defaultRomPath = "testdata/48.rom"
+	romPath = "testdata/48.rom"
 
 	app := NewApplication()
 	surface := newSurface()
@@ -195,7 +195,7 @@ func BenchmarkRender(b *testing.B) {
 
 	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{surface}, newUnscaledDisplay()}
 
-	if speccy, err := NewSpectrum48k(app); err != nil {
+	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
 		panic(err)
 	} else {
 		speccy.addDisplay(sdlScreen)

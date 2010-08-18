@@ -40,6 +40,7 @@ func (memory *Memory) reset() {
 	}
 }
 
+
 func (memory *Memory) readByteInternal(addr uint16) byte {
 	return memory.data[addr]
 }

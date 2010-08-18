@@ -245,7 +245,7 @@ sub ini_ind ($) {
 
         z80.b--; z80.${modifier}HL()
         initemp2 = initemp + z80.c $operation 1;
-	z80.f = ternOpB((initemp & 0x80) != 0, FLAG_N, 0) | ternOpB(initemp2 < initemp, FLAG_H | FLAG_C, 0) | ternOpB(z80.parityTable[(initemp2 & 0x07) ^ z80.b] != 0, FLAG_P, 0 ) | z80.sz53Table[z80.b]
+	z80.f = ternOpB((initemp & 0x80) != 0, FLAG_N, 0) | ternOpB(initemp2 < initemp, FLAG_H | FLAG_C, 0) | ternOpB(parityTable[(initemp2 & 0x07) ^ z80.b] != 0, FLAG_P, 0 ) | sz53Table[z80.b]
 CODE
 }
 
@@ -267,8 +267,8 @@ sub inir_indr ($) {
         initemp2 = initemp + z80.c $operation 1;
 	z80.f = ternOpB(initemp & 0x80 != 0, FLAG_N, 0) |
                 ternOpB(initemp2 < initemp, FLAG_H | FLAG_C, 0 ) |
-                ternOpB(z80.parityTable[ ( initemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0) |
-                z80.sz53Table[z80.b];
+                ternOpB(parityTable[ ( initemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0) |
+                sz53Table[z80.b];
 
 	if( z80.b != 0 ) {
 	  z80.memory.contendWriteNoMreq( z80.HL(), 1 ); z80.memory.contendWriteNoMreq( z80.HL(), 1 );
@@ -340,8 +340,8 @@ sub otir_otdr ($) {
         outitemp2 = outitemp + z80.l;
 	z80.f = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0 ) |
             ternOpB(outitemp2 < outitemp, FLAG_H | FLAG_C, 0) |
-            ternOpB(z80.parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |
-            z80.sz53Table[z80.b]
+            ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |
+            sz53Table[z80.b]
 
 	if( z80.b != 0 ) {
 	  z80.memory.contendReadNoMreq( z80.BC(), 1 ); z80.memory.contendReadNoMreq( z80.BC(), 1 );
@@ -370,8 +370,8 @@ sub outi_outd ($) {
         outitemp2 = outitemp + z80.l;
 	z80.f = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0) |
             ternOpB(outitemp2 < outitemp, FLAG_H | FLAG_C, 0) |
-            ternOpB(z80.parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |
-            z80.sz53Table[z80.b];
+            ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |
+            sz53Table[z80.b];
 CODE
 }
 
@@ -529,7 +529,7 @@ sub opcode_DAA (@) {
 	} else {
 	  z80.add(add)
 	}
-        var temp int = (int(z80.f) & ^(FLAG_C | FLAG_P)) | int(carry) | int(z80.parityTable[z80.a])
+        var temp int = (int(z80.f) & ^(FLAG_C | FLAG_P)) | int(carry) | int(parityTable[z80.a])
 	z80.f = byte(temp)
 DAA
 }
@@ -729,7 +729,7 @@ LD
 		print << "LD";
       z80.memory.contendReadNoMreq( z80.IR(), 1 );
       z80.a = byte((z80.r & 0x7f) | (z80.r7 & 0x80))
-      z80.f = ( z80.f & FLAG_C ) | z80.sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
+      z80.f = ( z80.f & FLAG_C ) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
 LD
 	    } else {
 		print "      z80.memory.contendReadNoMreq( z80.IR(), 1 );\n" if $src eq 'I' or $dest eq 'I';
@@ -737,7 +737,7 @@ LD
 		$lcdest = lc($dest); $lcsrc = lc($src);
 		print "      z80.$lcdest = z80.$lcsrc;\n" if $dest ne $src;
 		if( $dest eq 'A' and $src eq 'I' ) {
-		    print "      z80.f = ( z80.f & FLAG_C ) | z80.sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)\n";
+		    print "      z80.f = ( z80.f & FLAG_C ) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)\n";
 		}
 	    }
 	} elsif( $src eq 'nn' ) {
@@ -994,7 +994,7 @@ sub opcode_RLD (@) {
 	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
 	z80.memory.writeByte(z80.HL(), (bytetemp << 4 ) | ( z80.a & 0x0f ) )
 	z80.a = ( z80.a & 0xf0 ) | ( bytetemp >> 4 )
-	z80.f = ( z80.f & FLAG_C ) | z80.sz53pTable[z80.a]
+	z80.f = ( z80.f & FLAG_C ) | sz53pTable[z80.a]
 RLD
 }
 
@@ -1025,7 +1025,7 @@ sub opcode_RRD (@) {
 	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
 	z80.memory.writeByte(z80.HL(),  ( z80.a << 4 ) | ( bytetemp >> 4 ) )
 	z80.a = ( z80.a & 0xf0 ) | ( bytetemp & 0x0f )
-	z80.f = ( z80.f & FLAG_C ) | z80.sz53pTable[z80.a]
+	z80.f = ( z80.f & FLAG_C ) | sz53pTable[z80.a]
 RRD
 }
 

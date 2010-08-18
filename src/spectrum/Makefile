@@ -3,6 +3,8 @@ include $(GOROOT)/src/Make.$(GOARCH)
 TARG=spectrum
 GOFILES=\
 	z80.go\
+	z80_gen.go\
+	z80_tables.go\
 	opcodes.go\
 	memory.go\
 	port.go\

@@ -114,44 +114,52 @@ func (ula *ULA) screenAttrTouch(address uint16) {
 }
 
 // Handle a write to an address in range (SCREEN_BASE_ADDR ... SCREEN_BASE_ADDR+0x1800-1)
-func (ula *ULA) screenBitmapWrite(address uint16, b byte) {
-	ula.screenBitmapTouch(address)
+func (ula *ULA) screenBitmapWrite(address uint16, oldValue byte, newValue byte) {
+	if oldValue != newValue {
+		ula.screenBitmapTouch(address)
 
-	if ula.accurateEmulation {
-		rel_addr := address - SCREEN_BASE_ADDR
-		screenline_start_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
-		x, _ := screenAddr_to_xy(address)
-		screen_tstate := screenline_start_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
-		if ula.speccy.Cpu.tstates > screen_tstate {
-			// Remember the value read by ULA
-			ula.bitmap[rel_addr] = ula_byte_t{true, ula.speccy.Memory.Read(address)}
+		if ula.accurateEmulation {
+			rel_addr := address - SCREEN_BASE_ADDR
+			ula_lineStart_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
+			x, _ := screenAddr_to_xy(address)
+			ula_tstate := ula_lineStart_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
+			if ula_tstate <= ula.speccy.Cpu.tstates {
+				// Remember the value read by ULA
+				ula.bitmap[rel_addr] = ula_byte_t{true, oldValue}
+			}
 		}
 	}
 }
 
 // Handle a write to an address in range (ATTR_BASE_ADDR ... ATTR_BASE_ADDR+0x300-1)
-func (ula *ULA) screenAttrWrite(address uint16, b byte) {
-	ula.screenAttrTouch(address)
+func (ula *ULA) screenAttrWrite(address uint16, oldValue byte, newValue byte) {
+	if oldValue != newValue {
+		ula.screenAttrTouch(address)
 
-	if ula.accurateEmulation {
-		speccy := ula.speccy
+		if ula.accurateEmulation {
+			speccy := ula.speccy
 
-		attr_x := (address & 0x001f)
-		attr_y := (address - ATTR_BASE_ADDR) / ScreenWidth_Attr
+			attr_x := uint(address & 0x001f)
+			attr_y := uint((address - ATTR_BASE_ADDR) >> ScreenWidth_Attr_log2)
 
-		x := uint(8 * attr_x)
-		y := uint(8 * attr_y)
-		for i := 0; i < 8; i++ {
-			screenline_start_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE
-			screen_tstate := screenline_start_tstate + (x >> PIXELS_PER_TSTATE_LOG2)
-			if speccy.Cpu.tstates > screen_tstate {
-				ofs := (y << BytesPerLine_log2) + uint(attr_x)
-				ula_attr := &ula.attr[ofs]
-				if !ula_attr.valid || (screen_tstate > ula_attr.tstate) {
-					*ula_attr = ula_attr_t{true, speccy.Memory.Read(address), speccy.Cpu.tstates}
+			x := 8 * attr_x
+			y := 8 * attr_y
+
+			ofs := (y << BytesPerLine_log2) + attr_x
+			ula_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE + (x >> PIXELS_PER_TSTATE_LOG2)
+
+			for i := 0; i < 8; i++ {
+				if ula_tstate <= speccy.Cpu.tstates {
+					ula_attr := &ula.attr[ofs]
+					if !ula_attr.valid || (ula_tstate > ula_attr.tstate) {
+						*ula_attr = ula_attr_t{true, oldValue, speccy.Cpu.tstates}
+					}
+					ofs += BytesPerLine
+					ula_tstate += TSTATES_PER_LINE
+				} else {
+					break
 				}
 			}
-			y++
 		}
 	}
 }

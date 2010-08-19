@@ -32,8 +32,9 @@ const (
 	BytesPerLine      = ScreenWidth / 8 // =32
 	BytesPerLine_log2 = 5               // =log2(BytesPerLine)
 
-	ScreenWidth_Attr  = ScreenWidth / 8  // =32
-	ScreenHeight_Attr = ScreenHeight / 8 // =24
+	ScreenWidth_Attr      = ScreenWidth / 8  // =32
+	ScreenWidth_Attr_log2 = 5                // =log2(ScreenWidth_Attr)
+	ScreenHeight_Attr     = ScreenHeight / 8 // =24
 
 	ScreenBorderX = 32
 	ScreenBorderY = 24

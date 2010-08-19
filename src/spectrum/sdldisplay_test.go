@@ -84,7 +84,7 @@ func imagesAreNotEqual(got *SDLScreen, expected image.Image) image.Image {
 		for x := 0; x < TotalScreenWidth; x++ {
 			if colorsAreNotEqual(got.screenSurface.At(x, y), expected.At(x, y)) {
 				diff = true
-				diffImage.Set(x, y, image.Red)
+				diffImage.Set(x, y, image.RGBAColor{255, 0, 0, 255})
 			}
 		}
 	}

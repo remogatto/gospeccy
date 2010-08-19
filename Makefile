@@ -43,7 +43,7 @@ gofmt:
 _obj:
 	mkdir _obj
 
-_obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a 
+_obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a
 	$(GC) -I./_obj -o $@ src/gospeccy.go
 
 _obj/spectrum.a: $(SPECTRUM_FILES)

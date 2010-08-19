@@ -2,7 +2,7 @@ package spectrum
 
 import (
 	"testing"
-	"sdl"
+	"⚛sdl"
 	"io/ioutil"
 	"image"
 	"image/png"

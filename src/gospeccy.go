@@ -27,7 +27,7 @@ package main
 
 import (
 	"spectrum"
-	"sdl"
+	"⚛sdl"
 	"fmt"
 	"flag"
 	"os"

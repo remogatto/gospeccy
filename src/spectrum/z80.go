@@ -28,7 +28,7 @@ package spectrum
 import (
 	"io/ioutil"
 	"fmt"
-	"perf"
+	"⚛perf"
 	"os"
 	"syscall"
 )

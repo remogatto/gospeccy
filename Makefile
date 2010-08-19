@@ -40,6 +40,11 @@ clean:
 gofmt:
 	gofmt -w -l $(GOFMT_FILES)
 
+install: gospeccy
+	cp gospeccy $(GOBIN)
+	mkdir -p $(HOME)/.gospeccy/
+	cp -r roms $(HOME)/.gospeccy
+
 _obj:
 	mkdir _obj
 

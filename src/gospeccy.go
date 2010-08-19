@@ -32,7 +32,32 @@ import (
 	"flag"
 	"os"
 	"time"
+	"path"
 )
+
+const defaultUserDir = ".gospeccy"
+
+// Return a valid path for the 48k system ROM.
+//
+// The search is performed in this order:
+// 1. ./roms/48.rom
+// 2. $HOME/.gospeccy/roms/48.rom
+func systemRomPath() string {
+	var (
+		currDir = "./roms/48.rom"
+		userDir = path.Join(os.Getenv("HOME"), defaultUserDir, "roms/48.rom")
+	)
+
+	if _, err := os.Stat(currDir); err == nil {
+		return currDir
+	} else if _, err := os.Stat(userDir); err == nil {
+		return userDir
+	} else {
+		return ""
+	}
+
+	return ""
+}
 
 // A Go routine for processing SDL events.
 //
@@ -182,7 +207,7 @@ func main() {
 	app.Verbose = *verbose
 
 	// Create new emulator core
-	speccy, err := spectrum.NewSpectrum48k(app, spectrum.DefaultRomPath)
+	speccy, err := spectrum.NewSpectrum48k(app, systemRomPath())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		app.RequestExit()

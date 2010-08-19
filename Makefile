@@ -12,6 +12,8 @@ SPECTRUM_FILES=\
 	src/spectrum/spectrum.go\
 	src/spectrum/ula.go\
 	src/spectrum/z80.go\
+	src/spectrum/z80_gen.go\
+	src/spectrum/z80_tables.go\
 
 GOFMT_FILES=\
 	src/gospeccy.go\
@@ -25,7 +27,8 @@ GOFMT_FILES=\
 	src/spectrum/z80.go\
 	src/spectrum/z80_test.go\
 	src/spectrum/sdldisplay_test.go\
-
+	src/spectrum/z80_gen.go\
+	src/spectrum/z80_tables.go\
 
 gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)

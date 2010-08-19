@@ -23,6 +23,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
+//
+// Automatically generated file -- DO NOT EDIT
+//
+
 package spectrum
 
 func initOpcodes() {
@@ -276,7 +280,7 @@ func initOpcodes() {
 		} else {
 			z80.add(add)
 		}
-		var temp int = (int(z80.f) & ^(FLAG_C | FLAG_P)) | int(carry) | int(z80.parityTable[z80.a])
+		var temp int = (int(z80.f) & ^(FLAG_C | FLAG_P)) | int(carry) | int(parityTable[z80.a])
 		z80.f = byte(temp)
 	}
 	/* JR Z,offset */
@@ -2670,7 +2674,7 @@ func initOpcodes() {
 	opcodesMap[shift0xed(0x57)] = func(z80 *Z80, tempaddr uint16) {
 		z80.memory.contendReadNoMreq(z80.IR(), 1)
 		z80.a = z80.i
-		z80.f = (z80.f & FLAG_C) | z80.sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
+		z80.f = (z80.f & FLAG_C) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
 	}
 	/* IN E,(C) */
 	opcodesMap[shift0xed(0x58)] = func(z80 *Z80, tempaddr uint16) {
@@ -2706,7 +2710,7 @@ func initOpcodes() {
 	opcodesMap[shift0xed(0x5f)] = func(z80 *Z80, tempaddr uint16) {
 		z80.memory.contendReadNoMreq(z80.IR(), 1)
 		z80.a = byte((z80.r & 0x7f) | (z80.r7 & 0x80))
-		z80.f = (z80.f & FLAG_C) | z80.sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
+		z80.f = (z80.f & FLAG_C) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
 	}
 	/* IN H,(C) */
 	opcodesMap[shift0xed(0x60)] = func(z80 *Z80, tempaddr uint16) {
@@ -2741,7 +2745,7 @@ func initOpcodes() {
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
 		z80.memory.writeByte(z80.HL(), (z80.a<<4)|(bytetemp>>4))
 		z80.a = (z80.a & 0xf0) | (bytetemp & 0x0f)
-		z80.f = (z80.f & FLAG_C) | z80.sz53pTable[z80.a]
+		z80.f = (z80.f & FLAG_C) | sz53pTable[z80.a]
 	}
 	/* IN L,(C) */
 	opcodesMap[shift0xed(0x68)] = func(z80 *Z80, tempaddr uint16) {
@@ -2776,7 +2780,7 @@ func initOpcodes() {
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
 		z80.memory.writeByte(z80.HL(), (bytetemp<<4)|(z80.a&0x0f))
 		z80.a = (z80.a & 0xf0) | (bytetemp >> 4)
-		z80.f = (z80.f & FLAG_C) | z80.sz53pTable[z80.a]
+		z80.f = (z80.f & FLAG_C) | sz53pTable[z80.a]
 	}
 	/* IN F,(C) */
 	opcodesMap[shift0xed(0x70)] = func(z80 *Z80, tempaddr uint16) {
@@ -2877,7 +2881,7 @@ func initOpcodes() {
 		z80.b--
 		z80.incHL()
 		initemp2 = initemp + z80.c + 1
-		z80.f = ternOpB((initemp&0x80) != 0, FLAG_N, 0) | ternOpB(initemp2 < initemp, FLAG_H|FLAG_C, 0) | ternOpB(z80.parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) | z80.sz53Table[z80.b]
+		z80.f = ternOpB((initemp&0x80) != 0, FLAG_N, 0) | ternOpB(initemp2 < initemp, FLAG_H|FLAG_C, 0) | ternOpB(parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) | sz53Table[z80.b]
 	}
 	/* OUTI */
 	opcodesMap[shift0xed(0xa3)] = func(z80 *Z80, tempaddr uint16) {
@@ -2892,8 +2896,8 @@ func initOpcodes() {
 		outitemp2 = outitemp + z80.l
 		z80.f = ternOpB((outitemp&0x80) != 0, FLAG_N, 0) |
 			ternOpB(outitemp2 < outitemp, FLAG_H|FLAG_C, 0) |
-			ternOpB(z80.parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
-			z80.sz53Table[z80.b]
+			ternOpB(parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
+			sz53Table[z80.b]
 	}
 	/* LDD */
 	opcodesMap[shift0xed(0xa8)] = func(z80 *Z80, tempaddr uint16) {
@@ -2942,7 +2946,7 @@ func initOpcodes() {
 		z80.b--
 		z80.decHL()
 		initemp2 = initemp + z80.c - 1
-		z80.f = ternOpB((initemp&0x80) != 0, FLAG_N, 0) | ternOpB(initemp2 < initemp, FLAG_H|FLAG_C, 0) | ternOpB(z80.parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) | z80.sz53Table[z80.b]
+		z80.f = ternOpB((initemp&0x80) != 0, FLAG_N, 0) | ternOpB(initemp2 < initemp, FLAG_H|FLAG_C, 0) | ternOpB(parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) | sz53Table[z80.b]
 	}
 	/* OUTD */
 	opcodesMap[shift0xed(0xab)] = func(z80 *Z80, tempaddr uint16) {
@@ -2957,8 +2961,8 @@ func initOpcodes() {
 		outitemp2 = outitemp + z80.l
 		z80.f = ternOpB((outitemp&0x80) != 0, FLAG_N, 0) |
 			ternOpB(outitemp2 < outitemp, FLAG_H|FLAG_C, 0) |
-			ternOpB(z80.parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
-			z80.sz53Table[z80.b]
+			ternOpB(parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
+			sz53Table[z80.b]
 	}
 	/* LDIR */
 	opcodesMap[shift0xed(0xb0)] = func(z80 *Z80, tempaddr uint16) {
@@ -3021,8 +3025,8 @@ func initOpcodes() {
 		initemp2 = initemp + z80.c + 1
 		z80.f = ternOpB(initemp&0x80 != 0, FLAG_N, 0) |
 			ternOpB(initemp2 < initemp, FLAG_H|FLAG_C, 0) |
-			ternOpB(z80.parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
-			z80.sz53Table[z80.b]
+			ternOpB(parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
+			sz53Table[z80.b]
 
 		if z80.b != 0 {
 			z80.memory.contendWriteNoMreq(z80.HL(), 1)
@@ -3047,8 +3051,8 @@ func initOpcodes() {
 		outitemp2 = outitemp + z80.l
 		z80.f = ternOpB((outitemp&0x80) != 0, FLAG_N, 0) |
 			ternOpB(outitemp2 < outitemp, FLAG_H|FLAG_C, 0) |
-			ternOpB(z80.parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
-			z80.sz53Table[z80.b]
+			ternOpB(parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
+			sz53Table[z80.b]
 
 		if z80.b != 0 {
 			z80.memory.contendReadNoMreq(z80.BC(), 1)
@@ -3120,8 +3124,8 @@ func initOpcodes() {
 		initemp2 = initemp + z80.c - 1
 		z80.f = ternOpB(initemp&0x80 != 0, FLAG_N, 0) |
 			ternOpB(initemp2 < initemp, FLAG_H|FLAG_C, 0) |
-			ternOpB(z80.parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
-			z80.sz53Table[z80.b]
+			ternOpB(parityTable[(initemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
+			sz53Table[z80.b]
 
 		if z80.b != 0 {
 			z80.memory.contendWriteNoMreq(z80.HL(), 1)
@@ -3146,8 +3150,8 @@ func initOpcodes() {
 		outitemp2 = outitemp + z80.l
 		z80.f = ternOpB((outitemp&0x80) != 0, FLAG_N, 0) |
 			ternOpB(outitemp2 < outitemp, FLAG_H|FLAG_C, 0) |
-			ternOpB(z80.parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
-			z80.sz53Table[z80.b]
+			ternOpB(parityTable[(outitemp2&0x07)^z80.b] != 0, FLAG_P, 0) |
+			sz53Table[z80.b]
 
 		if z80.b != 0 {
 			z80.memory.contendReadNoMreq(z80.BC(), 1)

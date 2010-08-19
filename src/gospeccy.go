@@ -163,7 +163,7 @@ func main() {
 
 	{
 		flag.Usage = func() {
-			fmt.Fprintf(os.Stderr, "GoSpeccy - A simple ZX Spectrum 48k Emulator written in GO\n\n")
+			fmt.Fprintf(os.Stderr, "GoSpeccy - A ZX Spectrum 48k Emulator written in GO\n\n")
 			fmt.Fprintf(os.Stderr, "Usage:\n\n")
 			fmt.Fprintf(os.Stderr, "\tgospeccy [options] [image.sna]\n\n")
 			fmt.Fprintf(os.Stderr, "Options are:\n\n")
@@ -182,7 +182,7 @@ func main() {
 	app.Verbose = *verbose
 
 	// Create new emulator core
-	speccy, err := spectrum.NewSpectrum48k(app)
+	speccy, err := spectrum.NewSpectrum48k(app, spectrum.DefaultRomPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		app.RequestExit()

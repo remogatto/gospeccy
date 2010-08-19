@@ -430,10 +430,10 @@ func BenchmarkZ80(b *testing.B) {
 
 	b.StopTimer()
 
-	defaultRomPath = "testdata/48.rom"
+	romPath := "testdata/48.rom"
 	app := NewApplication()
 
-	if speccy, err := NewSpectrum48k(app); err != nil {
+	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
 		panic(err)
 	} else {
 		speccy.loadSna("testdata/fire.sna")

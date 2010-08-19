@@ -104,6 +104,12 @@ func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	speccy.FPS <- float(fps)
 }
 
+// Signature: func ULA_accuracy(accurateEmulation bool)
+func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	accurateEmulation := in[0].(eval.BoolValue).Get(t)
+	speccy.CommandChannel <- Cmd_SetUlaEmulationAccuracy{accurateEmulation}
+}
+
 
 // ==============
 // Initialization
@@ -111,51 +117,59 @@ func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 func defineFunctions(w *eval.World) {
 	{
-		var help_functionSignature func()
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_help, help_functionSignature)
+		var functionSignature func()
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_help, functionSignature)
 		w.DefineVar("help", funcType, funcValue)
 		help_keys.Push("help()")
 		help_vals.Push("This help")
 	}
 
 	{
-		var exit_functionSignature func()
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_exit, exit_functionSignature)
+		var functionSignature func()
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_exit, functionSignature)
 		w.DefineVar("exit", funcType, funcValue)
 		help_keys.Push("exit()")
 		help_vals.Push("Terminate this program")
 	}
 
 	{
-		var reset_functionSignature func()
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_reset, reset_functionSignature)
+		var functionSignature func()
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_reset, functionSignature)
 		w.DefineVar("reset", funcType, funcValue)
 		help_keys.Push("reset()")
 		help_vals.Push("Reset the emulated machine")
 	}
 
 	{
-		var load_functionSignature func(string)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, load_functionSignature)
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
 		w.DefineVar("load", funcType, funcValue)
 		help_keys.Push("load(path string)")
 		help_vals.Push("Load .sna file")
 	}
 
 	{
-		var scale_functionSignature func(uint)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_scale, scale_functionSignature)
+		var functionSignature func(uint)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_scale, functionSignature)
 		w.DefineVar("scale", funcType, funcValue)
 		help_keys.Push("scale(n uint)")
 		help_vals.Push("Change the display scale")
 	}
 
 	{
-		var fps_functionSignature func(float)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, fps_functionSignature)
+		var functionSignature func(float)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, functionSignature)
 		w.DefineVar("fps", funcType, funcValue)
 		help_keys.Push("fps(n float)")
 		help_vals.Push("Change the display refresh frequency")
+	}
+
+	{
+		var functionSignature func(bool)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_ulaAccuracy, functionSignature)
+		w.DefineVar("ULA_accuracy", funcType, funcValue)
+		help_keys.Push("ULA_accuracy(accurateEmulation bool)")
+		help_vals.Push("Enable/disable accurate emulation of screen bitmap and screen attributes")
 	}
 }
 

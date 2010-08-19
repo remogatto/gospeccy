@@ -23,7 +23,7 @@
 require 'rake/clean'
 require 'erb'
 
-CLOBBER.concat(['z80.go', 'opcodes.go'])
+CLOBBER.concat(['z80_gen.go', 'opcodes.go'])
 
 file "opcodes.go" => ["z80.pl", "opcodes.go.erb"] do
   template = ERB.new(File.read('opcodes.go.erb'))
@@ -39,19 +39,19 @@ file "opcodes.go" => ["z80.pl", "opcodes.go.erb"] do
   `gofmt -w opcodes.go`
 end
 
-file "z80.go" => ["z80.go.erb"] do
-  template = ERB.new(File.read('z80.go.erb'))
-  puts "Write z80.go"
-  File.open("z80.go", 'w') { |f| f << template.result(binding) } 
-  `gofmt -w z80.go`
+file "z80_gen.go" => ["z80_gen.go.erb"] do
+  template = ERB.new(File.read('z80_gen.go.erb'))
+  puts "Write z80_gen.go"
+  File.open("z80_gen.go", 'w') { |f| f << template.result(binding) } 
+  `gofmt -w z80_gen.go`
 end
 
-task :copy_all => ['z80.go', 'opcodes.go'] do
-  cp "z80.go", "../spectrum/"
+task :copy_all => ['z80_gen.go', 'opcodes.go'] do
+  cp "z80_gen.go", "../spectrum/"
   cp "opcodes.go", "../spectrum/"
   Dir.chdir("../spectrum") do
     sh "make && gotest"
   end
 end
 
-task :default => ['z80.go', 'opcodes.go']
+task :default => ['z80_gen.go', 'opcodes.go']

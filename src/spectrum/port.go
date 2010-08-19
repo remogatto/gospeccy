@@ -36,7 +36,7 @@ type PortAccessor interface {
 
 	frame_begin()
 	frame_releaseMemory()
-	
+
 	// This method may return nil
 	getBorderEvents() *BorderEvent
 }

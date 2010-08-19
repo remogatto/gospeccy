@@ -5,7 +5,7 @@ GOFILES=\
 	z80.go\
 	z80_gen.go\
 	z80_tables.go\
-	opcodes.go\
+	opcodes_gen.go\
 	memory.go\
 	port.go\
 	ula.go\

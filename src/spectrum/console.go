@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"exp/eval"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"container/vector"
@@ -72,11 +73,40 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	path := in[0].(eval.StringValue).Get(t)
 
-	errChan := make(chan os.Error)
-	speccy.CommandChannel <- Cmd_LoadSna{path, errChan}
-	err := <-errChan
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		fmt.Printf("%s\n", err)
+		return
+	}
+
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- Cmd_LoadSna{path, data, errChan}
+	err = <-errChan
+	if err != nil {
+		fmt.Printf("%s\n", err)
+	}
+}
+
+// Signature: func save(path string)
+func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	path := in[0].(eval.StringValue).Get(t)
+
+	ch := make(chan Snapshot)
+	speccy.CommandChannel <- Cmd_SaveSna{ch}
+
+	var snapshot Snapshot = <-ch
+	if snapshot.err != nil {
+		fmt.Printf("%s\n", snapshot.err)
+		return
+	}
+
+	err := ioutil.WriteFile(path, snapshot.data, 0600)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+	}
+
+	if console.app.Verbose {
+		fmt.Printf("wrote SNA snapshot \"%s\"\n", path)
 	}
 }
 
@@ -145,7 +175,15 @@ func defineFunctions(w *eval.World) {
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
 		w.DefineVar("load", funcType, funcValue)
 		help_keys.Push("load(path string)")
-		help_vals.Push("Load .sna file")
+		help_vals.Push("Load state from file (SNA format)")
+	}
+
+	{
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_save, functionSignature)
+		w.DefineVar("save", funcType, funcValue)
+		help_keys.Push("save(path string)")
+		help_vals.Push("Save state to file (SNA format)")
 	}
 
 	{

@@ -32,6 +32,7 @@ import (
 	"flag"
 	"os"
 	"time"
+	"io/ioutil"
 )
 
 // A Go routine for processing SDL events.
@@ -191,9 +192,19 @@ func main() {
 
 	// Load snapshot (if any)
 	if flag.Arg(0) != "" {
+		var data []byte
+		var err os.Error
+
+		data, err = ioutil.ReadFile(flag.Arg(0))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			app.RequestExit()
+			goto quit
+		}
+
 		errChan := make(chan os.Error)
-		speccy.CommandChannel <- spectrum.Cmd_LoadSna{flag.Arg(0), errChan}
-		err := <-errChan
+		speccy.CommandChannel <- spectrum.Cmd_LoadSna{flag.Arg(0), data, errChan}
+		err = <-errChan
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			app.RequestExit()

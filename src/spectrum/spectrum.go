@@ -61,6 +61,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	}
 
 	memory.init(speccy)
+	z80.init(speccy)
 	ula.init(speccy)
 	ports.init(speccy)
 
@@ -79,10 +80,6 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 }
 
 type Cmd_Reset struct{}
-type Cmd_LoadSna struct {
-	Filename string
-	ErrChan  chan os.Error
-}
 type Cmd_RenderFrame struct{}
 type Cmd_AddDisplay struct {
 	Display DisplayReceiver
@@ -90,6 +87,18 @@ type Cmd_AddDisplay struct {
 type Cmd_CloseAllDisplays struct{}
 type Cmd_SetUlaEmulationAccuracy struct {
 	accurateEmulation bool
+}
+type Cmd_LoadSna struct {
+	InformalFilename string // This is only used for logging purposes
+	Data             []byte // The SNA snapshot data
+	ErrChan          chan os.Error
+}
+type Snapshot struct {
+	data []byte // Constraint: (data == nil) != (err == nil)
+	err  os.Error
+}
+type Cmd_SaveSna struct {
+	Chan chan Snapshot
 }
 
 func commandLoop(speccy *Spectrum48k) {
@@ -113,12 +122,6 @@ func commandLoop(speccy *Spectrum48k) {
 			case Cmd_Reset:
 				speccy.reset()
 
-			case Cmd_LoadSna:
-				err := speccy.loadSna(cmd.Filename)
-				if cmd.ErrChan != nil {
-					cmd.ErrChan <- err
-				}
-
 			case Cmd_RenderFrame:
 				speccy.renderFrame()
 
@@ -130,6 +133,26 @@ func commandLoop(speccy *Spectrum48k) {
 
 			case Cmd_SetUlaEmulationAccuracy:
 				speccy.ula.setEmulationAccuracy(cmd.accurateEmulation)
+
+			case Cmd_LoadSna:
+				if speccy.app.Verbose {
+					if len(cmd.InformalFilename) > 0 {
+						fmt.Printf("loading SNA snapshot \"%s\"\n", cmd.InformalFilename)
+					} else {
+						fmt.Printf("loading a SNA snapshot\n")
+					}
+				}
+
+				err := speccy.loadSna(cmd.Data)
+				if cmd.ErrChan != nil {
+					cmd.ErrChan <- err
+				}
+
+			case Cmd_SaveSna:
+				data, err := speccy.Cpu.saveSna()
+				if cmd.Chan != nil {
+					cmd.Chan <- Snapshot{data, err}
+				}
 			}
 		}
 	}
@@ -161,7 +184,7 @@ func (speccy *Spectrum48k) reset() os.Error {
 }
 
 func (speccy *Spectrum48k) Close() {
-	speccy.Cpu.Close()
+	speccy.Cpu.close()
 
 	if speccy.app.Verbose {
 		eff := speccy.Cpu.GetEmulationEfficiency()
@@ -210,19 +233,16 @@ func (speccy *Spectrum48k) renderFrame() {
 	speccy.Ports.frame_releaseMemory()
 }
 
-// Initialize state from the snapshot defined by the specified filename.
-// Returns nil on success.
-func (speccy *Spectrum48k) loadSna(filename string) os.Error {
-	if speccy.app.Verbose {
-		fmt.Printf("loading snapshot \"%s\"\n", filename)
-	}
 
+// Initializes state from data in SNA format.
+// Returns nil on success.
+func (speccy *Spectrum48k) loadSna(data []byte) os.Error {
 	err := speccy.reset()
 	if err != nil {
 		return err
 	}
 
-	err = speccy.Cpu.loadSna(filename)
+	err = speccy.Cpu.loadSna(data)
 	if err != nil {
 		return err
 	}

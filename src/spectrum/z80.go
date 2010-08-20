@@ -312,8 +312,8 @@ func (z80 *Z80) saveSna() ([]byte, os.Error) {
 
 	// Push PC
 	pch, pcl := splitWord(z80.pc)
-	data[sp_afterSimulatedPushPC-0x4000+1] = pcl
-	data[sp_afterSimulatedPushPC-0x4000+2] = pch
+	data[(sp_afterSimulatedPushPC-0x4000+0)+27] = pcl
+	data[(sp_afterSimulatedPushPC-0x4000+1)+27] = pch
 
 	return &data, nil
 }

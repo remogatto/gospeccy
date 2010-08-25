@@ -122,6 +122,9 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 	fps := <-speccy.FPS
 	ticker := time.NewTicker(int64(1e9 / fps))
 
+	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
+	speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
+
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -138,7 +141,6 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 			return
 
 		case <-ticker.C:
-			// if evtLoop.App.Verbose { fmt.Printf("%d ms\n", time.Nanoseconds()/1e6) }
 			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
 
 		case FPS_new := <-speccy.FPS:

@@ -1,4 +1,4 @@
-include $(GOROOT)/src/Make.$(GOARCH)
+include $(GOROOT)/src/Make.inc
 
 SPECTRUM_FILES=\
 	src/spectrum/application.go\
@@ -19,7 +19,7 @@ SPECTRUM_FILES=\
 PERF_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛perf.a
 
 READLINE_FILES=src/readline/readline.go
-READLINE_ARCHIVE=src/readline/_obj/readline.a
+READLINE_ARCHIVE=src/readline/_obj/⚛readline.a
 READLINE_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛readline.a
 
 SDL_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl.a
@@ -66,7 +66,7 @@ _obj:
 _obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a
 	$(GC) -I./_obj -o $@ src/gospeccy.go
 
-_obj/spectrum.a: $(SPECTRUM_FILES)
+_obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)
 	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES)
 	gopack grc $@ _obj/spectrum.$(O)
 
@@ -77,9 +77,11 @@ _obj/spectrum.a: $(SPECTRUM_FILES)
 
 $(PERF_PKG_LIB):
 	goinstall -u github.com/0xe2-0x9a-0x9b/Go-PerfEvents || exit 0
+	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-PerfEvents clean
 	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-PerfEvents install
 
 $(READLINE_PKG_LIB): $(READLINE_ARCHIVE)
+	make -C src/readline clean
 	make -C src/readline install
 
 $(READLINE_ARCHIVE): $(READLINE_FILES)
@@ -87,5 +89,6 @@ $(READLINE_ARCHIVE): $(READLINE_FILES)
 
 $(SDL_PKG_LIB):
 	goinstall -u github.com/0xe2-0x9a-0x9b/Go-SDL || exit 0
+	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-SDL clean
 	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-SDL install
 

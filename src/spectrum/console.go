@@ -93,12 +93,12 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	speccy.CommandChannel <- Cmd_SaveSna{ch}
 
 	var snapshot Snapshot = <-ch
-	if snapshot.err != nil {
-		fmt.Printf("%s\n", snapshot.err)
+	if snapshot.Err != nil {
+		fmt.Printf("%s\n", snapshot.Err)
 		return
 	}
 
-	err := ioutil.WriteFile(path, snapshot.data, 0600)
+	err := ioutil.WriteFile(path, snapshot.Data, 0600)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 	}
@@ -252,7 +252,7 @@ func (h handler_t) HandleSignal(s signal.Signal) {
 // If no more input is available, an arbitrary value is sent through channel 'no_more_code'.
 //
 // This function is intended to be run in a separate goroutine.
-func readCode(app *Application, code chan string, no_more_code chan byte) {
+func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 	handler := handler_t(0)
 	InstallSignalHandler(handler)
 

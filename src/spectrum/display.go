@@ -132,11 +132,14 @@ type DisplayData struct {
 	dirty        [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
 	border       byte
 	borderEvents *BorderEvent // Might be nil
+
+	// From structure Cmd_RenderFrame
+	completionTime_orNil chan<- int64
 }
 
-// Interface to a rendering backend waiting to receive display changes.
+// Interface to a rendering backend awaiting display changes
 type DisplayReceiver interface {
-	getDisplayDataChannel() chan *DisplayData
+	getDisplayDataChannel() chan<- *DisplayData
 
 	// Closes the display associated with this DisplayReceiver
 	close()

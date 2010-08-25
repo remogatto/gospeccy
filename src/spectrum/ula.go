@@ -289,7 +289,8 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 	return &screen
 }
 
-func (ula *ULA) sendScreenToDisplay(display *DisplayInfo) {
+func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil chan<- int64) {
 	displayData := ula.prepare(display)
+	displayData.completionTime_orNil = completionTime_orNil
 	display.displayReceiver.getDisplayDataChannel() <- displayData
 }

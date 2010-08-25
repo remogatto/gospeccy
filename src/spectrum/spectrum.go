@@ -33,7 +33,8 @@ type Spectrum48k struct {
 	// initially receives the value 'DefaultFPS'.
 	FPS chan float
 
-	CommandChannel chan interface{}
+	CommandChannel chan<- interface{}
+	commandChannel <-chan interface{}
 
 	// A vector of '*DisplayInfo', initially empty
 	displays vector.Vector
@@ -73,14 +74,20 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	speccy.FPS = make(chan float, 1)
 	speccy.FPS <- DefaultFPS
 
-	speccy.CommandChannel = make(chan interface{})
+	commandChannel := make(chan interface{})
+	speccy.CommandChannel = commandChannel
+	speccy.commandChannel = commandChannel
 	go commandLoop(speccy)
 
 	return speccy, nil
 }
 
 type Cmd_Reset struct{}
-type Cmd_RenderFrame struct{}
+type Cmd_RenderFrame struct {
+	// This channel (if not nil) will receive the time when the WHOLE rendering finished.
+	// The time is obtained via a call to time.Nanoseconds().
+	CompletionTime_orNil chan<- int64
+}
 type Cmd_AddDisplay struct {
 	Display DisplayReceiver
 }
@@ -91,14 +98,14 @@ type Cmd_SetUlaEmulationAccuracy struct {
 type Cmd_LoadSna struct {
 	InformalFilename string // This is only used for logging purposes
 	Data             []byte // The SNA snapshot data
-	ErrChan          chan os.Error
+	ErrChan          chan<- os.Error
 }
 type Snapshot struct {
-	data []byte // Constraint: (data == nil) != (err == nil)
-	err  os.Error
+	Data []byte // Constraint: (data == nil) != (err == nil)
+	Err  os.Error
 }
 type Cmd_SaveSna struct {
-	Chan chan Snapshot
+	Chan chan<- Snapshot
 }
 
 func commandLoop(speccy *Spectrum48k) {
@@ -117,13 +124,13 @@ func commandLoop(speccy *Spectrum48k) {
 			evtLoop.Terminate <- 0
 			return
 
-		case untyped_cmd := <-speccy.CommandChannel:
+		case untyped_cmd := <-speccy.commandChannel:
 			switch cmd := untyped_cmd.(type) {
 			case Cmd_Reset:
 				speccy.reset()
 
 			case Cmd_RenderFrame:
-				speccy.renderFrame()
+				speccy.renderFrame(cmd.CompletionTime_orNil)
 
 			case Cmd_AddDisplay:
 				speccy.addDisplay(cmd.Display)
@@ -219,15 +226,23 @@ func (speccy *Spectrum48k) doOpcodes() {
 	speccy.Cpu.doOpcodes()
 }
 
-func (speccy *Spectrum48k) renderFrame() {
+func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Ports.frame_begin()
 	speccy.ula.frame_begin()
 
 	speccy.Cpu.interrupt()
 	speccy.doOpcodes()
 
+	firstDisplay := true
 	for _, display := range speccy.displays {
-		speccy.ula.sendScreenToDisplay(display.(*DisplayInfo))
+		var tm chan<- int64
+		if firstDisplay {
+			tm = completionTime_orNil
+		} else {
+			tm = nil
+		}
+		speccy.ula.sendScreenToDisplay(display.(*DisplayInfo), tm)
+		firstDisplay = false
 	}
 
 	speccy.Ports.frame_releaseMemory()

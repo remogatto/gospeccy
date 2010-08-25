@@ -119,11 +119,22 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 }
 
 func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
+	app := evtLoop.App()
+
 	fps := <-speccy.FPS
 	ticker := time.NewTicker(int64(1e9 / fps))
 
 	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
-	speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
+	{
+		completionTime := make(chan int64)
+		speccy.CommandChannel <- spectrum.Cmd_RenderFrame{completionTime}
+
+		if app.Verbose {
+			start := app.CreationTime
+			end := <-completionTime
+			fmt.Printf("first frame latency: %d ms\n", (end-start)/1e6)
+		}
+	}
 
 	for {
 		select {
@@ -134,7 +145,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
-			if evtLoop.App().Verbose {
+			if app.Verbose {
 				println("emulator loop: exit")
 			}
 			evtLoop.Terminate <- 0
@@ -145,7 +156,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 
 		case FPS_new := <-speccy.FPS:
 			if (FPS_new != fps) && (FPS_new > 0) {
-				if evtLoop.App().Verbose {
+				if app.Verbose {
 					fmt.Printf("setting FPS to %f\n", FPS_new)
 				}
 				ticker.Stop()
@@ -240,7 +251,7 @@ func main() {
 
 	// Setup the display
 	{
-		if sdl.Init(sdl.INIT_EVERYTHING) != 0 {
+		if sdl.Init(sdl.INIT_VIDEO) != 0 {
 			panic(sdl.GetError())
 		}
 

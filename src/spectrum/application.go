@@ -24,10 +24,17 @@ type Application struct {
 	mutex sync.Mutex
 
 	Verbose bool
+
+	CreationTime int64 // The time when this Application object was created, see time.Nanoseconds()
 }
 
 func NewApplication() *Application {
-	app := &Application{exitApp: make(chan byte), HasTerminated: make(chan byte), eventLoops: vector.Vector{}, Verbose: false}
+	app := &Application{
+		exitApp:       make(chan byte),
+		HasTerminated: make(chan byte),
+		eventLoops:    vector.Vector{},
+		CreationTime:  time.Nanoseconds(),
+	}
 
 	go appGoroutine(app)
 

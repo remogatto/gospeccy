@@ -27,6 +27,7 @@ package spectrum
 
 import (
 	"⚛sdl"
+	"time"
 	"unsafe"
 )
 
@@ -72,7 +73,7 @@ func (s SDLSurface) setPixel(addr uintptr, color uint32) {
 // Screen render loop (goroutine)
 // ==============================
 
-func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DisplayData, renderer screen_renderer_t) {
+func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, renderer screen_renderer_t) {
 	var screen *DisplayData = nil
 	var oldScreen *DisplayData = nil
 	for {
@@ -129,7 +130,7 @@ func NewSDLScreen(app *Application) *SDLScreen {
 }
 
 // Implement DisplayReceiver
-func (display *SDLScreen) getDisplayDataChannel() chan *DisplayData {
+func (display *SDLScreen) getDisplayDataChannel() chan<- *DisplayData {
 	return display.screenChannel
 }
 func (display *SDLScreen) close() {
@@ -175,6 +176,10 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, *unscaledDisplay.border_orNil)
 	}
 
+	if screen.completionTime_orNil != nil {
+		screen.completionTime_orNil <- time.Nanoseconds()
+	}
+
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1)
 
 	unscaledDisplay.releaseMemory()
@@ -207,7 +212,7 @@ func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
 }
 
 // Implement DisplayReceiver
-func (display *SDLScreen2x) getDisplayDataChannel() chan *DisplayData {
+func (display *SDLScreen2x) getDisplayDataChannel() chan<- *DisplayData {
 	return display.screenChannel
 }
 
@@ -266,6 +271,10 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 
 	if unscaledDisplay.border_orNil != nil {
 		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, *unscaledDisplay.border_orNil)
+	}
+
+	if screen.completionTime_orNil != nil {
+		screen.completionTime_orNil <- time.Nanoseconds()
 	}
 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2)

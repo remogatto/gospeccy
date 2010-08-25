@@ -15,8 +15,25 @@ SPECTRUM_FILES=\
 	src/spectrum/z80_gen.go\
 	src/spectrum/z80_tables.go\
 
+
+PERF_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛perf.a
+
+READLINE_FILES=src/readline/readline.go
+READLINE_ARCHIVE=src/readline/_obj/readline.a
+READLINE_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛readline.a
+
+SDL_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl.a
+
+
+PKG_LIBS=\
+	$(PERF_PKG_LIB)\
+	$(READLINE_PKG_LIB)\
+	$(SDL_PKG_LIB)
+
+
 GOFMT_FILES=\
 	src/gospeccy.go\
+	src/readline/readline.go\
 	src/spectrum/application.go\
 	src/spectrum/console.go\
 	src/spectrum/keyboard.go\
@@ -30,13 +47,16 @@ GOFMT_FILES=\
 	src/spectrum/z80_tables.go\
 
 
-gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O)
+gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O) $(PKG_LIBS)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)
 
+.PHONY: clean
 clean:
 	rm -f gospeccy
 	rm -rf _obj
+	make -C src/readline clean
 
+.PHONY: gofmt
 gofmt:
 	gofmt -w -l $(GOFMT_FILES)
 
@@ -49,3 +69,23 @@ _obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a
 _obj/spectrum.a: $(SPECTRUM_FILES)
 	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES)
 	gopack grc $@ _obj/spectrum.$(O)
+
+
+#
+# Installation of external dependencies and internal libraries
+#
+
+$(PERF_PKG_LIB):
+	goinstall -u github.com/0xe2-0x9a-0x9b/Go-PerfEvents || exit 0
+	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-PerfEvents install
+
+$(READLINE_PKG_LIB): $(READLINE_ARCHIVE)
+	make -C src/readline install
+
+$(READLINE_ARCHIVE): $(READLINE_FILES)
+	make -C src/readline
+
+$(SDL_PKG_LIB):
+	goinstall -u github.com/0xe2-0x9a-0x9b/Go-SDL || exit 0
+	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-SDL install
+

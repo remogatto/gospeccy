@@ -33,6 +33,7 @@ import (
 	"os"
 	"time"
 	"io/ioutil"
+	"os/signal"
 )
 
 // A Go routine for processing SDL events.
@@ -154,6 +155,23 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 	}
 }
 
+type handler_SIGTERM struct {
+	app *spectrum.Application
+}
+
+func (h *handler_SIGTERM) HandleSignal(s signal.Signal) {
+	switch ss := s.(type) {
+	case signal.UnixSignal:
+		if ss == signal.SIGTERM {
+			if h.app.Verbose {
+				fmt.Println(ss)
+			}
+
+			h.app.RequestExit()
+		}
+	}
+}
+
 func main() {
 	help := flag.Bool("help", false, "Show usage")
 	scale2x := flag.Bool("2x", false, "2x display scaler")
@@ -181,6 +199,12 @@ func main() {
 
 	app := spectrum.NewApplication()
 	app.Verbose = *verbose
+
+	// Install SIGTERM handler
+	{
+		handler := handler_SIGTERM{app}
+		spectrum.InstallSignalHandler(&handler)
+	}
 
 	// Create new emulator core
 	speccy, err := spectrum.NewSpectrum48k(app, spectrum.DefaultRomPath)

@@ -1,13 +1,14 @@
 package spectrum
 
 import (
-	"bytes"
 	"exp/eval"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"strings"
 	"container/vector"
+	"⚛readline"
 )
 
 
@@ -21,8 +22,6 @@ type Console struct {
 
 var console Console
 var speccy *Spectrum48k
-
-var exitted = false
 
 
 // ================
@@ -61,7 +60,6 @@ func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
 // Signature: func exit()
 func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	console.app.RequestExit()
-	exitted = true
 }
 
 // Signature: func reset()
@@ -233,50 +231,82 @@ func run(w *eval.World, sourceCode string) {
 	}
 }
 
+type handler_t byte
+
+func (h handler_t) HandleSignal(s signal.Signal) {
+	switch ss := s.(type) {
+	case signal.UnixSignal:
+		switch ss {
+		case signal.SIGQUIT, signal.SIGTERM, signal.SIGALRM, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU:
+			readline.CleanupAfterSignal()
+
+		case signal.SIGINT:
+			readline.FreeLineState()
+			readline.CleanupAfterSignal()
+		}
+	}
+}
+
 // Reads lines from os.Stdin and sends them through the channel 'code'.
 //
-// If no more input is available, an arbitrary value is sent through channel 'no_more_code'
-// and the control returns from this function.
+// If no more input is available, an arbitrary value is sent through channel 'no_more_code'.
 //
 // This function is intended to be run in a separate goroutine.
-func readCode(code chan string, no_more_code chan byte) {
-	var err os.Error
-	for (err == nil) && !exitted {
-		// Read a line of text (until a new-line character or an EOF)
-		var buf bytes.Buffer
+func readCode(app *Application, code chan string, no_more_code chan byte) {
+	handler := handler_t(0)
+	InstallSignalHandler(handler)
+
+	// BNF pattern: (string address)* nil
+	readline_channel := make(chan *string)
+	go func() {
 		for {
-			b := make([]byte, 1)
-			var n int
-			n, err = os.Stdin.Read(b)
-
-			// This goroutine got blocked on the 'os.Stdin.Read'.
-			// In the meantime the application might have exitted.
-			if exitted {
-				no_more_code <- 0
-				return
-			}
-
-			if (n == 0) && (err == os.EOF) {
+			line := readline.ReadLine("gospeccy> ")
+			readline_channel <- line
+			if line == nil {
 				break
+			} else {
+				<-readline_channel
 			}
-			if err != nil {
-				fmt.Printf("%s\n", err)
-				break
-			}
-			if (len(b) > 0) && (b[0] == '\n') {
-				break
-			}
-
-			buf.Write(b)
 		}
+	}()
 
-		line := strings.TrimSpace(buf.String())
+	evtLoop := app.NewEventLoop()
+	for {
+		select {
+		case <-evtLoop.Pause:
+			fmt.Println()
+			UninstallSignalHandler(handler)
+			readline.FreeLineState()
+			readline.CleanupAfterSignal()
+			evtLoop.Pause <- 0
 
-		code <- line
-		<-code
+		case <-evtLoop.Terminate:
+			if evtLoop.App().Verbose {
+				println("readCode loop: exit")
+			}
+			evtLoop.Terminate <- 0
+			return
+
+		case lineP := <-readline_channel:
+			// EOF
+			if lineP == nil {
+				no_more_code <- 0
+				evtLoop.Delete()
+				continue
+			}
+
+			line := strings.TrimSpace(*lineP)
+
+			if len(line) > 0 {
+				readline.AddHistory(line)
+			}
+
+			code <- line
+			<-code
+
+			readline_channel <- nil
+		}
 	}
-
-	no_more_code <- 0
 }
 
 
@@ -291,13 +321,15 @@ func RunConsole(app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool
 	w := eval.NewWorld()
 	defineFunctions(w)
 
+	// This should be printed before executing "go readCode(...)",
+	// in order to ensure that this message *always* gets printed before printing the prompt
+	fmt.Printf("Hint: Input an empty line to see available commands\n")
+
 	// Start a goroutine for reading code from os.Stdin.
 	// The code pieces are being received from the channel 'code_chan'.
 	code_chan := make(chan string)
 	no_more_code := make(chan byte)
-	go readCode(code_chan, no_more_code)
-
-	fmt.Printf("Hint: Input an empty line to see available commands\n")
+	go readCode(app, code_chan, no_more_code)
 
 	// Loop pattern: (read code, run code)+ (terminate app)?
 	evtLoop := app.NewEventLoop()

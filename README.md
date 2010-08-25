@@ -1,8 +1,9 @@
-# GoSpeccy - A naive ZX Spectrum 48k Emulator
+# GoSpeccy - An evolving ZX Spectrum 48k Emulator
 
 GoSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
 interesting fact is that it is written in Go and - AFAIK - it's the
-first Spectrum/Z80 emulator coded with the new language by Google.
+first Spectrum/Z80 emulator coded with the new language designed by
+certain well known Google employees.
 
 There are a lot of ZX Spectrum emulators around so, why reinventing
 the wheel? Well, mainly for
@@ -14,10 +15,10 @@ Coding an emulator in Go is very enjoyable. The language is simple,
 pragmatic and fast (well... fast enough to run a Z80 emulator!). It
 has a lot of features that help in emulators development:
  
-* it has "low-level" similarities with C being *a lot* more effective
-  than C!
+* it has "low-level" similarities with C while allowing more productivity
+  than C in certain cases
 
-* it is strong-typed and type safe so you are aware about errors at
+* it is strongly typed and type safe so you are aware about certain errors at
   compile-time
 
 * it is garbage collected so you haven't to worry about memory leaks
@@ -25,13 +26,13 @@ has a lot of features that help in emulators development:
 * it has an int16 built-in type that helps dealing with 8/16 bit
   machines
 
-* it has goroutines that help handling emulator events (keyboard
-  events for example)
+* it has goroutines to enable some concurrency in the emulator
+  implementation
 
 The Zilog Z80 emulation is the core of GoSpeccy. The CPU emulation
-code is generated using the <tt>z80.pl</tt> script shipped with
-[FUSE](http://fuse-emulator.sourceforge.net/) (one of the best ZX
-Spectrum emulator around). The script has been hacked to generate Go
+code is generated using a modified version of the <tt>z80.pl</tt> script
+shipped with [FUSE](http://fuse-emulator.sourceforge.net/) (one of the best ZX
+Spectrum emulators around). The script has been hacked to generate Go
 code rather than C code.
 
 Another source of inspiration was
@@ -50,29 +51,35 @@ to fork and send me patches, of course ;)
 # Features
 
 * Complete Zilog Z80 emulation
-* SNA format support
+* Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
+* SNA format support (48k version)
 * SDL backend
 * 2x scaler and fullscreen (to be improved)
 
 # Dependencies
 
-* [banthar/Go-SDL](http://github.com/banthar/Go-SDL)
-* [0xe2-0x9a-0x9b/Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
-
 On Ubuntu Linux you'll need to install the following packages using synaptic:
 
     sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev
 
+The following dependencies are installed automatically:
+
+* [⚛Go-SDL](http://github.com/0xe2-0x9a-0x9b/Go-SDL)
+* [⚛Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
+
 # Quick start
 
-First of all, be sure to install the dependencies. Then:
+Install the dependencies and create the gospeccy executable:
 
     git clone http://github.com/remogatto/gospeccy.git
     cd gospeccy
-    make install
-    gospeccy -doubled # Execute in a doubled size window
+    make
+    ./gospeccy
 
-Now try press the following keys:
+To make the screen bigger try the "-2x" command line option,
+or type "scale(2)" in the terminal running gospeccy.
+
+Now try to press the following keys:
 
     p
     CTRL+p
@@ -82,23 +89,32 @@ Now try press the following keys:
 
 And see your shining new ZX Spectrum 48k responding :)
 
-Tips: to simulate a backspace hit:
-
-    LEFT SHIFT+0
-
 For a nice picture of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
 
-To load a SNA rom:
+To load a SNA file:
 
-    gospeccy -doubled image.sna
+    ./gospeccy IMAGE.sna
 
-And if you're curious to see what this glorious machine can do despite
-of its limited graphics capabilities, try the nice
+And if you're curious to see what this machine can do, try the simple
 [Fire104b](http://pouet.net/prod.php?which=54076) intro by Andrew
 Gerrand included in the gospeccy distribution! In the gospeccy folder,
 run:
 
-    gospeccy -doubled snapshots/Syntax09nF.sna
+    ./gospeccy -2x snapshots/Syntax09nF.sna
+
+For more, try searching the Internet find some ZX Spectrum 48k
+games and demos in SNA format (well, good luck with that). For example:
+
+* [World of spectrum](http://www.worldofspectrum.org/archive.html)
+* [Pouet.net search](http://pouet.net/prodlist.php?platform[]=ZX+Spectrum)
+
+In order to create a SNA file from another 48k format, install the
+[FUSE](http://fuse-emulator.sourceforge.net/), load the original file
+into FUSE (e.g: fuse -m48 file.tap), wait until it loads, and save it
+in SNA format as "file.sna". For an example, you can test this procedure on
+the [48K](http://pouet.net/prod.php?which=54504) ZX demo. GoSpeccy does not
+emulate sound yet, sorry. All these things will hopefully improve as GoSpeccy
+matures.
 
 # Key bindings
 
@@ -111,14 +127,14 @@ run:
 
 For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 
-# Propretary ROMs
+# Proprietary ROMs
 
-Generally, propretary roms are protected by copyright so none of them
+Generally, proprietary roms are protected by copyright so none of them
 is included in GoSpeccy (with the exception of the 48k rom that can be
 freely distributed). BTW, you can find tons of roms for the ZX
-Spectrum on the Internet. Take a look at JSSpeccy
-[svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/)
-repository.
+Spectrum on the Internet. Take a look at:
+
+* JSSpeccy [svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/) repository
 
 # Screenshots
 
@@ -127,7 +143,7 @@ repository.
 # TODO
 
 * Add sound emulation
-* Improve memory contention
+* Fix some memory and I/O contention bugs
 * Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
 * Better general performances
 * Add more filters and improve the scaler

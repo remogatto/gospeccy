@@ -129,11 +129,13 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 		completionTime := make(chan int64)
 		speccy.CommandChannel <- spectrum.Cmd_RenderFrame{completionTime}
 
-		if app.Verbose {
+		go func() {
 			start := app.CreationTime
 			end := <-completionTime
-			fmt.Printf("first frame latency: %d ms\n", (end-start)/1e6)
-		}
+			if app.Verbose {
+				fmt.Printf("first frame latency: %d ms\n", (end-start)/1e6)
+			}
+		}()
 	}
 
 	for {

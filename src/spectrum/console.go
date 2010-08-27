@@ -9,19 +9,26 @@ import (
 	"strings"
 	"container/vector"
 	"⚛readline"
+	"sync"
+	"bytes"
 )
 
-
-type Console struct {
-	app *Application
-}
 
 // ==============
 // Some variables
 // ==============
 
-var console Console
+// These variables are set only once, before starting new goroutines,
+// so there is no need for controlling concurrent access via a sync.Mutex 
+var app *Application
 var speccy *Spectrum48k
+
+const PROMPT = "gospeccy> "
+const PROMPT_EMPTY = "          "
+
+// Whether the terminal is currently showing a prompt string
+var havePrompt = false
+var havePrompt_mutex sync.Mutex
 
 
 // ================
@@ -32,7 +39,9 @@ var help_keys vector.StringVector
 var help_vals vector.StringVector
 
 func printHelp() {
-	fmt.Printf("\nAvailable commands:\n")
+	var buf bytes.Buffer
+
+	fmt.Fprintf(&buf, "\nAvailable commands:\n")
 
 	maxKeyLen := 1
 	for i := 0; i < help_keys.Len(); i++ {
@@ -42,14 +51,14 @@ func printHelp() {
 	}
 
 	for i := 0; i < help_keys.Len(); i++ {
-		fmt.Printf("    %s", help_keys[i])
+		fmt.Fprintf(&buf, "    %s", help_keys[i])
 		for j := len(help_keys[i]); j < maxKeyLen; j++ {
-			fmt.Print(" ")
+			fmt.Fprintf(&buf, " ")
 		}
-		fmt.Printf("  %s\n", help_vals[i])
+		fmt.Fprintf(&buf, "  %s\n", help_vals[i])
 	}
 
-	fmt.Printf("\n")
+	PrintfMsg("%s\n", buf.String())
 }
 
 // Signature: func help()
@@ -59,7 +68,7 @@ func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func exit()
 func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	console.app.RequestExit()
+	app.RequestExit()
 }
 
 // Signature: func reset()
@@ -73,7 +82,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Printf("%s\n", err)
+		PrintfMsg("%s", err)
 		return
 	}
 
@@ -81,7 +90,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	speccy.CommandChannel <- Cmd_LoadSna{path, data, errChan}
 	err = <-errChan
 	if err != nil {
-		fmt.Printf("%s\n", err)
+		PrintfMsg("%s", err)
 	}
 }
 
@@ -94,17 +103,17 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	var snapshot Snapshot = <-ch
 	if snapshot.Err != nil {
-		fmt.Printf("%s\n", snapshot.Err)
+		PrintfMsg("%s", snapshot.Err)
 		return
 	}
 
 	err := ioutil.WriteFile(path, snapshot.Data, 0600)
 	if err != nil {
-		fmt.Printf("%s\n", err)
+		PrintfMsg("%s", err)
 	}
 
-	if console.app.Verbose {
-		fmt.Printf("wrote SNA snapshot \"%s\"\n", path)
+	if app.Verbose {
+		PrintfMsg("wrote SNA snapshot \"%s\"", path)
 	}
 }
 
@@ -220,16 +229,17 @@ func run(w *eval.World, sourceCode string) {
 	var code eval.Code
 	code, err = w.Compile(sourceCode)
 	if err != nil {
-		fmt.Println(err)
+		PrintfMsg("%s", err)
 		return
 	}
 
 	_, err = code.Run()
 	if err != nil {
-		fmt.Println(err)
+		PrintfMsg("%s", err)
 		return
 	}
 }
+
 
 type handler_t byte
 
@@ -260,7 +270,16 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 	readline_channel := make(chan *string)
 	go func() {
 		for {
-			line := readline.ReadLine("gospeccy> ")
+			havePrompt_mutex.Lock()
+			havePrompt = true
+			havePrompt_mutex.Unlock()
+
+			line := readline.ReadLine(PROMPT)
+
+			havePrompt_mutex.Lock()
+			havePrompt = false
+			havePrompt_mutex.Unlock()
+
 			readline_channel <- line
 			if line == nil {
 				break
@@ -274,15 +293,23 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 	for {
 		select {
 		case <-evtLoop.Pause:
-			fmt.Println()
 			UninstallSignalHandler(handler)
+
+			havePrompt_mutex.Lock()
+			if havePrompt && len(PROMPT) > 0 {
+				fmt.Printf("\r%s\r", PROMPT_EMPTY)
+				havePrompt = false
+			}
+			havePrompt_mutex.Unlock()
+
 			readline.FreeLineState()
 			readline.CleanupAfterSignal()
+
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:
 			if evtLoop.App().Verbose {
-				println("readCode loop: exit")
+				PrintfMsg("readCode loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -310,12 +337,13 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 }
 
 
-// Reads Go code from os.Stdin and evaluates it.
+// Reads lines of Go code from standard input and evaluates the code.
 //
 // This function exits in two cases: if the application was terminated (from outside of this function),
-// or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application to terminate.
-func RunConsole(app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool) {
-	console = Console{app}
+// or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application
+// to terminate (controlled by the 'exitAppIfEndOfInput' parameter).
+func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool) {
+	app = _app
 	speccy = _speccy
 
 	w := eval.NewWorld()
@@ -323,7 +351,7 @@ func RunConsole(app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool
 
 	// This should be printed before executing "go readCode(...)",
 	// in order to ensure that this message *always* gets printed before printing the prompt
-	fmt.Printf("Hint: Input an empty line to see available commands\n")
+	PrintfMsg("Hint: Input an empty line to see available commands")
 
 	// Start a goroutine for reading code from os.Stdin.
 	// The code pieces are being received from the channel 'code_chan'.
@@ -341,13 +369,13 @@ func RunConsole(app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool
 		case <-evtLoop.Terminate:
 			// Exit this function
 			if evtLoop.App().Verbose {
-				println("console loop: exit")
+				PrintfMsg("console loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
 
 		case code := <-code_chan:
-			//fmt.Printf("code=\"%s\"\n", code)
+			//PrintfMsg("code=\"%s\"", code)
 			if len(code) > 0 {
 				run(w, code)
 			} else {
@@ -364,3 +392,49 @@ func RunConsole(app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool
 		}
 	}
 }
+
+
+// Prints a single-line message to 'os.Stdout' using 'fmt.Printf'.
+// If the format string does not end with the new-line character,
+// the new-line character is appended automatically.
+//
+// Using this function instead of 'fmt.Printf', 'println', etc,
+// ensures proper redisplay of the current command line.
+func PrintfMsg(format string, a ...interface{}) {
+	msg_mutex.Lock()
+	{
+		havePrompt_mutex.Lock()
+		if havePrompt && len(PROMPT) > 0 {
+			fmt.Printf("\r%s\r", PROMPT_EMPTY)
+		}
+		havePrompt_mutex.Unlock()
+
+		appendNewLine := false
+		if (len(format) == 0) || (format[len(format)-1] != '\n') {
+			appendNewLine = true
+		}
+
+		fmt.Printf(format, a)
+		if appendNewLine {
+			fmt.Println()
+		}
+
+		havePrompt_mutex.Lock()
+		if havePrompt {
+			if (app == nil) || !app.TerminationInProgress() {
+				readline.OnNewLine()
+				readline.Redisplay()
+				// 'havePrompt' remains to have the value 'true'
+			} else {
+				havePrompt = false
+			}
+		}
+		havePrompt_mutex.Unlock()
+	}
+	msg_mutex.Unlock()
+}
+
+// This mutex is used to serialize the multiple calls to fmt.Printf
+// used in function PrintfMsg. Otherwise, a concurrent entry to PrintfMsg
+// would cause undesired interleaving of fmt.Printf calls.
+var msg_mutex sync.Mutex

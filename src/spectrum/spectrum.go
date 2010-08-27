@@ -119,7 +119,7 @@ func commandLoop(speccy *Spectrum48k) {
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				println("command loop: exit")
+				PrintfMsg("command loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -144,9 +144,9 @@ func commandLoop(speccy *Spectrum48k) {
 			case Cmd_LoadSna:
 				if speccy.app.Verbose {
 					if len(cmd.InformalFilename) > 0 {
-						fmt.Printf("loading SNA snapshot \"%s\"\n", cmd.InformalFilename)
+						PrintfMsg("loading SNA snapshot \"%s\"", cmd.InformalFilename)
 					} else {
-						fmt.Printf("loading a SNA snapshot\n")
+						PrintfMsg("loading a SNA snapshot")
 					}
 				}
 
@@ -196,9 +196,9 @@ func (speccy *Spectrum48k) Close() {
 	if speccy.app.Verbose {
 		eff := speccy.Cpu.GetEmulationEfficiency()
 		if eff != 0 {
-			fmt.Printf("emulation efficiency: %d host-CPU instructions per Z80 instruction\n", eff)
+			PrintfMsg("emulation efficiency: %d host-CPU instructions per Z80 instruction", eff)
 		} else {
-			fmt.Printf("emulation efficiency: -\n")
+			PrintfMsg("emulation efficiency: -")
 		}
 	}
 }

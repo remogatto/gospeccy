@@ -56,7 +56,7 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				println("SDL event loop: exit")
+				spectrum.PrintfMsg("SDL event loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -66,7 +66,7 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 				switch event.Type {
 				case sdl.QUIT:
 					if evtLoop.App().Verbose {
-						println("SDL quit -> request[exit the application]")
+						spectrum.PrintfMsg("SDL quit -> request[exit the application]")
 					}
 					evtLoop.App().RequestExit()
 
@@ -75,23 +75,23 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 					keyName := sdl.GetKeyName(sdl.Key(k.Keysym.Sym))
 
 					if verboseKeyboard {
-						println()
-						println(k.Keysym.Sym, ": ", keyName)
+						spectrum.PrintfMsg("\n")
+						spectrum.PrintfMsg("%v: %v", k.Keysym.Sym, ": ", keyName)
 
-						fmt.Printf("%04x ", event.Type)
+						spectrum.PrintfMsg("%04x ", event.Type)
 
 						for i := 0; i < len(event.Pad0); i++ {
-							fmt.Printf("%02x ", event.Pad0[i])
+							spectrum.PrintfMsg("%02x ", event.Pad0[i])
 						}
-						println()
+						spectrum.PrintfMsg("\n")
 
-						fmt.Printf("Type: %02x Which: %02x State: %02x Pad: %02x\n", k.Type, k.Which, k.State, k.Pad0[0])
-						fmt.Printf("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
+						spectrum.PrintfMsg("Type: %02x Which: %02x State: %02x Pad: %02x\n", k.Type, k.Which, k.State, k.Pad0[0])
+						spectrum.PrintfMsg("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
 					}
 
 					if keyName == "escape" {
 						if evtLoop.App().Verbose {
-							println("escape key -> request[exit the application]")
+							spectrum.PrintfMsg("escape key -> request[exit the application]")
 						}
 						evtLoop.App().RequestExit()
 					} else {
@@ -133,7 +133,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 			start := app.CreationTime
 			end := <-completionTime
 			if app.Verbose {
-				fmt.Printf("first frame latency: %d ms\n", (end-start)/1e6)
+				spectrum.PrintfMsg("first frame latency: %d ms", (end-start)/1e6)
 			}
 		}()
 	}
@@ -148,7 +148,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if app.Verbose {
-				println("emulator loop: exit")
+				spectrum.PrintfMsg("emulator loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -159,7 +159,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 		case FPS_new := <-speccy.FPS:
 			if (FPS_new != fps) && (FPS_new > 0) {
 				if app.Verbose {
-					fmt.Printf("setting FPS to %f\n", FPS_new)
+					spectrum.PrintfMsg("setting FPS to %f", FPS_new)
 				}
 				ticker.Stop()
 				spectrum.Drain(ticker)
@@ -177,9 +177,10 @@ type handler_SIGTERM struct {
 func (h *handler_SIGTERM) HandleSignal(s signal.Signal) {
 	switch ss := s.(type) {
 	case signal.UnixSignal:
-		if ss == signal.SIGTERM {
+		switch ss {
+		case signal.SIGTERM, signal.SIGINT:
 			if h.app.Verbose {
-				fmt.Println(ss)
+				spectrum.PrintfMsg("%v", ss)
 			}
 
 			h.app.RequestExit()

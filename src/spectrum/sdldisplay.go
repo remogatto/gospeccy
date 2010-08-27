@@ -84,7 +84,7 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, ren
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				println("screen render loop: exit")
+				PrintfMsg("screen render loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -288,10 +288,6 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 // ==============
 
 func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint) {
-	//for _,r := range *surfaceChanges {
-	//	println("(", r.X, r.Y, r.W, r.H, ")")
-	//}
-
 	if scale == 1 {
 		surface.UpdateRects(*surfaceChanges)
 	} else {

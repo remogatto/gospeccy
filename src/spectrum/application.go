@@ -100,7 +100,7 @@ func appGoroutine(app *Application) {
 	}
 
 	if app.Verbose {
-		println("application has terminated")
+		PrintfMsg("application has terminated")
 	}
 	close(app.HasTerminated)
 
@@ -117,6 +117,13 @@ func (app *Application) addEventLoop(e *EventLoop) {
 
 func (app *Application) RequestExit() {
 	close(app.exitApp)
+}
+
+func (app *Application) TerminationInProgress() bool {
+	app.mutex.Lock()
+	a := app.terminationInProgress
+	app.mutex.Unlock()
+	return a
 }
 
 

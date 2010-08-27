@@ -38,6 +38,16 @@ func ReadLine(prompt string) *string {
 	return &s
 }
 
+
+func OnNewLine() {
+	C.rl_on_new_line()
+}
+
+func Redisplay() {
+	C.rl_redisplay()
+}
+
+
 func CleanupAfterSignal() {
 	C.rl_cleanup_after_signal()
 }

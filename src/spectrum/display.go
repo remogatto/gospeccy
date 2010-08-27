@@ -155,6 +155,5 @@ func init() {
 	for y := uint8(0); y < ScreenHeight; y++ {
 		addr := xy_to_screenAddr(0, y)
 		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
-		//println(y, ",", (addr-SCREEN_BASE_ADDR)/BytesPerLine, " = ", FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE)
 	}
 }

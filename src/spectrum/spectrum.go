@@ -17,6 +17,10 @@ type DisplayInfo struct {
 
 	// The index of the last frame sent to the 'displayReceiver', initially nil.
 	lastFrame *uint
+
+	// Total number of frames that the DisplayReceiver did not receive
+	// because the send might block CPU emulation
+	numMissedFrames uint
 }
 
 type Spectrum48k struct {
@@ -200,11 +204,16 @@ func (speccy *Spectrum48k) Close() {
 		} else {
 			PrintfMsg("emulation efficiency: -")
 		}
+
+		for i, display := range speccy.displays {
+			PrintfMsg("display #%d: %d missed frames", i, display.(*DisplayInfo).numMissedFrames)
+		}
 	}
 }
 
 func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
-	speccy.displays.Push(&DisplayInfo{display, nil})
+	d := &DisplayInfo{displayReceiver: display, lastFrame: nil, numMissedFrames: 0}
+	speccy.displays.Push(d)
 }
 
 func (speccy *Spectrum48k) closeAllDisplays() {

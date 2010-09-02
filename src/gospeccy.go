@@ -37,20 +37,10 @@ import (
 )
 
 // A Go routine for processing SDL events.
-//
-// Note: The first letter is uppercase, so this function is public, but it should not be.
-//       The Go language fails here.
 func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
-	ticker := time.NewTicker( /*10ms*/ 10 * 1e6)
-
-	// Better create the event-object here once, rather than multiple times within the loop
-	event := &sdl.Event{}
-
 	for {
 		select {
 		case <-evtLoop.Pause:
-			ticker.Stop()
-			spectrum.Drain(ticker)
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:
@@ -61,54 +51,51 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 			evtLoop.Terminate <- 0
 			return
 
-		case <-ticker.C:
-			if event.Poll() {
-				switch event.Type {
-				case sdl.QUIT:
+		case event := <-sdl.Events:
+			switch e := event.(type) {
+			case sdl.QuitEvent:
+				if evtLoop.App().Verbose {
+					spectrum.PrintfMsg("SDL quit -> request[exit the application]")
+				}
+				evtLoop.App().RequestExit()
+
+			case sdl.KeyboardEvent:
+				keyName := sdl.GetKeyName(sdl.Key(e.Keysym.Sym))
+
+				if verboseKeyboard {
+					spectrum.PrintfMsg("\n")
+					spectrum.PrintfMsg("%v: %v", e.Keysym.Sym, ": ", keyName)
+
+					spectrum.PrintfMsg("%04x ", e.Type)
+
+					for i := 0; i < len(e.Pad0); i++ {
+						spectrum.PrintfMsg("%02x ", e.Pad0[i])
+					}
+					spectrum.PrintfMsg("\n")
+
+					spectrum.PrintfMsg("Type: %02x Which: %02x State: %02x Pad: %02x\n", e.Type, e.Which, e.State, e.Pad0[0])
+					spectrum.PrintfMsg("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", e.Keysym.Scancode, e.Keysym.Sym, e.Keysym.Mod, e.Keysym.Unicode)
+				}
+
+				if keyName == "escape" {
 					if evtLoop.App().Verbose {
-						spectrum.PrintfMsg("SDL quit -> request[exit the application]")
+						spectrum.PrintfMsg("escape key -> request[exit the application]")
 					}
 					evtLoop.App().RequestExit()
+				} else {
+					sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
 
-				case sdl.KEYDOWN, sdl.KEYUP:
-					k := event.Keyboard()
-					keyName := sdl.GetKeyName(sdl.Key(k.Keysym.Sym))
-
-					if verboseKeyboard {
-						spectrum.PrintfMsg("\n")
-						spectrum.PrintfMsg("%v: %v", k.Keysym.Sym, ": ", keyName)
-
-						spectrum.PrintfMsg("%04x ", event.Type)
-
-						for i := 0; i < len(event.Pad0); i++ {
-							spectrum.PrintfMsg("%02x ", event.Pad0[i])
-						}
-						spectrum.PrintfMsg("\n")
-
-						spectrum.PrintfMsg("Type: %02x Which: %02x State: %02x Pad: %02x\n", k.Type, k.Which, k.State, k.Pad0[0])
-						spectrum.PrintfMsg("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", k.Keysym.Scancode, k.Keysym.Sym, k.Keysym.Mod, k.Keysym.Unicode)
-					}
-
-					if keyName == "escape" {
-						if evtLoop.App().Verbose {
-							spectrum.PrintfMsg("escape key -> request[exit the application]")
-						}
-						evtLoop.App().RequestExit()
-					} else {
-						sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
-
-						if haveMapping {
-							switch event.Type {
-							case sdl.KEYDOWN:
-								// Normal order
-								for i := 0; i < len(sequence); i++ {
-									speccy.Keyboard.KeyDown(sequence[i])
-								}
-							case sdl.KEYUP:
-								// Reverse order
-								for i := len(sequence) - 1; i >= 0; i-- {
-									speccy.Keyboard.KeyUp(sequence[i])
-								}
+					if haveMapping {
+						switch e.Type {
+						case sdl.KEYDOWN:
+							// Normal order
+							for i := 0; i < len(sequence); i++ {
+								speccy.Keyboard.KeyDown(sequence[i])
+							}
+						case sdl.KEYUP:
+							// Reverse order
+							for i := len(sequence) - 1; i >= 0; i-- {
+								speccy.Keyboard.KeyUp(sequence[i])
 							}
 						}
 					}

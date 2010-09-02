@@ -221,12 +221,10 @@ func (e *EventLoop) Delete() {
 // =============
 
 func Drain(ticker *time.Ticker) {
-	for {
-		select {
-		case <-ticker.C: // No action
-		default:
-			return
-		}
+	var haveMessage bool
+	_, haveMessage = <-ticker.C
+	for haveMessage {
+		_, haveMessage = <-ticker.C
 	}
 }
 

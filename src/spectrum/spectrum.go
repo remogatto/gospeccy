@@ -32,16 +32,24 @@ type Spectrum48k struct {
 
 	romPath string
 
-	// Send a single value to this channel in order to change the
-	// display refresh frequency.  By default, this channel
-	// initially receives the value 'DefaultFPS'.
-	FPS chan float
+	// The current display refresh frequency.
+	// The initial value if 'DefaultFPS'.
+	// It is always greater than 0.
+	currentFPS float
+
+	// A value received from this channel indicates the new display refresh frequency.
+	// By default, this channel initially receives the value 'DefaultFPS'.
+	FPS <-chan float
+	fps chan float
 
 	CommandChannel chan<- interface{}
 	commandChannel <-chan interface{}
 
 	// A vector of '*DisplayInfo', initially empty
 	displays vector.Vector
+
+	// A vector of 'AudioReceiver', initially empty
+	audioReceivers vector.Vector
 
 	app *Application
 }
@@ -55,14 +63,15 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	ula := NewULA()
 
 	speccy := &Spectrum48k{
-		Cpu:      z80,
-		Memory:   memory,
-		ula:      ula,
-		Keyboard: keyboard,
-		Ports:    ports,
-		romPath:  romPath,
-		displays: vector.Vector{},
-		app:      app,
+		Cpu:            z80,
+		Memory:         memory,
+		ula:            ula,
+		Keyboard:       keyboard,
+		Ports:          ports,
+		romPath:        romPath,
+		displays:       vector.Vector{},
+		audioReceivers: vector.Vector{},
+		app:            app,
 	}
 
 	memory.init(speccy)
@@ -75,8 +84,10 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 		return nil, err
 	}
 
-	speccy.FPS = make(chan float, 1)
-	speccy.FPS <- DefaultFPS
+	speccy.currentFPS = DefaultFPS
+	speccy.fps = make(chan float, 1)
+	speccy.FPS = speccy.fps
+	speccy.fps <- DefaultFPS
 
 	commandChannel := make(chan interface{})
 	speccy.CommandChannel = commandChannel
@@ -96,9 +107,16 @@ type Cmd_AddDisplay struct {
 	Display DisplayReceiver
 }
 type Cmd_CloseAllDisplays struct{}
-type Cmd_SetUlaEmulationAccuracy struct {
-	accurateEmulation bool
+type Cmd_SetFPS struct {
+	NewFPS float
 }
+type Cmd_SetUlaEmulationAccuracy struct {
+	AccurateEmulation bool
+}
+type Cmd_AddAudioReceiver struct {
+	Receiver AudioReceiver
+}
+type Cmd_CloseAllAudioReceivers struct{}
 type Cmd_LoadSna struct {
 	InformalFilename string // This is only used for logging purposes
 	Data             []byte // The SNA snapshot data
@@ -142,8 +160,17 @@ func commandLoop(speccy *Spectrum48k) {
 			case Cmd_CloseAllDisplays:
 				speccy.closeAllDisplays()
 
+			case Cmd_SetFPS:
+				speccy.setFPS(cmd.NewFPS)
+
 			case Cmd_SetUlaEmulationAccuracy:
-				speccy.ula.setEmulationAccuracy(cmd.accurateEmulation)
+				speccy.ula.setEmulationAccuracy(cmd.AccurateEmulation)
+
+			case Cmd_AddAudioReceiver:
+				speccy.addAudioReceiver(cmd.Receiver)
+
+			case Cmd_CloseAllAudioReceivers:
+				speccy.closeAllAudioReceivers()
 
 			case Cmd_LoadSna:
 				if speccy.app.Verbose {
@@ -223,8 +250,35 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 		speccy.displays = vector.Vector{}
 	}
 
-	for _, display := range displays {
-		display.(*DisplayInfo).displayReceiver.close()
+	for _, d := range displays {
+		d.(*DisplayInfo).displayReceiver.close()
+	}
+}
+
+func (speccy *Spectrum48k) setFPS(newFPS float) {
+	if newFPS <= 1.0 {
+		newFPS = DefaultFPS
+	}
+
+	if newFPS != speccy.currentFPS {
+		speccy.currentFPS = newFPS
+		speccy.fps <- newFPS
+	}
+}
+
+func (speccy *Spectrum48k) addAudioReceiver(receiver AudioReceiver) {
+	speccy.audioReceivers.Push(receiver)
+}
+
+func (speccy *Spectrum48k) closeAllAudioReceivers() {
+	var audioReceivers vector.Vector
+	{
+		audioReceivers = speccy.audioReceivers
+		speccy.audioReceivers = vector.Vector{}
+	}
+
+	for _, r := range audioReceivers {
+		r.(AudioReceiver).close()
 	}
 }
 
@@ -242,6 +296,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Cpu.interrupt()
 	speccy.doOpcodes()
 
+	// Send display data to display backend(s)
 	firstDisplay := true
 	for _, display := range speccy.displays {
 		var tm chan<- int64
@@ -252,6 +307,18 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 		}
 		speccy.ula.sendScreenToDisplay(display.(*DisplayInfo), tm)
 		firstDisplay = false
+	}
+
+	// Send audio data to audio backend(s)
+	{
+		audioData := AudioData{
+			fps:          speccy.currentFPS,
+			beeperEvents: speccy.Ports.getBeeperEvents(),
+		}
+
+		for _, audioReceiver := range speccy.audioReceivers {
+			audioReceiver.(AudioReceiver).getAudioDataChannel() <- &audioData
+		}
 	}
 
 	speccy.Ports.frame_releaseMemory()

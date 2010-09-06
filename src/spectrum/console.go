@@ -19,7 +19,7 @@ import (
 // ==============
 
 // These variables are set only once, before starting new goroutines,
-// so there is no need for controlling concurrent access via a sync.Mutex 
+// so there is no need for controlling concurrent access via a sync.Mutex
 var app *Application
 var speccy *Spectrum48k
 
@@ -135,16 +135,25 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 // Signature: func fps(n float)
 func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	fps := in[0].(eval.FloatValue).Get(t)
-	if fps < 0 {
-		fps = DefaultFPS
-	}
-	speccy.FPS <- float(fps)
+	speccy.CommandChannel <- Cmd_SetFPS{float(fps)}
 }
 
 // Signature: func ULA_accuracy(accurateEmulation bool)
 func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	accurateEmulation := in[0].(eval.BoolValue).Get(t)
 	speccy.CommandChannel <- Cmd_SetUlaEmulationAccuracy{accurateEmulation}
+}
+
+// Signature: func sound(enable bool)
+func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	enable := in[0].(eval.BoolValue).Get(t)
+
+	if enable {
+		speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{}
+		speccy.CommandChannel <- Cmd_AddAudioReceiver{NewSDLAudio(speccy.app)}
+	} else {
+		speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{}
+	}
 }
 
 
@@ -215,6 +224,14 @@ func defineFunctions(w *eval.World) {
 		w.DefineVar("ULA_accuracy", funcType, funcValue)
 		help_keys.Push("ULA_accuracy(accurateEmulation bool)")
 		help_vals.Push("Enable/disable accurate emulation of screen bitmap and screen attributes")
+	}
+
+	{
+		var functionSignature func(bool)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_sound, functionSignature)
+		w.DefineVar("sound", funcType, funcValue)
+		help_keys.Push("sound(enable bool)")
+		help_vals.Push("Enable or disable sound")
 	}
 }
 

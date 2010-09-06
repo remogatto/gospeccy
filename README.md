@@ -112,9 +112,8 @@ In order to create a SNA file from another 48k format, install the
 [FUSE](http://fuse-emulator.sourceforge.net/), load the original file
 into FUSE (e.g: fuse -m48 file.tap), wait until it loads, and save it
 in SNA format as "file.sna". For an example, you can test this procedure on
-the [48K](http://pouet.net/prod.php?which=54504) ZX demo. GoSpeccy does not
-emulate sound yet, sorry. All these things will hopefully improve as GoSpeccy
-matures.
+the [48K](http://pouet.net/prod.php?which=54504) ZX demo. All these things
+will hopefully improve as GoSpeccy matures.
 
 # Key bindings
 
@@ -142,10 +141,9 @@ Spectrum on the Internet. Take a look at:
 
 # TODO
 
-* Add sound emulation
 * Fix some memory and I/O contention bugs
 * Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
-* Better general performances
+* Better general performance
 * Add more filters and improve the scaler
 * Add new backends (exp/draw?)
 

@@ -77,7 +77,7 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 					spectrum.PrintfMsg("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", e.Keysym.Scancode, e.Keysym.Sym, e.Keysym.Mod, e.Keysym.Unicode)
 				}
 
-				if keyName == "escape" {
+				if (keyName == "escape") && (e.Type == sdl.KEYDOWN) {
 					if evtLoop.App().Verbose {
 						spectrum.PrintfMsg("escape key -> request[exit the application]")
 					}
@@ -243,7 +243,7 @@ func main() {
 
 	// Setup the display
 	{
-		if sdl.Init(sdl.INIT_VIDEO) != 0 {
+		if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
 			panic(sdl.GetError())
 		}
 
@@ -260,10 +260,13 @@ func main() {
 		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 	}
 
+	// Setup the audio
+	speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{spectrum.NewSDLAudio(app)}
+
 	// Begin speccy emulation
 	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
 	go emulatorLoop(app.NewEventLoop(), speccy)
-	speccy.FPS <- *fps
+	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
 
 	go spectrum.RunConsole(app, speccy, true)
 

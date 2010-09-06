@@ -9,6 +9,8 @@ SPECTRUM_FILES=\
 	src/spectrum/opcodes.go\
 	src/spectrum/port.go\
 	src/spectrum/sdldisplay.go\
+	src/spectrum/sdlsound.go\
+	src/spectrum/sound.go\
 	src/spectrum/spectrum.go\
 	src/spectrum/ula.go\
 	src/spectrum/z80.go\
@@ -23,12 +25,14 @@ READLINE_ARCHIVE=src/readline/_obj/⚛readline.a
 READLINE_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛readline.a
 
 SDL_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl.a
+SDL_AUDIO_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl/audio.a
 
 
 PKG_LIBS=\
 	$(PERF_PKG_LIB)\
 	$(READLINE_PKG_LIB)\
-	$(SDL_PKG_LIB)
+	$(SDL_PKG_LIB)\
+	$(SDL_AUDIO_PKG_LIB)
 
 
 GOFMT_FILES=\
@@ -39,12 +43,11 @@ GOFMT_FILES=\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
 	src/spectrum/port.go\
+	src/spectrum/sdlsound.go\
+	src/spectrum/sound.go\
 	src/spectrum/spectrum.go\
 	src/spectrum/ula.go\
-	src/spectrum/z80.go\
-	src/spectrum/z80_test.go\
-	src/spectrum/z80_gen.go\
-	src/spectrum/z80_tables.go\
+	src/spectrum/z80*.go\
 
 
 gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O) $(PKG_LIBS)
@@ -92,3 +95,4 @@ $(SDL_PKG_LIB):
 	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-SDL clean
 	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-SDL install
 
+$(SDL_AUDIO_PKG_LIBS): $(SDL_PKG_LIB)

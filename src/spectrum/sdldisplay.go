@@ -404,8 +404,7 @@ func (disp *UnscaledDisplay) renderBorder(screen, oldScreen_orNil *DisplayData) 
 	}
 }
 
-// FIXME: This shouldn't be a public type
-type SimplifiedBorderEvent struct {
+type simplifiedBorderEvent_t struct {
 	tstate uint
 	color  byte
 }
@@ -429,7 +428,7 @@ func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
 }
 
 // Render border in the interval [start,end)
-func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *SimplifiedBorderEvent, end *SimplifiedBorderEvent) {
+func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorderEvent_t, end *simplifiedBorderEvent_t) {
 	start_y := (int(start.tstate) - DISPLAY_START) / TSTATES_PER_LINE
 	end_y   := (int(end.tstate)-1 - DISPLAY_START) / TSTATES_PER_LINE
 
@@ -492,18 +491,18 @@ func (disp *UnscaledDisplay) renderBorderEvents(lastEvent_orNil *BorderEvent) {
 
 	// Create an array called 'events' and initialize it with
 	// the events sorted by T-state value in *ascending* order
-	events := make([]SimplifiedBorderEvent, numEvents+1)
+	events := make([]simplifiedBorderEvent_t, numEvents+1)
 	{
 		i := numEvents - 1
 		for e := lastEvent_orNil; e != nil; e = e.previous_orNil {
-			events[i] = SimplifiedBorderEvent{e.tstate, e.color}
+			events[i] = simplifiedBorderEvent_t{e.tstate, e.color}
 			i--
 		}
 		// At this point: 'i' should equal to -1
 
 		// The [border color from the last event] lasts until the end of the frame
 		if lastEvent_orNil != nil {
-			events[numEvents] = SimplifiedBorderEvent{TStatesPerFrame, lastEvent_orNil.color}
+			events[numEvents] = simplifiedBorderEvent_t{TStatesPerFrame, lastEvent_orNil.color}
 		}
 	}
 

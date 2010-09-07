@@ -45,6 +45,11 @@ func appGoroutine(app *Application) {
 	// Block until there is a request to exit the application
 	<-app.exitApp
 
+	var startTime int64
+	if app.Verbose {
+		startTime = time.Nanoseconds()
+	}
+
 	app.mutex.Lock()
 	app.terminationInProgress = true
 	app.mutex.Unlock()
@@ -100,8 +105,11 @@ func appGoroutine(app *Application) {
 	}
 
 	if app.Verbose {
+		endTime := time.Nanoseconds()
+		PrintfMsg("application shutdown completed after %f milliseconds", float(endTime-startTime)/1e6)
 		PrintfMsg("application has terminated")
 	}
+
 	close(app.HasTerminated)
 
 	app.mutex.Lock()

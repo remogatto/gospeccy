@@ -26,8 +26,16 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 	for {
 		select {
 		case <-evtLoop.Pause:
+			// Remove all enqueued AudioData objects
+			removed := true
+			for removed {
+				_, removed = <-audio.playback
+			}
+
 			close(audio.playback)
-			<-audio.sdlAudioClosed
+			sdl_audio.CloseAudio()
+
+			<-audio.playbackLoopFinished
 
 			evtLoop.Pause <- 0
 
@@ -57,10 +65,9 @@ func playbackLoop(app *Application, audio *SDLAudio) {
 	}
 
 	if app.Verbose {
-		PrintfMsg("audio playback loop: close SDL audio")
+		PrintfMsg("audio playback loop: exit")
 	}
-	sdl_audio.CloseAudio()
-	audio.sdlAudioClosed <- 0
+	audio.playbackLoopFinished <- 0
 }
 
 
@@ -70,7 +77,7 @@ func playbackLoop(app *Application, audio *SDLAudio) {
 
 // Ideal number of buffered 'AudioData' objects,
 // in order to prevent [SDL buffer underruns] and [Go channel overruns].
-const BUFSIZE_IDEAL = 2
+const BUFSIZE_IDEAL = 3
 
 type SDLAudio struct {
 	// Synchronous Go channel for receiving 'AudioData' objects
@@ -81,7 +88,11 @@ type SDLAudio struct {
 	playback chan *AudioData
 
 	// A channel for properly synchronizing the audio shutdown procedure
-	sdlAudioClosed chan byte
+	playbackLoopFinished chan byte
+
+	// Whether SDL playback is active. Initial value is 'false'.
+	// Changed to 'true' after the first 'AudioData' object become available.
+	sdlAudioUnpaused bool
 
 	// The number of 'AudioData' objects currently enqueued in the 'playback' Go channel.
 	bufSize uint
@@ -94,6 +105,8 @@ type SDLAudio struct {
 	// of 'AudioData' objects enqueued in the 'playback' Go channel
 	// hovers around 'BUFSIZE_IDEAL'.
 	virtualFreq uint
+
+	numSamples_cummulativeFraction float
 
 	mutex sync.Mutex
 }
@@ -115,19 +128,17 @@ func NewSDLAudio(app *Application) *SDLAudio {
 	}
 
 	audio := &SDLAudio{
-		data:           make(chan *AudioData),
-		playback:       make(chan *AudioData, 2*BUFSIZE_IDEAL), // Use a buffered Go channel
-		sdlAudioClosed: make(chan byte),
-		bufSize:        0,
-		freq:           uint(spec.Freq),
-		virtualFreq:    uint(spec.Freq),
+		data:                 make(chan *AudioData),
+		playback:             make(chan *AudioData, 2*BUFSIZE_IDEAL), // Use a buffered Go channel
+		playbackLoopFinished: make(chan byte),
+		sdlAudioUnpaused:     false,
+		bufSize:              0,
+		freq:                 uint(spec.Freq),
+		virtualFreq:          uint(spec.Freq),
 	}
 
 	go forwarderLoop(app.NewEventLoop(), audio)
 	go playbackLoop(app, audio)
-
-	// Unpause SDL audio
-	sdl_audio.PauseAudio(false)
 
 	return audio
 }
@@ -144,7 +155,14 @@ func (audio *SDLAudio) close() {
 // Called when the number of buffered 'AudioData' objects increases by 1
 func (audio *SDLAudio) bufferAdd() {
 	audio.mutex.Lock()
-	audio.bufSize++
+	{
+		audio.bufSize++
+
+		if !audio.sdlAudioUnpaused && (audio.bufSize == BUFSIZE_IDEAL) {
+			sdl_audio.PauseAudio(false)
+			audio.sdlAudioUnpaused = true
+		}
+	}
 	audio.mutex.Unlock()
 }
 
@@ -154,15 +172,25 @@ func (audio *SDLAudio) bufferRemove() {
 	{
 		audio.bufSize--
 
-		if audio.bufSize < BUFSIZE_IDEAL {
-			audio.virtualFreq = uint(float(audio.virtualFreq) * 1.001)
-		} else if audio.bufSize > BUFSIZE_IDEAL {
-			audio.virtualFreq = uint(float(audio.virtualFreq) / 1.001)
-		} else {
-			audio.virtualFreq = audio.freq
+		changedFreq := false
+		if audio.bufSize < BUFSIZE_IDEAL-2 {
+			// Prevent future buffer underruns
+			audio.virtualFreq = uint(float(audio.virtualFreq) * 1.0005)
+			changedFreq = true
+		} else if audio.bufSize > BUFSIZE_IDEAL+2 {
+			// Prevent future buffer overruns
+			audio.virtualFreq = uint(float(audio.virtualFreq) / 1.0005)
+			changedFreq = true
+		} else if audio.bufSize == BUFSIZE_IDEAL {
+			if audio.virtualFreq != audio.freq {
+				audio.virtualFreq = audio.freq
+				changedFreq = true
+			}
 		}
 
-		//PrintfMsg("bufSize=%d, virtualFreq=%d", audio.bufSize, audio.virtualFreq)
+		if changedFreq {
+			//PrintfMsg("bufSize=%d, virtualFreq=%d", audio.bufSize, audio.virtualFreq)
+		}
 	}
 	audio.mutex.Unlock()
 }
@@ -184,6 +212,7 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 	// Create an array called 'events' and initialize it with
 	// the events sorted by T-state value in *ascending* order
 	events := make([]simplifiedBeeperEvent_t, numEvents+1)
+	var tstate_max1 uint = 0
 	{
 		i := numEvents - 1
 		for e := lastEvent_orNil; e != nil; e = e.previous_orNil {
@@ -195,38 +224,68 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 		// The [beeper-level from the last event] lasts until the end of the frame
 		if lastEvent_orNil != nil {
 			events[numEvents] = simplifiedBeeperEvent_t{TStatesPerFrame, lastEvent_orNil.level}
+
+			// Make sure 'events[numEvents].tstate' is greater than 'events[numEvents-1].tstate'
+			if (numEvents > 0) && !(events[numEvents].tstate > events[numEvents-1].tstate) {
+				events[numEvents].tstate = events[numEvents-1].tstate + 1
+			}
+
+			tstate_max1 = events[numEvents].tstate
 		}
 	}
 
 	// Note: If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil. But this is OK.
 
-	audio.mutex.Lock()
-	var numSamplesPerFrame float = float(audio.virtualFreq) / audioData.fps
-	audio.mutex.Unlock()
+	var numSamples uint
+	{
+		audio.mutex.Lock()
 
-	numSamples := uint(numSamplesPerFrame)
-	samples := make([]int16, numSamples)
+		numSamples_float := float(audio.virtualFreq) / float(audioData.fps)
+		numSamples = uint(numSamples_float)
+
+		audio.numSamples_cummulativeFraction += numSamples_float - float(numSamples)
+		if audio.numSamples_cummulativeFraction >= 1.0 {
+			numSamples += 1
+			audio.numSamples_cummulativeFraction -= 1.0
+		}
+
+		audio.mutex.Unlock()
+	}
+
+	var k float = float(numSamples) / float(tstate_max1)
+
+	samples := make([]float, numSamples+1)
 	for i := 0; i < numEvents; i++ {
 		start := events[i]
 		end := events[i+1]
 
-		sample_startIndex := uint(float(start.tstate) / TStatesPerFrame * numSamplesPerFrame)
-		sample_endIndex := uint(float(end.tstate) / TStatesPerFrame * numSamplesPerFrame)
-		if sample_endIndex > numSamples {
-			sample_endIndex = numSamples
-		}
+		if start.level != 0 {
+			var position0 float = float(start.tstate) * k
+			var position1 float = float(end.tstate) * k
 
-		var audio_level int16
-		if start.level == 0 {
-			audio_level = 0
-		} else {
-			audio_level = 0x7fff
-		}
+			pos0 := uint(position0)
+			pos1 := uint(position1)
 
-		for i := sample_startIndex; i < sample_endIndex; i++ {
-			samples[i] = audio_level
+			if pos0 == pos1 {
+				samples[pos0] += 0x7fff * (position1 - position0)
+			} else {
+				samples[pos0] += 0x7fff * (float(pos0+1) - position0)
+				for p := pos0 + 1; p < pos1; p++ {
+					samples[p] = 0x7fff
+				}
+				samples[pos1] += 0x7fff * (position1 - float(pos1))
+			}
 		}
 	}
 
-	sdl_audio.SendAudio_int16(samples[0:numSamples])
+	samples_int16 := make([]int16, numSamples)
+	for i := uint(0); i < numSamples; i++ {
+		s := uint(samples[i])
+		if s > 0x7fff {
+			s = 0x7fff
+		}
+		samples_int16[i] = int16(s)
+	}
+
+	sdl_audio.SendAudio_int16(samples_int16)
 }

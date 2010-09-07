@@ -367,7 +367,7 @@ func (z80 *Z80) interrupt() {
 			panic("Unknown interrupt mode")
 		}
 
-		z80.tstates = InterruptLength
+		z80.tstates += InterruptLength
 	}
 }
 

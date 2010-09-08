@@ -59,6 +59,7 @@ gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O) $(PKG_LIBS)
 clean:
 	rm -f gospeccy
 	rm -f src/spectrum/path_gen_*.go
+	rm -rf _obj
 	make -C src/readline clean
 
 .PHONY: gofmt

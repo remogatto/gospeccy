@@ -8,6 +8,7 @@
 package spectrum
 
 import (
+	"os"
 	"⚛sdl"
 	sdl_audio "⚛sdl/audio"
 	"sync"
@@ -91,10 +92,10 @@ type SDLAudio struct {
 	playbackLoopFinished chan byte
 
 	// Whether SDL playback is active. Initial value is 'false'.
-	// Changed to 'true' after the first 'AudioData' object become available.
+	// Changed to 'true' after the first 'AudioData' object becomes available.
 	sdlAudioUnpaused bool
 
-	// The number of 'AudioData' objects currently enqueued in the 'playback' Go channel.
+	// The number of 'AudioData' objects currently enqueued in the 'playback' Go channel
 	bufSize uint
 
 	// The playback frequency of the SDL audio device
@@ -111,7 +112,7 @@ type SDLAudio struct {
 	mutex sync.Mutex
 }
 
-func NewSDLAudio(app *Application) *SDLAudio {
+func NewSDLAudio(app *Application) (*SDLAudio, os.Error) {
 	// Open SDL audio
 	var spec sdl_audio.AudioSpec
 	{
@@ -120,7 +121,7 @@ func NewSDLAudio(app *Application) *SDLAudio {
 		spec.Channels = 1
 		spec.Samples = 2048
 		if sdl_audio.OpenAudio(&spec, &spec) != 0 {
-			panic(sdl.GetError())
+			return nil, os.NewError(sdl.GetError())
 		}
 		if app.Verbose {
 			PrintfMsg("%#v", spec)
@@ -140,7 +141,7 @@ func NewSDLAudio(app *Application) *SDLAudio {
 	go forwarderLoop(app.NewEventLoop(), audio)
 	go playbackLoop(app, audio)
 
-	return audio
+	return audio, nil
 }
 
 // Implement AudioReceiver

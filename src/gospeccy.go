@@ -241,12 +241,14 @@ func main() {
 		}
 	}
 
+	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
+		fmt.Fprintf(os.Stderr, "%s\n", sdl.GetError())
+		app.RequestExit()
+		goto quit
+	}
+
 	// Setup the display
 	{
-		if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
-			panic(sdl.GetError())
-		}
-
 		if *fullscreen {
 			*scale2x = true
 		}
@@ -261,7 +263,16 @@ func main() {
 	}
 
 	// Setup the audio
-	speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{spectrum.NewSDLAudio(app)}
+	{
+		audio, err := spectrum.NewSDLAudio(app)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			app.RequestExit()
+			goto quit
+		}
+
+		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
+	}
 
 	// Begin speccy emulation
 	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)

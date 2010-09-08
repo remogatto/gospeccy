@@ -115,6 +115,8 @@ type SDLScreen struct {
 	screenSurface SDLSurface
 
 	unscaledDisplay *UnscaledDisplay
+
+	app *Application
 }
 
 type screen_renderer_t interface {
@@ -122,7 +124,12 @@ type screen_renderer_t interface {
 }
 
 func NewSDLScreen(app *Application) *SDLScreen {
-	SDL_screen := &SDLScreen{make(chan *DisplayData), SDLSurface{nil}, newUnscaledDisplay()}
+	SDL_screen := &SDLScreen{
+		screenChannel:   make(chan *DisplayData),
+		screenSurface:   SDLSurface{nil},
+		unscaledDisplay: newUnscaledDisplay(),
+		app:             app,
+	}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -148,7 +155,9 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 
 		surface := sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, sdlMode)
 		if surface == nil {
-			panic(sdl.GetError())
+			PrintfMsg("%s", sdl.GetError())
+			display.app.RequestExit()
+			return
 		}
 
 		display.screenSurface.surface = surface
@@ -201,10 +210,18 @@ type SDLScreen2x struct {
 	screenSurface SDLSurface
 
 	unscaledDisplay *UnscaledDisplay
+
+	app *Application
 }
 
 func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
-	SDL_screen := &SDLScreen2x{make(chan *DisplayData), fullscreen, SDLSurface{nil}, newUnscaledDisplay()}
+	SDL_screen := &SDLScreen2x{
+		screenChannel:   make(chan *DisplayData),
+		fullscreen:      fullscreen,
+		screenSurface:   SDLSurface{nil},
+		unscaledDisplay: newUnscaledDisplay(),
+		app:             app,
+	}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -236,7 +253,9 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 
 		surface := sdl.SetVideoMode(2*TotalScreenWidth, 2*TotalScreenHeight, 32, sdlMode)
 		if surface == nil {
-			panic(sdl.GetError())
+			PrintfMsg("%s", sdl.GetError())
+			display.app.RequestExit()
+			return
 		}
 
 		display.screenSurface.surface = surface

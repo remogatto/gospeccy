@@ -149,8 +149,14 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	enable := in[0].(eval.BoolValue).Get(t)
 
 	if enable {
-		speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{}
-		speccy.CommandChannel <- Cmd_AddAudioReceiver{NewSDLAudio(speccy.app)}
+		audio, err := NewSDLAudio(speccy.app)
+		if err == nil {
+			speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{}
+			speccy.CommandChannel <- Cmd_AddAudioReceiver{audio}
+		} else {
+			PrintfMsg("%s", err)
+			app.RequestExit()
+		}
 	} else {
 		speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{}
 	}

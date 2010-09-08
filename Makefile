@@ -1,5 +1,7 @@
 include $(GOROOT)/src/Make.inc
 
+PATH_FILE=src/spectrum/path_gen_$(GOOS)_$(GOARCH).go
+
 SPECTRUM_FILES=\
 	src/spectrum/application.go\
 	src/spectrum/console.go\
@@ -56,7 +58,7 @@ gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O) $(PKG_LIBS)
 .PHONY: clean
 clean:
 	rm -f gospeccy
-	rm -rf _obj
+	rm -f src/spectrum/path_gen_*.go
 	make -C src/readline clean
 
 .PHONY: gofmt
@@ -69,9 +71,16 @@ _obj:
 _obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a
 	$(GC) -I./_obj -o $@ src/gospeccy.go
 
-_obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)
-	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES)
+_obj/spectrum.a: $(SPECTRUM_FILES) $(PATH_FILE) $(PKG_LIBS)
+	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES) $(PATH_FILE)
 	gopack grc $@ _obj/spectrum.$(O)
+
+$(PATH_FILE):
+	@echo Generating $@
+	@echo "// Automatically generated file - DO NOT EDIT" >> $(PATH_FILE)
+	@echo "package spectrum" >> $(PATH_FILE)
+	@echo "const GOOS = \"$(GOOS)\"" >> $(PATH_FILE)
+	@echo "const GOARCH = \"$(GOARCH)\"" >> $(PATH_FILE)
 
 
 #

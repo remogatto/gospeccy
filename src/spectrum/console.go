@@ -276,6 +276,9 @@ func (h handler_t) HandleSignal(s signal.Signal) {
 		case signal.SIGINT:
 			readline.FreeLineState()
 			readline.CleanupAfterSignal()
+
+		case signal.SIGWINCH:
+			readline.ResizeTerminal()
 		}
 	}
 }

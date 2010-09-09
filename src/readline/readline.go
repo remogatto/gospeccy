@@ -10,6 +10,7 @@ import "unsafe"
 
 func init() {
 	C.rl_catch_signals = 0
+	C.rl_catch_sigwinch = 0
 }
 
 // Calls the C readline function.
@@ -59,6 +60,11 @@ func FreeLineState() {
 func ResetAfterSignal() {
 	C.rl_reset_after_signal()
 }
+
+func ResizeTerminal() {
+	C.rl_resize_terminal()
+}
+
 
 func AddHistory(s string) {
 	p := C.CString(s)

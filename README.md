@@ -58,9 +58,9 @@ to fork and send me patches, of course ;)
 
 # Dependencies
 
-On Ubuntu Linux you'll need to install the following packages using synaptic:
+On Ubuntu Linux you'll need to install the following packages:
 
-    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev
+    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev libreadline6-dev
 
 The following dependencies are installed automatically:
 

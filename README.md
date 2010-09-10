@@ -8,8 +8,8 @@ certain well known Google employees.
 There are a lot of ZX Spectrum emulators around so, why reinventing
 the wheel? Well, mainly for
 [amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then
-because it was a great learning experience about emulators for me :)
-And it was a good chance to write something real with Go.
+because it was a great learning experience about emulators.  And it
+was a good chance to write something real with Go.
 
 Coding an emulator in Go is very enjoyable. The language is simple,
 pragmatic and fast (well... fast enough to run a Z80 emulator!). It
@@ -26,8 +26,8 @@ has a lot of features that help in emulators development:
 * it has an int16 built-in type that helps dealing with 8/16 bit
   machines
 
-* it has goroutines to enable some concurrency in the emulator
-  implementation
+* it has goroutines to enable some concurrency in the emulator design
+  and implementation
 
 The Zilog Z80 emulation is the core of GoSpeccy. The CPU emulation
 code is generated using a modified version of the <tt>z80.pl</tt> script
@@ -52,6 +52,7 @@ to fork and send me patches, of course ;)
 
 * Complete Zilog Z80 emulation
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
+* Sound support
 * SNA format support (48k version)
 * SDL backend
 * 2x scaler and fullscreen (to be improved)

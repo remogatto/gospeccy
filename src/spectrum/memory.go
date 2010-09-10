@@ -47,11 +47,9 @@ func (memory *Memory) readByteInternal(addr uint16) byte {
 
 func (memory *Memory) writeByteInternal(address uint16, b byte) {
 	if (address >= SCREEN_BASE_ADDR) && (address < ATTR_BASE_ADDR) {
-		if memory.data[address] != b {
-			memory.speccy.ula.screenBitmapWrite(address, b)
-		}
+		memory.speccy.ula.screenBitmapWrite(address, memory.data[address], b)
 	} else if (address >= ATTR_BASE_ADDR) && (address < 0x5b00) {
-		memory.speccy.ula.screenAttrWrite(address, b)
+		memory.speccy.ula.screenAttrWrite(address, memory.data[address], b)
 	}
 
 	memory.data[address] = b

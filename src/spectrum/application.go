@@ -4,6 +4,7 @@ import (
 	"container/vector"
 	"sync"
 	"time"
+	"os/signal"
 )
 
 
@@ -16,14 +17,24 @@ type Application struct {
 	HasTerminated chan byte // This channel is closed after the whole application has terminated
 
 	// A vector of *EventLoop
-	eventLoops       vector.Vector
-	eventLoops_mutex sync.Mutex
+	eventLoops vector.Vector
+
+	terminationInProgress bool
+
+	mutex sync.Mutex
 
 	Verbose bool
+
+	CreationTime int64 // The time when this Application object was created, see time.Nanoseconds()
 }
 
 func NewApplication() *Application {
-	app := &Application{exitApp: make(chan byte), HasTerminated: make(chan byte), eventLoops: vector.Vector{}, Verbose: false}
+	app := &Application{
+		exitApp:       make(chan byte),
+		HasTerminated: make(chan byte),
+		eventLoops:    vector.Vector{},
+		CreationTime:  time.Nanoseconds(),
+	}
 
 	go appGoroutine(app)
 
@@ -34,14 +45,23 @@ func appGoroutine(app *Application) {
 	// Block until there is a request to exit the application
 	<-app.exitApp
 
+	var startTime int64
+	if app.Verbose {
+		startTime = time.Nanoseconds()
+	}
+
+	app.mutex.Lock()
+	app.terminationInProgress = true
+	app.mutex.Unlock()
+
 	// Cycle until there are no EventLoop objects.
 	// Usually, the body of this 'for' statement executes only once
 	for {
 		// Make a copy of the 'eventLoops' vector, then clear it
-		app.eventLoops_mutex.Lock()
+		app.mutex.Lock()
 		eventLoops := app.eventLoops.Copy()
 		app.eventLoops.Cut(0, app.eventLoops.Len())
-		app.eventLoops_mutex.Unlock()
+		app.mutex.Unlock()
 
 		// This is a procedure of two phases:
 		//
@@ -74,30 +94,44 @@ func appGoroutine(app *Application) {
 			}
 		}
 
-		app.eventLoops_mutex.Lock()
+		app.mutex.Lock()
 		if app.eventLoops.Len() == 0 {
-			app.eventLoops_mutex.Unlock()
+			app.mutex.Unlock()
 			break
 		} else {
 			// Some new EventLoops were created while we were pausing&terminating the known ones
-			app.eventLoops_mutex.Unlock()
+			app.mutex.Unlock()
 		}
 	}
 
 	if app.Verbose {
-		println("application has terminated")
+		endTime := time.Nanoseconds()
+		PrintfMsg("application shutdown completed after %f milliseconds", float(endTime-startTime)/1e6)
+		PrintfMsg("application has terminated")
 	}
+
 	close(app.HasTerminated)
+
+	app.mutex.Lock()
+	app.terminationInProgress = false
+	app.mutex.Unlock()
 }
 
 func (app *Application) addEventLoop(e *EventLoop) {
-	app.eventLoops_mutex.Lock()
+	app.mutex.Lock()
 	app.eventLoops.Push(e)
-	app.eventLoops_mutex.Unlock()
+	app.mutex.Unlock()
 }
 
 func (app *Application) RequestExit() {
 	close(app.exitApp)
+}
+
+func (app *Application) TerminationInProgress() bool {
+	app.mutex.Lock()
+	a := app.terminationInProgress
+	app.mutex.Unlock()
+	return a
 }
 
 
@@ -145,26 +179,34 @@ func (e *EventLoop) Delete() {
 	app := e.app
 	e.app_mutex.RUnlock()
 
-	app.eventLoops_mutex.Lock()
-	found := false
+	app.mutex.Lock()
 	{
-		for i := 0; i < app.eventLoops.Len(); {
-			if app.eventLoops.At(i).(*EventLoop) == e {
-				// Remove the i-th element
-				app.eventLoops.Swap(i, app.eventLoops.Len()-1)
-				app.eventLoops.Delete(app.eventLoops.Len() - 1)
-				found = true
-				break
-			} else {
-				i++
+		if app.terminationInProgress {
+			// Nothing to do here - the EventLoop 'e' will be removed in function 'appGoroutine'
+			app.mutex.Unlock()
+			return
+		}
+
+		found := false
+		{
+			for i := 0; i < app.eventLoops.Len(); {
+				if app.eventLoops.At(i).(*EventLoop) == e {
+					// Remove the i-th element
+					app.eventLoops.Swap(i, app.eventLoops.Len()-1)
+					app.eventLoops.Delete(app.eventLoops.Len() - 1)
+					found = true
+					break
+				} else {
+					i++
+				}
 			}
 		}
-	}
-	app.eventLoops_mutex.Unlock()
 
-	if !found {
-		panic("no such event-loop")
+		if !found {
+			panic("no such event-loop")
+		}
 	}
+	app.mutex.Unlock()
 
 	go func() {
 		// Request the event-loop to pause, and wait until it actually pauses
@@ -187,11 +229,66 @@ func (e *EventLoop) Delete() {
 // =============
 
 func Drain(ticker *time.Ticker) {
-	for {
-		select {
-		case <-ticker.C: // No action
-		default:
-			return
-		}
+	var haveMessage bool
+	_, haveMessage = <-ticker.C
+	for haveMessage {
+		_, haveMessage = <-ticker.C
 	}
+}
+
+
+// ======================
+// (Unix) signal handling
+// ======================
+
+type SignalHandler interface {
+	// Function to be called upon receiving an os.Signal.
+	//
+	// A single signal is passed to all installed signal handlers.
+	// The [order in which this function is called in respect to other handlers] is unspecified.
+	HandleSignal(signal signal.Signal)
+}
+
+// Actually, this is a set
+var signalHandlers map[SignalHandler]byte = make(map[SignalHandler]byte)
+
+var signalHandlers_mutex sync.Mutex
+
+// Installs the specified handler.
+// Trying to re-install an already installed handler is effectively a NOOP.
+func InstallSignalHandler(handler SignalHandler) {
+	signalHandlers_mutex.Lock()
+	signalHandlers[handler] = 0, true
+	signalHandlers_mutex.Unlock()
+}
+
+// Uninstalls the specified handler.
+// Trying to uninstall an non-existent handler is effectively a NOOP.
+func UninstallSignalHandler(handler SignalHandler) {
+	signalHandlers_mutex.Lock()
+	signalHandlers[handler] = 0, false
+	signalHandlers_mutex.Unlock()
+}
+
+func init() {
+	go func() {
+		for {
+			signal := <-signal.Incoming
+
+			signalHandlers_mutex.Lock()
+			handlers_copy := make([]SignalHandler, len(signalHandlers))
+			{
+				i := 0
+				for handler, _ := range signalHandlers {
+					handlers_copy[i] = handler
+					i++
+				}
+			}
+			signalHandlers_mutex.Unlock()
+
+			for _, handler := range handlers_copy {
+				handler.HandleSignal(signal)
+			}
+		}
+	}()
 }

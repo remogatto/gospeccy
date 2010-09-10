@@ -26,9 +26,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"github.com/0xe2-0x9a-0x9b/Go-PerfEvents"
-	"io/ioutil"
 	"fmt"
+	"⚛perf"
 	"os"
 	"syscall"
 )
@@ -127,6 +126,8 @@ type Z80 struct {
 
 	ports PortAccessor
 
+	speccy *Spectrum48k
+
 	rzxInstructionsOffset int
 
 	eventNextEvent uint
@@ -157,7 +158,11 @@ func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
 	return z80
 }
 
-func (z80 *Z80) Close() {
+func (z80 *Z80) init(speccy *Spectrum48k) {
+	z80.speccy = speccy
+}
+
+func (z80 *Z80) close() {
 	if z80.perfCounter_hostCpuInstr != nil {
 		z80.perfCounter_hostCpuInstr.Close()
 		z80.perfCounter_hostCpuInstr = nil
@@ -189,68 +194,130 @@ func (z80 *Z80) reset() {
 	z80.interruptsEnabledAt = 0
 }
 
-// Initialize state from the snapshot defined by the specified filename.
-// Returns nil on success.
-func (z80 *Z80) loadSna(filename string) os.Error {
-	bytes, err := ioutil.ReadFile(filename)
 
-	if err != nil {
-		return err
-	}
-	if len(bytes) != 49179 {
-		return os.NewError(fmt.Sprintf("snapshot \"%s\" has invalid size", filename))
+// Initializes state from data in SNA format.
+// Returns nil on success.
+func (z80 *Z80) loadSna(data []byte) os.Error {
+	if len(data) != 49179 {
+		return os.NewError(fmt.Sprintf("snapshot has invalid size"))
 	}
 
 	// Populate registers
-	z80.i = bytes[0]
-	z80.l_ = bytes[1]
-	z80.h_ = bytes[2]
-	z80.e_ = bytes[3]
-	z80.d_ = bytes[4]
-	z80.c_ = bytes[5]
-	z80.b_ = bytes[6]
-	z80.f_ = bytes[7]
-	z80.a_ = bytes[8]
-	z80.l = bytes[9]
-	z80.h = bytes[10]
-	z80.e = bytes[11]
-	z80.d = bytes[12]
-	z80.c = bytes[13]
-	z80.b = bytes[14]
-	z80.iyl = bytes[15]
-	z80.iyh = bytes[16]
-	z80.ixl = bytes[17]
-	z80.ixh = bytes[18]
+	z80.i = data[0]
+	z80.l_ = data[1]
+	z80.h_ = data[2]
+	z80.e_ = data[3]
+	z80.d_ = data[4]
+	z80.c_ = data[5]
+	z80.b_ = data[6]
+	z80.f_ = data[7]
+	z80.a_ = data[8]
+	z80.l = data[9]
+	z80.h = data[10]
+	z80.e = data[11]
+	z80.d = data[12]
+	z80.c = data[13]
+	z80.b = data[14]
+	z80.iyl = data[15]
+	z80.iyh = data[16]
+	z80.ixl = data[17]
+	z80.ixh = data[18]
 
-	z80.iff1 = uint16(ternOpB((bytes[19]&0x04) != 0, 1, 0))
+	z80.iff1 = uint16(ternOpB((data[19]&0x04) != 0, 1, 0))
 	z80.iff2 = z80.iff1
 
-	var r = uint16(bytes[20])
+	var r = uint16(data[20])
 
 	z80.r = r & 0x7f
 	z80.r7 = r & 0x80
 
-	z80.f = bytes[21]
-	z80.a = bytes[22]
-	z80.sp = uint16(bytes[23]) | (uint16(bytes[24]) << 8)
-	z80.im = uint16(bytes[25])
+	z80.f = data[21]
+	z80.a = data[22]
+	z80.sp = uint16(data[23]) | (uint16(data[24]) << 8)
+	z80.im = uint16(data[25])
 
 	// Border color
-	z80.writePort(0xfe, bytes[26]&0x07)
+	z80.writePort(0xfe, data[26]&0x07)
 
 	// Populate memory
 	for i := 0; i < 0xc000; i++ {
-		z80.memory.Data()[i+0x4000] = bytes[i+27]
+		z80.memory.Data()[i+0x4000] = data[i+27]
 	}
 
 	// Send a RETN
 	z80.iff1 = z80.iff2
 	z80.ret()
 
-	z80.tstates = InterruptLength
+	if z80.iff1 != 0 {
+		z80.tstates = InterruptLength
+	} else {
+		z80.tstates = 0
+	}
 
 	return nil
 }
+
+func (z80 *Z80) saveSna() ([]byte, os.Error) {
+	var data [49179]byte
+
+	// Save registers
+	data[0] = z80.i
+	data[1] = z80.l_
+	data[2] = z80.h_
+	data[3] = z80.e_
+	data[4] = z80.d_
+	data[5] = z80.c_
+	data[6] = z80.b_
+	data[7] = z80.f_
+	data[8] = z80.a_
+	data[9] = z80.l
+	data[10] = z80.h
+	data[11] = z80.e
+	data[12] = z80.d
+	data[13] = z80.c
+	data[14] = z80.b
+	data[15] = z80.iyl
+	data[16] = z80.iyh
+	data[17] = z80.ixl
+	data[18] = z80.ixh
+
+	if z80.iff1 != 0 {
+		data[19] = (1 << 2)
+	} else {
+		data[19] = (0 << 2)
+	}
+
+	data[20] = byte(z80.r&0x7f) | byte(z80.r7&0x80)
+
+	data[21] = z80.f
+	data[22] = z80.a
+
+	sp_afterSimulatedPushPC := z80.sp - 2
+	if (sp_afterSimulatedPushPC < 0x4000) || (sp_afterSimulatedPushPC > 0xfffe) {
+		// We would be saving the PC to ROM or outside of memory
+		return nil, os.NewError(fmt.Sprintf("failed to simulate a RETN"))
+	}
+
+	data[23] = byte(sp_afterSimulatedPushPC & 0xff)
+	data[24] = byte(sp_afterSimulatedPushPC >> 8)
+	data[25] = byte(z80.im)
+
+	// Border color
+	data[26] = z80.speccy.ula.getBorderColor() & 0x07
+
+	// Memory
+	for i := 0; i < 0xc000; i++ {
+		data[i+27] = z80.memory.Data()[i+0x4000]
+	}
+
+	// Push PC
+	pch, pcl := splitWord(z80.pc)
+	data[(sp_afterSimulatedPushPC-0x4000+0)+27] = pcl
+	data[(sp_afterSimulatedPushPC-0x4000+1)+27] = pch
+
+	return &data, nil
+}
+
 
 func splitWord(word uint16) (byte, byte) {
 	return byte(word >> 8), byte(word & 0xff)
@@ -300,7 +367,7 @@ func (z80 *Z80) interrupt() {
 			panic("Unknown interrupt mode")
 		}
 
-		z80.tstates = InterruptLength
+		z80.tstates += InterruptLength
 	}
 }
 

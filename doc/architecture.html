@@ -1,0 +1,39 @@
+<html>
+<head>
+	<title>GoSpeccy architecture</title>
+	<meta name="description" content="GoSpeccy architecture"/>
+	<meta name="keywords" content="GoSpeccy,ZX Spectrum,emulation,Go,concurrency"/>
+	<meta name="author" content="⚛"/>
+</head>
+<body>
+
+	<h2 align=center>GoSpeccy architecture</h2>
+
+	<p>The <a href="http://github.com/remogatto/gospeccy">GoSpeccy</a> high-level architecture consists from multiple modules mostly communicating via Go channels. Each module is running one or more goroutines. The bulk of ZX Spectrum emulation happens in the emulation core which is basically responsible for executing bursts of Z80 instructions. Z80 instructions either work with registers, access the memory or access the I/O ports.
+
+	<h1 align=center>
+		<embed src="architecture1.svg" width="721" height="422" type="image/svg+xml"/> 
+	</h1>
+
+	<p>ZX Spectrum video RAM is fully contained within the memory. In parallel to executing instructions, a real ZX Spectrum's ULA chip is continuously reading the video memory contents. The information which will appear on the display depends on the value read by ULA from memory at a particular moment of time. The screen border on a real ZX Spectrum can be changed by executing an instruction that is writing to a specific I/O port. In order to keep track of what values are actually displayed on the screen, the core performs emulation of instruction timings and a partial emulation of timings of certain hardware parts of a real ZX Spectrum. (Some specifics of what needs to be emulated are available at <a href="http://www.worldofspectrum.org/faq/reference/48kreference.htm#ZXSpectrum">48K reference</a>.) While it may <i>seem</i> the Z80 CPU and the ULA are good candidates for being mapped to distinct goroutines - since in a real ZX Spectrum they work in parallel - from an emulation perspective it does <i>not</i> make much sense to emulate them in parallel. The reason for this is that the coupling between CPU and ULA is too strong, thus placing the CPU emulation and ULA emulation in separate goroutines would require either a lot of inter-goroutine communication or a lot of locking, and it would also increase code complexity. In consequence, the whole emulation core is basically just one goroutine.
+
+	<p>On a real ZX Spectrum, the display refresh frequency is approximately 50 Hz. When the GoSpeccy emulation core finishes executing instructions corresponding to one frame, it will package the emulated display contents into a message and send it via a Go channel to another goroutine which will render the received display contents on host-machine's display (which is for example an X11 window). The emulation core and host-machine rendering can be potentially executing in parallel, since they are (roughly speaking) two distinct goroutines. But to potentially execute in parallel does not automatically imply to actually be executing in parallel. In fact, on a contemporary notebook CPU these two goroutines are currently <i>not</i> executing in parallel at all. The reason is that there is no overlap - the emulation core is dormant while rendering to the host display, and vice versa, there is no rendering to the host display while the emulation core is executing instructions. A typical notebook CPU is simply too fast for there to be any overlap.
+
+	<h1 align=center>
+		<embed src="architecture2.svg" width="478" height="182" type="image/svg+xml"/> 
+	</h1>
+
+	<p>Under normal conditions, GoSpeccy is executing the following trivial pipeline:
+
+	<ol>
+		<li>Wait until the OS (e.g: Linux) generates a tick. This happens with a frequency of approximately 50 Hz.
+		<li>Emulate instructions corresponding to one frame.
+		<li>Post-process and render the frame on the host-machine display.
+	</ol>
+
+	<p>Technically, step 2 of frame (N+1) and step 3 of frame N could be executing in parallel, but as has been already explained a typical x86 CPU is so fast that this pipeline parallelism never materializes. The primary reason for implementing GoSpeccy in this way is that this concurrency architecture is very natural. To put is more clearly, the fact that the core emulation can be easily separated from the host-machine rendering is an inherent property of any ZX Spectrum emulator. In a language supporting concurrency, it would be unnatural to implement it in a fully serial manner.
+
+	<p>The emulation core goroutine works independently of all other main goroutines. When the user wants to load a snapshot from an external file, the snapshot data is first loaded from the file and then sent as a message via a Go channel to the emulation core. The initial file loading happens in a separate "user-commands" goroutine. The message with loaded data is sent over the same Go channel as is used by the ticker, so it is impossible for there to be any concurrency hazards. In addition to this, a very minor advantage of this approach is that in the unlikely circumstance of the initial file loading taking a longer time (e.g: the file is not in OS cache or there is a lot of disk activity), the emulation core itself will <i>not</i> be impeded by this since the next tick will be received regardless of whether there is heavy disk activity or not. The overall end-result is that the emulation can run smoothly unimpeded by potential hiccups happening in other parts of the application.
+
+</body>
+</html>

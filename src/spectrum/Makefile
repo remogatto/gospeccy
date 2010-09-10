@@ -11,9 +11,11 @@ GOFILES=\
 	ula.go\
 	display.go\
 	sdldisplay.go\
+	sound.go\
+	sdlsound.go\
 	keyboard.go\
 	spectrum.go\
-	fpscounter.go\
+	console.go\
 	application.go
 
 include $(GOROOT)/src/Make.pkg

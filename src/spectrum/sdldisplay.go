@@ -26,10 +26,22 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
+	"fmt"
+	"os"
 	"⚛sdl"
 	"time"
 	"unsafe"
 )
+
+func init() {
+	const expectedVersion = "⚛SDL bindings 1.0"
+	actualVersion := sdl.GoSdlVersion()
+	if actualVersion != expectedVersion {
+		fmt.Fprintf(os.Stderr, "Invalid SDL bindings version: expected \"%s\", got \"%s\"\n",
+					expectedVersion, actualVersion)
+		os.Exit(1)
+	}
+}
 
 
 // ==========

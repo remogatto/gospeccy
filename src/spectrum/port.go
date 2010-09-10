@@ -25,7 +25,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
-
 type PortAccessor interface {
 	readPort(address uint16) byte
 	writePort(address uint16, b byte)
@@ -43,7 +42,6 @@ type PortAccessor interface {
 	// This method may return nil
 	getBeeperEvents() *BeeperEvent
 }
-
 
 type BorderEvent struct {
 	// The moment when the border color was changed.
@@ -115,7 +113,6 @@ func (p *Ports) getBorderEvents() *BorderEvent {
 func (p *Ports) getBeeperEvents() *BeeperEvent {
 	return p.beeperEvents
 }
-
 
 func (p *Ports) readPort(address uint16) byte {
 	var result byte = 0xff

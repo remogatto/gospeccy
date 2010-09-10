@@ -105,7 +105,7 @@ type RenderTest struct {
 }
 
 func (r *RenderTest) renderScreen(speccy *Spectrum48k) bool {
-	renderedSDLScreen := &SDLScreen{nil, SDLSurface{newSurface()}, newUnscaledDisplay()}
+	renderedSDLScreen := &SDLScreen{nil, SDLSurface{newSurface()}, newUnscaledDisplay(), speccy.app}
 
 	speccy.addDisplay(renderedSDLScreen)
 
@@ -190,22 +190,30 @@ func BenchmarkRender(b *testing.B) {
 		prevFrame *DisplayData = nil
 	)
 
-	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}, newUnscaledDisplay()}
+	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}, newUnscaledDisplay(), app}
 
 	if speccy, err := NewSpectrum48k(app, "testdata/48.rom"); err != nil {
 		panic(err)
 	} else {
 		speccy.addDisplay(sdlScreen)
-		speccy.loadSna("testdata/fire.sna")
+
+		data, err := ioutil.ReadFile("testdata/fire.sna")
+		if err != nil {
+			panic(err)
+		}
+
+		if err := speccy.loadSna(data); err != nil {
+			panic(err)
+		}
 
 		go func() {
 			for i := 0; i < numFrames; i++ {
-				speccy.renderFrame()
+				speccy.renderFrame(nil)
 			}
 		}()
 
 		for i := 0; i < numFrames; i++ {
-			frames[i] = <-sdlScreen.getDisplayDataChannel()
+			frames[i] = <-sdlScreen.screenChannel
 		}
 
 		var j int

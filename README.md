@@ -57,25 +57,23 @@ to fork and send me patches, of course ;)
 * SDL backend
 * 2x scaler and fullscreen (to be improved)
 
-# Dependencies
+# Quick start
 
 On Ubuntu Linux you'll need to install the following packages:
 
-    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev libreadline6-dev
+    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev libreadline6-dev git-core
 
-The following dependencies are installed automatically:
-
-* [⚛Go-SDL](http://github.com/0xe2-0x9a-0x9b/Go-SDL)
-* [⚛Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
-
-# Quick start
-
-Install the dependencies and create the gospeccy executable:
+To install the dependencies and create the gospeccy executable:
 
     git clone http://github.com/remogatto/gospeccy.git
     cd gospeccy
     make
     ./gospeccy
+
+The following dependencies are installed automatically:
+
+* [⚛Go-SDL](http://github.com/0xe2-0x9a-0x9b/Go-SDL)
+* [⚛Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
 
 To make the screen bigger try the "-2x" command line option,
 or type "scale(2)" in the terminal running gospeccy.

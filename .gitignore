@@ -3,4 +3,3 @@
 gospeccy
 *.out
 path_gen*
-scripts/startup_local.go

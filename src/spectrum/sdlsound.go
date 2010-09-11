@@ -20,7 +20,7 @@ func init() {
 	actualVersion := sdl_audio.GoSdlAudioVersion()
 	if actualVersion != expectedVersion {
 		fmt.Fprintf(os.Stderr, "Invalid SDL audio bindings version: expected \"%s\", got \"%s\"\n",
-					expectedVersion, actualVersion)
+			expectedVersion, actualVersion)
 		os.Exit(1)
 	}
 }

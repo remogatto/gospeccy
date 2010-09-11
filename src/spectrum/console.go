@@ -11,6 +11,8 @@ import (
 	"⚛readline"
 	"sync"
 	"bytes"
+	"time"
+	"path"
 )
 
 
@@ -22,6 +24,7 @@ import (
 // so there is no need for controlling concurrent access via a sync.Mutex
 var app *Application
 var speccy *Spectrum48k
+var w *eval.World
 
 const PROMPT = "gospeccy> "
 const PROMPT_EMPTY = "          "
@@ -29,6 +32,9 @@ const PROMPT_EMPTY = "          "
 // Whether the terminal is currently showing a prompt string
 var havePrompt = false
 var havePrompt_mutex sync.Mutex
+
+const SCRIPT_DIRECTORY = "scripts"
+const STARTUP_SCRIPT = "startup"
 
 
 // ================
@@ -123,11 +129,17 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	switch n {
 	case 1:
-		speccy.CommandChannel <- Cmd_CloseAllDisplays{}
+		finished := make(chan byte)
+		speccy.CommandChannel <- Cmd_CloseAllDisplays{finished}
+		<-finished
+
 		speccy.CommandChannel <- Cmd_AddDisplay{NewSDLScreen(speccy.app)}
 
 	case 2:
-		speccy.CommandChannel <- Cmd_CloseAllDisplays{}
+		finished := make(chan byte)
+		speccy.CommandChannel <- Cmd_CloseAllDisplays{finished}
+		<-finished
+
 		speccy.CommandChannel <- Cmd_AddDisplay{NewSDLScreen2x(speccy.app, /*fullscreen*/ false)}
 	}
 }
@@ -151,14 +163,47 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if enable {
 		audio, err := NewSDLAudio(speccy.app)
 		if err == nil {
-			speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{}
+			finished := make(chan byte)
+			speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{finished}
+			<-finished
+
 			speccy.CommandChannel <- Cmd_AddAudioReceiver{audio}
 		} else {
 			PrintfMsg("%s", err)
 			app.RequestExit()
 		}
 	} else {
-		speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{}
+		finished := make(chan byte)
+		speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{finished}
+		<-finished
+	}
+}
+
+// Signature: func wait(milliseconds uint)
+func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	milliseconds := uint(in[0].(eval.UintValue).Get(t))
+	time.Sleep(1e6 * int64(milliseconds))
+}
+
+// Signature: func script(scriptName string)
+func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	scriptName := in[0].(eval.StringValue).Get(t)
+
+	err := runScript(w, scriptName, /*optional*/ false)
+	if err != nil {
+		PrintfMsg("%s", err)
+		return
+	}
+}
+
+// Signature: func optionalScript(scriptName string)
+func wrapper_optionalScript(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	scriptName := in[0].(eval.StringValue).Get(t)
+
+	err := runScript(w, scriptName, /*optional*/ true)
+	if err != nil {
+		PrintfMsg("%s", err)
+		return
 	}
 }
 
@@ -239,6 +284,30 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("sound(enable bool)")
 		help_vals.Push("Enable or disable sound")
 	}
+
+	{
+		var functionSignature func(uint)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wait, functionSignature)
+		w.DefineVar("wait", funcType, funcValue)
+		help_keys.Push("wait(milliseconds uint)")
+		help_vals.Push("Wait the specified amount of time before issuing the next command")
+	}
+
+	{
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_script, functionSignature)
+		w.DefineVar("script", funcType, funcValue)
+		help_keys.Push("script(scriptName string)")
+		help_vals.Push("Load and evaluate the specified Go script")
+	}
+
+	{
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_optionalScript, functionSignature)
+		w.DefineVar("optionalScript", funcType, funcValue)
+		help_keys.Push("optionalScript(scriptName string)")
+		help_vals.Push("Load (if found) and evaluate the specified Go script")
+	}
 }
 
 
@@ -261,6 +330,25 @@ func run(w *eval.World, sourceCode string) {
 		PrintfMsg("%s", err)
 		return
 	}
+}
+
+// Loads and evaluates the specified Go script
+func runScript(w *eval.World, scriptName string, optional bool) os.Error {
+	fileName := strings.Join([]string{scriptName, ".go"}, "")
+	data, err := ioutil.ReadFile(path.Join("scripts", fileName))
+	if err != nil {
+		if !optional {
+			return err
+		} else {
+			return nil
+		}
+	}
+
+	var buf bytes.Buffer
+	buf.Write(data)
+	run(w, buf.String())
+
+	return nil
 }
 
 
@@ -371,9 +459,20 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool) {
 	app = _app
 	speccy = _speccy
+	w = eval.NewWorld()
 
-	w := eval.NewWorld()
 	defineFunctions(w)
+
+	// Run the startup script
+	{
+		var err os.Error
+		err = runScript(w, STARTUP_SCRIPT, /*optional*/ false)
+		if err != nil {
+			PrintfMsg("%s", err)
+			app.RequestExit()
+			return
+		}
+	}
 
 	// This should be printed before executing "go readCode(...)",
 	// in order to ensure that this message *always* gets printed before printing the prompt

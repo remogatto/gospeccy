@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"container/vector"
 )
 
 const TStatesPerFrame = 69888 // Number of T-states per frame
 const InterruptLength = 32    // How long does an interrupt last in T-states
 const DefaultFPS = 50.08
-const DefaultRomPath = "roms/48.rom"
 
 type DisplayInfo struct {
 	displayReceiver DisplayReceiver
@@ -50,6 +50,8 @@ type Spectrum48k struct {
 
 	// A vector of 'AudioReceiver', initially empty
 	audioReceivers vector.Vector
+
+	mutex sync.RWMutex
 
 	app *Application
 }
@@ -106,7 +108,9 @@ type Cmd_RenderFrame struct {
 type Cmd_AddDisplay struct {
 	Display DisplayReceiver
 }
-type Cmd_CloseAllDisplays struct{}
+type Cmd_CloseAllDisplays struct {
+	finished chan<- byte
+}
 type Cmd_SetFPS struct {
 	NewFPS float
 }
@@ -116,7 +120,9 @@ type Cmd_SetUlaEmulationAccuracy struct {
 type Cmd_AddAudioReceiver struct {
 	Receiver AudioReceiver
 }
-type Cmd_CloseAllAudioReceivers struct{}
+type Cmd_CloseAllAudioReceivers struct {
+	finished chan<- byte
+}
 type Cmd_LoadSna struct {
 	InformalFilename string // This is only used for logging purposes
 	Data             []byte // The SNA snapshot data
@@ -158,7 +164,10 @@ func commandLoop(speccy *Spectrum48k) {
 				speccy.addDisplay(cmd.Display)
 
 			case Cmd_CloseAllDisplays:
-				speccy.closeAllDisplays()
+				go func() {
+					speccy.closeAllDisplays()
+					cmd.finished <- 0
+				}()
 
 			case Cmd_SetFPS:
 				speccy.setFPS(cmd.NewFPS)
@@ -170,7 +179,10 @@ func commandLoop(speccy *Spectrum48k) {
 				speccy.addAudioReceiver(cmd.Receiver)
 
 			case Cmd_CloseAllAudioReceivers:
-				speccy.closeAllAudioReceivers()
+				go func() {
+					speccy.closeAllAudioReceivers()
+					cmd.finished <- 0
+				}()
 
 			case Cmd_LoadSna:
 				if speccy.app.Verbose {
@@ -240,18 +252,25 @@ func (speccy *Spectrum48k) Close() {
 
 func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
 	d := &DisplayInfo{displayReceiver: display, lastFrame: nil, numMissedFrames: 0}
+	speccy.mutex.Lock()
 	speccy.displays.Push(d)
+	speccy.mutex.Unlock()
 }
 
 func (speccy *Spectrum48k) closeAllDisplays() {
 	var displays vector.Vector
 	{
+		speccy.mutex.Lock()
 		displays = speccy.displays
 		speccy.displays = vector.Vector{}
+		speccy.mutex.Unlock()
 	}
 
-	for _, d := range displays {
+	for i, d := range displays {
 		d.(*DisplayInfo).displayReceiver.close()
+		if speccy.app.Verbose {
+			PrintfMsg("display #%d: %d missed frames", i, d.(*DisplayInfo).numMissedFrames)
+		}
 	}
 }
 
@@ -267,14 +286,18 @@ func (speccy *Spectrum48k) setFPS(newFPS float) {
 }
 
 func (speccy *Spectrum48k) addAudioReceiver(receiver AudioReceiver) {
+	speccy.mutex.Lock()
 	speccy.audioReceivers.Push(receiver)
+	speccy.mutex.Unlock()
 }
 
 func (speccy *Spectrum48k) closeAllAudioReceivers() {
 	var audioReceivers vector.Vector
 	{
+		speccy.mutex.Lock()
 		audioReceivers = speccy.audioReceivers
 		speccy.audioReceivers = vector.Vector{}
+		speccy.mutex.Unlock()
 	}
 
 	for _, r := range audioReceivers {
@@ -297,19 +320,24 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.doOpcodes()
 
 	// Send display data to display backend(s)
-	firstDisplay := true
-	for _, display := range speccy.displays {
-		var tm chan<- int64
-		if firstDisplay {
-			tm = completionTime_orNil
-		} else {
-			tm = nil
+	speccy.mutex.RLock()
+	{
+		firstDisplay := true
+		for _, display := range speccy.displays {
+			var tm chan<- int64
+			if firstDisplay {
+				tm = completionTime_orNil
+			} else {
+				tm = nil
+			}
+			speccy.ula.sendScreenToDisplay(display.(*DisplayInfo), tm)
+			firstDisplay = false
 		}
-		speccy.ula.sendScreenToDisplay(display.(*DisplayInfo), tm)
-		firstDisplay = false
 	}
+	speccy.mutex.RUnlock()
 
 	// Send audio data to audio backend(s)
+	speccy.mutex.RLock()
 	{
 		audioData := AudioData{
 			fps:          speccy.currentFPS,
@@ -320,6 +348,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 			audioReceiver.(AudioReceiver).getAudioDataChannel() <- &audioData
 		}
 	}
+	speccy.mutex.RUnlock()
 
 	speccy.Ports.frame_releaseMemory()
 }

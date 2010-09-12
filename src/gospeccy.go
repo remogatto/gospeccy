@@ -212,7 +212,7 @@ func main() {
 	}
 
 	// Create new emulator core
-	speccy, err := spectrum.NewSpectrum48k(app, spectrum.SystemRomPath())
+	speccy, err := spectrum.NewSpectrum48k(app, spectrum.SystemRomPath("48.rom"))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		app.RequestExit()

@@ -61,8 +61,8 @@ func searchForValidPath(paths []string) string {
 // 2. $HOME/.gospeccy/sna/
 func SnaPath(fileName string) string {
 	var (
-		currDir = path.Join("./", fileName)
-		userDir = path.Join(defaultUserDir, "sna/", fileName)
+		currDir = path.Join(fileName)
+		userDir = path.Join(defaultUserDir, "sna", fileName)
 	)
 	
 	path := searchForValidPath([]string{currDir, userDir})
@@ -82,7 +82,7 @@ func SnaPath(fileName string) string {
 // 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms/48.rom
 func SystemRomPath(fileName string) string {
 	var (
-		currDir = path.Join("./", fileName)
+		currDir = path.Join(fileName)
 		userDir = path.Join(defaultUserDir, "roms", fileName)
 		distDir = path.Join(distDir, "roms", fileName)
 	)
@@ -104,8 +104,8 @@ func SystemRomPath(fileName string) string {
 // 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/scripts
 func ScriptPath(fileName string) string {
 	var (
-		currDir = path.Join("./", fileName)
-		userDir = path.Join(defaultUserDir, "scripts/", fileName)
+		currDir = path.Join(fileName)
+		userDir = path.Join(defaultUserDir, "scripts", fileName)
 		distDir = path.Join(distDir, "scripts", fileName)
 	)
 	

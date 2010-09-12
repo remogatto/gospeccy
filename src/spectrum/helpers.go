@@ -71,7 +71,7 @@ func SnaPath(filename string) string {
 // The search is performed in this order:
 // 1. ./roms/48.rom
 // 2. $HOME/.gospeccy/roms/48.rom
-// 3. $GOROOT/$GOOS_$GOARCH/pkg/gospeccy/roms/48.rom
+// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms/48.rom
 func SystemRomPath() string {
 	var (
 		currDir = "./roms/48.rom"
@@ -90,4 +90,32 @@ func SystemRomPath() string {
 	}
 
 	return ""
+}
+
+// Return a valid path for the named script.
+//
+// The search is performed in this order:
+// 1. ./
+// 2. $HOME/.gospeccy/scripts/
+// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/scripts
+func ScriptPath(filename string) string {
+	var (
+		currDir = path.Join("./", filename)
+		userDir = path.Join(os.Getenv("HOME"), defaultUserDir, "scripts/", filename)
+		distDir = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS + "_" + runtime.GOARCH, "gospeccy/scripts", filename)
+	)
+	
+	if _, err := os.Stat(filename); err == nil {
+		return filename
+	} else if _, err := os.Stat(currDir); err == nil {
+		return currDir
+ 	} else if _, err := os.Stat(userDir); err == nil {
+		return userDir
+	} else if _, err := os.Stat(distDir); err == nil {
+		return distDir
+	} else {
+		return filename
+	}
+
+	return filename
 }

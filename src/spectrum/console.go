@@ -12,7 +12,6 @@ import (
 	"sync"
 	"bytes"
 	"time"
-	"path"
 )
 
 
@@ -335,7 +334,7 @@ func run(w *eval.World, sourceCode string) {
 // Loads and evaluates the specified Go script
 func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	fileName := strings.Join([]string{scriptName, ".go"}, "")
-	data, err := ioutil.ReadFile(path.Join("scripts", fileName))
+	data, err := ioutil.ReadFile(ScriptPath(fileName))
 	if err != nil {
 		if !optional {
 			return err

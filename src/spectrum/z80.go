@@ -258,7 +258,8 @@ func (z80 *Z80) loadSna(data []byte) os.Error {
 }
 
 func (z80 *Z80) saveSna() ([]byte, os.Error) {
-	var data [49179]byte
+
+	data := make([]byte, 49179)
 
 	// Save registers
 	data[0] = z80.i
@@ -315,7 +316,7 @@ func (z80 *Z80) saveSna() ([]byte, os.Error) {
 	data[(sp_afterSimulatedPushPC-0x4000+0)+27] = pcl
 	data[(sp_afterSimulatedPushPC-0x4000+1)+27] = pch
 
-	return &data, nil
+	return data, nil
 }
 
 

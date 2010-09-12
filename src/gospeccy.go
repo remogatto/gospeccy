@@ -32,34 +32,9 @@ import (
 	"flag"
 	"os"
 	"time"
-	"path"
 	"io/ioutil"
 	"os/signal"
 )
-
-const defaultUserDir = ".gospeccy"
-
-// Return a valid path for the 48k system ROM.
-//
-// The search is performed in this order:
-// 1. ./roms/48.rom
-// 2. $HOME/.gospeccy/roms/48.rom
-func systemRomPath() string {
-	var (
-		currDir = "./roms/48.rom"
-		userDir = path.Join(os.Getenv("HOME"), defaultUserDir, "roms/48.rom")
-	)
-
-	if _, err := os.Stat(currDir); err == nil {
-		return currDir
-	} else if _, err := os.Stat(userDir); err == nil {
-		return userDir
-	} else {
-		return ""
-	}
-
-	return ""
-}
 
 // A Go routine for processing SDL events.
 func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
@@ -237,7 +212,7 @@ func main() {
 	}
 
 	// Create new emulator core
-	speccy, err := spectrum.NewSpectrum48k(app, systemRomPath())
+	speccy, err := spectrum.NewSpectrum48k(app, spectrum.SystemRomPath())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		app.RequestExit()
@@ -249,7 +224,7 @@ func main() {
 		var data []byte
 		var err os.Error
 
-		data, err = ioutil.ReadFile(flag.Arg(0))
+		data, err = ioutil.ReadFile(spectrum.SnaPath(flag.Arg(0)))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			app.RequestExit()
@@ -257,7 +232,7 @@ func main() {
 		}
 
 		errChan := make(chan os.Error)
-		speccy.CommandChannel <- spectrum.Cmd_LoadSna{flag.Arg(0), data, errChan}
+		speccy.CommandChannel <- spectrum.Cmd_LoadSna{spectrum.SnaPath(flag.Arg(0)), data, errChan}
 		err = <-errChan
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

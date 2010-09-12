@@ -1,9 +1,12 @@
 include $(GOROOT)/src/Make.inc
 
+SYSTEM_ROM_PATH=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/gospeccy/roms
+
 PATH_FILE=src/spectrum/path_gen_$(GOOS)_$(GOARCH).go
 
 SPECTRUM_FILES=\
 	src/spectrum/application.go\
+	src/spectrum/helpers.go\
 	src/spectrum/console.go\
 	src/spectrum/display.go\
 	src/spectrum/keyboard.go\
@@ -67,8 +70,8 @@ gofmt:
 
 install: gospeccy
 	cp gospeccy $(GOBIN)
-	mkdir -p $(HOME)/.gospeccy/
-	cp -r roms $(HOME)/.gospeccy
+	mkdir -p $(SYSTEM_ROM_PATH)
+	cp roms/* $(SYSTEM_ROM_PATH)
 
 _obj:
 	mkdir _obj

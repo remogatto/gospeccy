@@ -16,6 +16,7 @@ GOFILES=\
 	keyboard.go\
 	spectrum.go\
 	console.go\
+	helpers.go\
 	application.go
 
 include $(GOROOT)/src/Make.pkg

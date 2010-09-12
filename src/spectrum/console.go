@@ -80,7 +80,7 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	path := in[0].(eval.StringValue).Get(t)
 
-	data, err := ioutil.ReadFile(path)
+	data, err := ioutil.ReadFile(SnaPath(path))
 	if err != nil {
 		PrintfMsg("%s", err)
 		return

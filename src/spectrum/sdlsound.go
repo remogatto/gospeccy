@@ -8,14 +8,22 @@
 package spectrum
 
 import (
+	"fmt"
 	"os"
 	"⚛sdl"
 	sdl_audio "⚛sdl/audio"
 	"sync"
 )
 
-
-const PLAYBACK_FREQUENCY = 48000
+func init() {
+	const expectedVersion = "⚛SDL audio bindings 1.0"
+	actualVersion := sdl_audio.GoSdlAudioVersion()
+	if actualVersion != expectedVersion {
+		fmt.Fprintf(os.Stderr, "Invalid SDL audio bindings version: expected \"%s\", got \"%s\"\n",
+			expectedVersion, actualVersion)
+		os.Exit(1)
+	}
+}
 
 
 // ======================
@@ -75,6 +83,8 @@ func playbackLoop(app *Application, audio *SDLAudio) {
 // ========
 // SDLAudio
 // ========
+
+const PLAYBACK_FREQUENCY = 48000
 
 // Ideal number of buffered 'AudioData' objects,
 // in order to prevent [SDL buffer underruns] and [Go channel overruns].

@@ -2,4 +2,4 @@
 *.[a68]
 gospeccy
 *.out
-path_gen*
+scripts/startup_local.go

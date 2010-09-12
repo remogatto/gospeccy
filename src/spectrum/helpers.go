@@ -78,7 +78,7 @@ func SystemRomPath() string {
 		userDir = path.Join(os.Getenv("HOME"), defaultUserDir, "roms/48.rom")
 		distDir = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS + "_" + runtime.GOARCH, "gospeccy/roms/48.rom")
 	)
-	println(distDir)
+
 	if _, err := os.Stat(currDir); err == nil {
 		return currDir
 	} else if _, err := os.Stat(userDir); err == nil {

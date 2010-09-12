@@ -67,7 +67,7 @@ To install the dependencies and create the gospeccy executable:
 
     git clone http://github.com/remogatto/gospeccy.git
     cd gospeccy
-    make
+    gomake
     ./gospeccy
 
 The following dependencies are installed automatically:

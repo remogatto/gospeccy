@@ -70,6 +70,11 @@ To install the dependencies and create the gospeccy executable:
     gomake
     ./gospeccy
 
+To install (uninstall) gospeccy and its resource files:
+
+    gomake install
+    (gomake uninstall)
+
 The following dependencies are installed automatically:
 
 * [⚛Go-SDL](http://github.com/0xe2-0x9a-0x9b/Go-SDL)

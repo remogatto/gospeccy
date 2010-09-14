@@ -68,11 +68,19 @@ clean:
 gofmt:
 	gofmt -w -l $(GOFMT_FILES)
 
+.PHONY: install
 install: gospeccy
 	cp gospeccy $(GOBIN)
+	rm -rf $(DIST_PATH)
 	mkdir -p $(SYSTEM_ROM_PATH) $(SCRIPTS_PATH)
-	cp roms/* $(SYSTEM_ROM_PATH)
-	cp scripts/* $(SCRIPTS_PATH)
+	cp -a roms/* $(SYSTEM_ROM_PATH)
+	cp -a scripts/* $(SCRIPTS_PATH)
+
+.PHONY: uninstall
+uninstall:
+	rm -f $(GOBIN)/gospeccy
+	rm -rf $(DIST_PATH)
+	make -C src/readline uninstall
 
 _obj:
 	mkdir _obj

@@ -150,6 +150,20 @@
        inkscape:vp_y="0 : 1000 : 0"
        inkscape:vp_x="0 : 0.5 : 1"
        sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2900"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2922"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
   </defs>
   <sodipodi:namedview
      id="base"
@@ -162,7 +176,7 @@
      inkscape:cx="360.47656"
      inkscape:cy="210.59766"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g3802-0"
      showgrid="true"
      showguides="false"
      inkscape:window-width="1280"
@@ -529,5 +543,41 @@
          x="660"
          y="747.36218"
          id="tspan4003">via channels</tspan></text>
+    <path
+       style="fill:#6699cc;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       d="m 449,548.36218 40,0 0,-10 14.72222,20 -14.72222,20 0,-10 -40,0 0,-20 z"
+       id="rect3612-5"
+       sodipodi:nodetypes="cccccccc" />
+    <g
+       id="g3802-0"
+       transform="translate(8.4335938,106)">
+      <g
+         transform="matrix(0.5,0,0,0.49999999,350,246.1811)"
+         style="stroke-width:4.00000048;stroke-miterlimit:4;stroke-dasharray:none"
+         id="g3771-8-7">
+        <rect
+           style="fill:#6699cc;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:4.00000048;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+           id="rect3676-6-8"
+           width="320"
+           height="140"
+           x="320"
+           y="352.36218" />
+      </g>
+      <text
+         sodipodi:linespacing="125%"
+         id="text3658-6-6"
+         y="452.36218"
+         x="589.96094"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           id="tspan3662-0-8"
+           y="452.36218"
+           x="589.96094"
+           sodipodi:role="line">Host-machine</tspan><tspan
+           id="tspan3800-8"
+           y="477.36218"
+           x="589.96094"
+           sodipodi:role="line">audio</tspan></text>
+    </g>
   </g>
 </svg>

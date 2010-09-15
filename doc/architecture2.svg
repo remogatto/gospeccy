@@ -9,7 +9,7 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="477.50394"
+   width="501.00003"
    height="182"
    id="svg2"
    version="1.1"
@@ -159,8 +159,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1"
-     inkscape:cx="238.75197"
-     inkscape:cy="91"
+     inkscape:cx="238.75201"
+     inkscape:cy="91.000002"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -192,7 +192,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -245,25 +245,25 @@
         <rect
            style="fill:#6699cc;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:4.00000048;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
            id="rect3676-98"
-           width="240"
-           height="140"
-           x="360"
-           y="352.36218" />
+           width="300"
+           height="139.99997"
+           x="346.99219"
+           y="354.36215" />
       </g>
       <text
          sodipodi:linespacing="125%"
          id="text3658-2"
-         y="412.36218"
-         x="479.92188"
+         y="414.36218"
+         x="496.17188"
          style="font-size:40px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
          xml:space="preserve"><tspan
-           y="412.36218"
-           x="479.92188"
+           y="414.36218"
+           x="496.17188"
            id="tspan3660-0"
-           sodipodi:role="line">Render</tspan><tspan
+           sodipodi:role="line">Render&amp;play</tspan><tspan
            id="tspan3662-8"
-           y="462.36218"
-           x="479.92188"
+           y="464.36218"
+           x="496.17188"
            sodipodi:role="line">one frame</tspan></text>
     </g>
     <g

@@ -19,8 +19,10 @@
 
 	<p>On a real ZX Spectrum, the display refresh frequency is approximately 50 Hz. When the GoSpeccy emulation core finishes executing instructions corresponding to one frame, it will package the emulated display contents into a message and send it via a Go channel to another goroutine which will render the received display contents on host-machine's display (which is for example an X11 window). The emulation core and host-machine rendering can be potentially executing in parallel, since they are (roughly speaking) two distinct goroutines. But to potentially execute in parallel does not automatically imply to actually be executing in parallel. In fact, on a contemporary notebook CPU these two goroutines are currently <i>not</i> executing in parallel at all. The reason is that there is no overlap - the emulation core is dormant while rendering to the host display, and vice versa, there is no rendering to the host display while the emulation core is executing instructions. A typical notebook CPU is simply too fast for there to be any overlap.
 
+	<p>Sound emulation is implemented similarly to display emulation. Because ZX Spectrum produces 1-bit sound by writing to a specific I/O port, GoSpeccy is observing these writes and remembers when exactly they happened. After finishing execution of instructions corresponding to one frame, the captured series of audio levels is packaged into a message and sent via a Go channel to another Go routine. The Go routine resamples the received audio data to the host-machine playback frequency and sends the sample to audio hardware for playback.
+
 	<h1 align=center>
-		<embed src="architecture2.svg" width="478" height="182" type="image/svg+xml"/> 
+		<embed src="architecture2.svg" width="501" height="182" type="image/svg+xml"/> 
 	</h1>
 
 	<p>Under normal conditions, GoSpeccy is executing the following trivial pipeline:
@@ -28,10 +30,16 @@
 	<ol>
 		<li>Wait until the OS (e.g: Linux) generates a tick. This happens with a frequency of approximately 50 Hz.
 		<li>Emulate instructions corresponding to one frame.
-		<li>Post-process and render the frame on the host-machine display.
+		<li>Rendering and sound playback:
+		<ul>
+			<li>Post-process and render the frame on the host-machine display
+			<li>Resample the audio data and play it
+		</ul>
 	</ol>
 
 	<p>Technically, step 2 of frame (N+1) and step 3 of frame N could be executing in parallel, but as has been already explained a typical x86 CPU is so fast that this pipeline parallelism never materializes. The primary reason for implementing GoSpeccy in this way is that this concurrency architecture is very natural. To put is more clearly, the fact that the core emulation can be easily separated from the host-machine rendering is an inherent property of any ZX Spectrum emulator. In a language supporting concurrency, it would be unnatural to implement it in a fully serial manner.
+
+	<p>In contrast to the steps 2 and 3 failing to execute in parallel, rendering can actually happen in parallel to audio resampling. This is because the emulation core goroutine simply sends the display data via a Go channel to another goroutine. It does not care what will happen to the data afterwards. The Go inter-goroutine communication model allows the send to complete almost immediately, which enables the emulation core to send the audio data virtually at the same moment it sends the display data. Since the display rendering goroutine is fully independent from the "audio rendering" goroutine, they can proceed in parallel.
 
 	<p>The emulation core goroutine works independently of all other main goroutines. When the user wants to load a snapshot from an external file, the snapshot data is first loaded from the file and then sent as a message via a Go channel to the emulation core. The initial file loading happens in a separate "user-commands" goroutine. The message with loaded data is sent over the same Go channel as is used by the ticker, so it is impossible for there to be any concurrency hazards. In addition to this, a very minor advantage of this approach is that in the unlikely circumstance of the initial file loading taking a longer time (e.g: the file is not in OS cache or there is a lot of disk activity), the emulation core itself will <i>not</i> be impeded by this since the next tick will be received regardless of whether there is heavy disk activity or not. The overall end-result is that the emulation can run smoothly unimpeded by potential hiccups happening in other parts of the application.
 

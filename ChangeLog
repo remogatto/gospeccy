@@ -3,7 +3,7 @@
 
 	* Hide mouse cursor in fullscreen mode
 
-	* Enable uninstallation; minor installation improvements
+	* Enable uninstallation
 
 	* Allow testing and benchmarking in the "src/spectrum" directory
 	without the need to install the C readline wrapper
@@ -23,8 +23,6 @@
 
 	* Console & readline: handle terminal resize (SIGWINCH signal)
 
-	* Minor Makefile fix
-
 	* If video/audio cannot be initialized, exit with an error message (instead of calling panic())
 
 	* Add beeper sound support
@@ -42,8 +40,6 @@
 	* Start rendering the 1st frame immediately, rather than artificially waiting for 20 milliseconds.
 
 	* Add readline support
-
-	* Fix invalid PC in SNA snapshots.
 
 	* Add ability to write snapshots in SNA format.
 

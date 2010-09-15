@@ -8,12 +8,18 @@ certain well known Google employees.
 There are a lot of ZX Spectrum emulators around so, why reinventing
 the wheel? Well, mainly for
 [amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then
-because it was a great learning experience about emulators.  And it
-was a good chance to write something real with Go.
+because it was a great learning experience about emulators and
+Go. Moreover, thanks to the fundamental contribution of
+[⚛](http://github.com/0xe2-0x9a-0x9b), GoSpeccy is now animated by a
+deeply
+[concurrent](http://github.com/remogatto/gospeccy/wiki/Architecture)
+soul. I think this a strong peculiarity of GoSpeccy and it opens new
+interesting scenarios in the world of emulators.
 
-Coding an emulator in Go is very enjoyable. The language is simple,
-pragmatic and fast (well... fast enough to run a Z80 emulator!). It
-has a lot of features that help in emulators development:
+Among other things, coding an emulator in Go is very enjoyable. The
+language is simple, pragmatic and fast (well... fast enough to run a
+Z80 emulator!). It has a lot of features that help in emulators
+development:
  
 * it has "low-level" similarities with C while allowing more productivity
   than C in certain cases
@@ -26,8 +32,8 @@ has a lot of features that help in emulators development:
 * it has an int16 built-in type that helps dealing with 8/16 bit
   machines
 
-* it has goroutines to enable some concurrency in the emulator design
-  and implementation
+* as said before, it has goroutines to enable concurrency in the
+  emulator design and implementation
 
 The Zilog Z80 emulation is the core of GoSpeccy. The CPU emulation
 code is generated using a modified version of the <tt>z80.pl</tt> script
@@ -44,15 +50,16 @@ with FUSE.
 
 If you like this software, please watch it on
 [github](http://github.com/remogatto/gospeccy)! Seeing a growing
-number of watchers is an excellent motivation for me to keep up this
-work :) Bug reports and testing are also appreciated! And don't forget
-to fork and send me patches, of course ;)
+number of watchers is an excellent motivation for the GoSpeccy team to
+keep up this work :) Bug reports and testing are also appreciated! And
+don't forget to fork and send patches, of course ;)
 
 # Features
 
 * Complete Zilog Z80 emulation
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
-* Sound support
+* Beeper support (!)
+* A smart interactive console interface
 * SNA format support (48k version)
 * SDL backend
 * 2x scaler and fullscreen (to be improved)
@@ -81,9 +88,9 @@ The following dependencies are installed automatically:
 * [⚛Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
 
 To make the screen bigger try the "-2x" command line option,
-or type "scale(2)" in the terminal running gospeccy.
+or type "scale(2)" in the interactive console.
 
-Now try to press the following keys:
+To try the classic Hello World try to press the following keys:
 
     p
     CTRL+p
@@ -139,11 +146,42 @@ Spectrum on the Internet. Take a look at:
 
 * JSSpeccy [svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/) repository
 
+# Convention over Configuration
+
+Loading files in the emulator relies on a Convention over
+Configuration approach. To enjoy it, you should create the following
+folder structure:
+
+<pre>
+mkdir -p $HOME/.gospeccy/sna		# Snapshots folder
+mkdir -p $HOME/.gospeccy/roms		# System roms folder
+mkdir -p $HOME/.gospeccy/scripts	# Scripts folder
+</pre>
+
+Then put your snapshots, system roms and scripts files in the
+corresponding folder. At this point, to load
+`$HOME/.gospeccy/sna/somegame.sna` simply execute:
+
+<pre>
+gospeccy somegame.sna
+</pre>
+
+The same applies for `load()` and `script()` functions in the
+interactive console.
+
+The default Spectrum 48k system ROM is copied in
+`$GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms` during the installation
+process. This is the default system rom loaded by the emulator. You
+can override this behaviour copying your 48k rom in
+`$HOME/.gospeccy/roms`.
+
 # Screenshots
+
+Batty running on GoSpeccy.
 
 ![Batty running on GoSpeccy](http://sites.google.com/site/remogatto/batty.png)
 
-# TODO
+# To Do
 
 * Fix some memory and I/O contention bugs
 * Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
@@ -151,13 +189,22 @@ Spectrum on the Internet. Take a look at:
 * Add more filters and improve the scaler
 * Add new backends (exp/draw?)
 
+# Credits
+
+* Thanks to [⚛](http://github.com/0xe2-0x9a-0x9b) for giving a new
+  whole direction to this project.
+* Thanks to the people on
+  [golang-nuts](http://groups.google.com/group/golang-nuts) for giving
+  feedback and support.
+* Thanks to Andrew Gerrand for the crackling Fire104b demo.
+
 # Contacts
 
 * andrea.fazzi@alcacoop.it
 * http://twitter.com/remogatto
 * http://freecella.blogspot.com
 
-# LICENSE
+# License
 
 Copyright (c) 2010 Andrea Fazzi
 

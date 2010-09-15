@@ -1,4 +1,90 @@
-2010-06-29 Andrea Fazzi <andrea.fazzi@alcacoop.it>
+0.5.0 / 2010-09-15
+==================
+
+	* Hide mouse cursor in fullscreen mode
+
+	* Enable uninstallation; minor installation improvements
+
+	* Allow testing and benchmarking in the "src/spectrum" directory
+	without the need to install the C readline wrapper
+
+	* Add convention over configuration for loading snapshots/roms/scripts
+
+	* Add convention over configuration when loading snapshots and
+	system rom(s). See #16. Modify the main Makefile in order to copy
+	ths system rom(s) in $(GOROOT)/pkg/$(GOOS)_$(GOARCH)/gospeccy/roms
+	directory
+
+	* Add support for loading and running Go scripts, add a simple
+	display stress-test script.
+
+	* Check Go-SDL version descriptors to prevent running with an
+	incompatible Go-SDL version
+
+	* Console & readline: handle terminal resize (SIGWINCH signal)
+
+	* Minor Makefile fix
+
+	* If video/audio cannot be initialized, exit with an error message (instead of calling panic())
+
+	* Add beeper sound support
+
+	* Use ⚛SDL's event channel.
+
+	* Prevent the display backend from blocking CPU emulation.
+
+	* Proper interleaving of console output and console input.
+
+	* Minor Makefile update. See also http://groups.google.com/group/golang-nuts/browse_thread/thread/2e1521c155a19f83
+
+	* Fix deadlock occurring in the absence of "-verbose" command line option.
+
+	* Start rendering the 1st frame immediately, rather than artificially waiting for 20 milliseconds.
+
+	* Add readline support
+
+	* Fix invalid PC in SNA snapshots.
+
+	* Add ability to write snapshots in SNA format.
+
+	* Add support for faster ULA attribute emulation.
+
+	* Allow to lower the accuracy of ULA emulation.
+
+	* Enable to input simple commands (as Go code) from the
+	console. It is now possible to change the display scale, to reset
+	the machine, and to load a snapshot. There is a new high-level
+	interface (uses a Go channel) for sending commands to the emulated
+	machine.
+
+	* Map opcode callbacks in an array type in place of a big opcode
+	switch for better performances
+
+	* Delay SDL video mode initialization until we get the first screen frame.
+
+	* Add hypothetical support for none/one/multiple displays.
+
+	* Use Linux performance counters to estimate emulation efficiency
+
+	* Faster screen rendering. Keyboard now supports cursor keys and
+	keys such as ","
+
+	* Fix Makefile to work on 64-bit systems
+
+	* Add a naive Z80 benchmark based on the fire demo
+
+	* Fix interrupt length. Add support for the "," key
+
+	* Exit the opcode emulation loop in case of a HALT, thus reducing
+	the x86 CPU usage in some cases.
+
+	* Add basic support for emulating contended memory and contented
+	IO. This improves the timing of animations in games, etc. The
+	horizon in Aquaplane works more-or-less OK, Paperboy does not seem
+	to be working.
+
+0.1.0 / 2010-06-29
+==================
 
 	* Add Fire104b intro snapshot by Andrew Gerrand
 
@@ -25,6 +111,7 @@
 
 	* Add LICENSE and ChangeLog files
 
-2010-06-28 Andrea Fazzi <andrea.fazzi@alcacoop.it>
+0.0.0 / 2010-06-28
+==================
 
 	* Birthday! (first public release)

@@ -215,6 +215,10 @@ func (p *testPort) getBorderEvents() *BorderEvent {
 	return nil
 }
 
+func (p *testPort) getBeeperEvents() *BeeperEvent {
+	return nil
+}
+
 func (p *testPort) reset() {
 
 }
@@ -436,7 +440,15 @@ func BenchmarkZ80(b *testing.B) {
 	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
 		panic(err)
 	} else {
-		speccy.loadSna("testdata/fire.sna")
+
+		data, err := ioutil.ReadFile("testdata/fire.sna")
+		if err != nil {
+			panic(err)
+		}
+
+		if err := speccy.loadSna(data); err != nil {
+			panic(err)
+		}
 
 		b.StartTimer()
 

@@ -1,4 +1,4 @@
-include $(GOROOT)/src/Make.$(GOARCH)
+include $(GOROOT)/src/Make.inc
 
 TARG=spectrum
 GOFILES=\
@@ -11,9 +11,12 @@ GOFILES=\
 	ula.go\
 	display.go\
 	sdldisplay.go\
+	sound.go\
+	sdlsound.go\
 	keyboard.go\
 	spectrum.go\
-	fpscounter.go\
+	console_dummy.go\
+	helpers.go\
 	application.go
 
 include $(GOROOT)/src/Make.pkg

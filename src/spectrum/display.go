@@ -32,8 +32,9 @@ const (
 	BytesPerLine      = ScreenWidth / 8 // =32
 	BytesPerLine_log2 = 5               // =log2(BytesPerLine)
 
-	ScreenWidth_Attr  = ScreenWidth / 8  // =32
-	ScreenHeight_Attr = ScreenHeight / 8 // =24
+	ScreenWidth_Attr      = ScreenWidth / 8  // =32
+	ScreenWidth_Attr_log2 = 5                // =log2(ScreenWidth_Attr)
+	ScreenHeight_Attr     = ScreenHeight / 8 // =24
 
 	ScreenBorderX = 32
 	ScreenBorderY = 24
@@ -131,11 +132,14 @@ type DisplayData struct {
 	dirty        [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
 	border       byte
 	borderEvents *BorderEvent // Might be nil
+
+	// From structure Cmd_RenderFrame
+	completionTime_orNil chan<- int64
 }
 
-// Interface to a rendering backend waiting to receive display changes.
+// Interface to a rendering backend awaiting display changes
 type DisplayReceiver interface {
-	getDisplayDataChannel() chan *DisplayData
+	getDisplayDataChannel() chan<- *DisplayData
 
 	// Closes the display associated with this DisplayReceiver
 	close()
@@ -151,6 +155,5 @@ func init() {
 	for y := uint8(0); y < ScreenHeight; y++ {
 		addr := xy_to_screenAddr(0, y)
 		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
-		//println(y, ",", (addr-SCREEN_BASE_ADDR)/BytesPerLine, " = ", FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE)
 	}
 }

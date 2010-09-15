@@ -26,9 +26,22 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	"fmt"
+	"os"
+	"⚛sdl"
+	"time"
 	"unsafe"
 )
+
+func init() {
+	const expectedVersion = "⚛SDL bindings 1.0"
+	actualVersion := sdl.GoSdlVersion()
+	if actualVersion != expectedVersion {
+		fmt.Fprintf(os.Stderr, "Invalid SDL bindings version: expected \"%s\", got \"%s\"\n",
+					expectedVersion, actualVersion)
+		os.Exit(1)
+	}
+}
 
 
 // ==========
@@ -39,31 +52,31 @@ type SDLSurface struct {
 	surface *sdl.Surface
 }
 
-func (s *SDLSurface) Width() uint {
+func (s SDLSurface) Width() uint {
 	return uint(s.surface.W)
 }
 
-func (s *SDLSurface) Height() uint {
+func (s SDLSurface) Height() uint {
 	return uint(s.surface.H)
 }
 
-func (s *SDLSurface) Bpp() uint {
+func (s SDLSurface) Bpp() uint {
 	return uint(s.surface.Format.BytesPerPixel)
 }
 
-func (s *SDLSurface) Pitch() uint {
+func (s SDLSurface) Pitch() uint {
 	return uint(s.surface.Pitch)
 }
 
 // Return the address of pixel at (x,y)
-func (s *SDLSurface) addrXY(x, y uint) uintptr {
+func (s SDLSurface) addrXY(x, y uint) uintptr {
 	pixels := uintptr(unsafe.Pointer(s.surface.Pixels))
 	offset := uintptr(y*s.Pitch() + x*s.Bpp())
 
 	return uintptr(unsafe.Pointer(pixels + offset))
 }
 
-func (s *SDLSurface) setPixel(addr uintptr, color uint32) {
+func (s SDLSurface) setPixel(addr uintptr, color uint32) {
 	*(*uint32)(unsafe.Pointer(addr)) = color
 }
 
@@ -72,7 +85,7 @@ func (s *SDLSurface) setPixel(addr uintptr, color uint32) {
 // Screen render loop (goroutine)
 // ==============================
 
-func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DisplayData, renderer screen_renderer_t) {
+func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, renderer screen_renderer_t) {
 	var screen *DisplayData = nil
 	var oldScreen *DisplayData = nil
 	for {
@@ -83,7 +96,7 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel chan *DisplayData, rende
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				println("screen render loop: exit")
+				PrintfMsg("screen render loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -114,6 +127,8 @@ type SDLScreen struct {
 	screenSurface SDLSurface
 
 	unscaledDisplay *UnscaledDisplay
+
+	app *Application
 }
 
 type screen_renderer_t interface {
@@ -121,7 +136,12 @@ type screen_renderer_t interface {
 }
 
 func NewSDLScreen(app *Application) *SDLScreen {
-	SDL_screen := &SDLScreen{make(chan *DisplayData), SDLSurface{nil}, newUnscaledDisplay()}
+	SDL_screen := &SDLScreen{
+		screenChannel:   make(chan *DisplayData),
+		screenSurface:   SDLSurface{nil},
+		unscaledDisplay: newUnscaledDisplay(),
+		app:             app,
+	}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -129,7 +149,7 @@ func NewSDLScreen(app *Application) *SDLScreen {
 }
 
 // Implement DisplayReceiver
-func (display *SDLScreen) getDisplayDataChannel() chan *DisplayData {
+func (display *SDLScreen) getDisplayDataChannel() chan<- *DisplayData {
 	return display.screenChannel
 }
 func (display *SDLScreen) close() {
@@ -147,7 +167,9 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 
 		surface := sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, sdlMode)
 		if surface == nil {
-			panic(sdl.GetError())
+			PrintfMsg("%s", sdl.GetError())
+			display.app.RequestExit()
+			return
 		}
 
 		display.screenSurface.surface = surface
@@ -175,6 +197,10 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, *unscaledDisplay.border_orNil)
 	}
 
+	if screen.completionTime_orNil != nil {
+		screen.completionTime_orNil <- time.Nanoseconds()
+	}
+
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1)
 
 	unscaledDisplay.releaseMemory()
@@ -196,10 +222,18 @@ type SDLScreen2x struct {
 	screenSurface SDLSurface
 
 	unscaledDisplay *UnscaledDisplay
+
+	app *Application
 }
 
 func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
-	SDL_screen := &SDLScreen2x{make(chan *DisplayData), fullscreen, SDLSurface{nil}, newUnscaledDisplay()}
+	SDL_screen := &SDLScreen2x{
+		screenChannel:   make(chan *DisplayData),
+		fullscreen:      fullscreen,
+		screenSurface:   SDLSurface{nil},
+		unscaledDisplay: newUnscaledDisplay(),
+		app:             app,
+	}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
@@ -207,7 +241,7 @@ func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
 }
 
 // Implement DisplayReceiver
-func (display *SDLScreen2x) getDisplayDataChannel() chan *DisplayData {
+func (display *SDLScreen2x) getDisplayDataChannel() chan<- *DisplayData {
 	return display.screenChannel
 }
 
@@ -231,7 +265,9 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 
 		surface := sdl.SetVideoMode(2*TotalScreenWidth, 2*TotalScreenHeight, 32, sdlMode)
 		if surface == nil {
-			panic(sdl.GetError())
+			PrintfMsg("%s", sdl.GetError())
+			display.app.RequestExit()
+			return
 		}
 
 		display.screenSurface.surface = surface
@@ -268,6 +304,10 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, *unscaledDisplay.border_orNil)
 	}
 
+	if screen.completionTime_orNil != nil {
+		screen.completionTime_orNil <- time.Nanoseconds()
+	}
+
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2)
 
 	unscaledDisplay.releaseMemory()
@@ -279,10 +319,6 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 // ==============
 
 func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint) {
-	//for _,r := range *surfaceChanges {
-	//	println("(", r.X, r.Y, r.W, r.H, ")")
-	//}
-
 	if scale == 1 {
 		surface.UpdateRects(*surfaceChanges)
 	} else {
@@ -399,8 +435,7 @@ func (disp *UnscaledDisplay) renderBorder(screen, oldScreen_orNil *DisplayData) 
 	}
 }
 
-// FIXME: This shouldn't be a public type
-type SimplifiedBorderEvent struct {
+type simplifiedBorderEvent_t struct {
 	tstate uint
 	color  byte
 }
@@ -424,7 +459,7 @@ func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
 }
 
 // Render border in the interval [start,end)
-func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *SimplifiedBorderEvent, end *SimplifiedBorderEvent) {
+func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorderEvent_t, end *simplifiedBorderEvent_t) {
 	start_y := (int(start.tstate) - DISPLAY_START) / TSTATES_PER_LINE
 	end_y   := (int(end.tstate)-1 - DISPLAY_START) / TSTATES_PER_LINE
 
@@ -487,18 +522,18 @@ func (disp *UnscaledDisplay) renderBorderEvents(lastEvent_orNil *BorderEvent) {
 
 	// Create an array called 'events' and initialize it with
 	// the events sorted by T-state value in *ascending* order
-	events := make([]SimplifiedBorderEvent, numEvents+1)
+	events := make([]simplifiedBorderEvent_t, numEvents+1)
 	{
 		i := numEvents - 1
 		for e := lastEvent_orNil; e != nil; e = e.previous_orNil {
-			events[i] = SimplifiedBorderEvent{e.tstate, e.color}
+			events[i] = simplifiedBorderEvent_t{e.tstate, e.color}
 			i--
 		}
 		// At this point: 'i' should equal to -1
 
 		// The [border color from the last event] lasts until the end of the frame
 		if lastEvent_orNil != nil {
-			events[numEvents] = SimplifiedBorderEvent{TStatesPerFrame, lastEvent_orNil.color}
+			events[numEvents] = simplifiedBorderEvent_t{TStatesPerFrame, lastEvent_orNil.color}
 		}
 	}
 

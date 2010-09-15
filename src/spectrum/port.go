@@ -25,7 +25,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
-
 type PortAccessor interface {
 	readPort(address uint16) byte
 	writePort(address uint16, b byte)
@@ -39,8 +38,10 @@ type PortAccessor interface {
 
 	// This method may return nil
 	getBorderEvents() *BorderEvent
-}
 
+	// This method may return nil
+	getBeeperEvents() *BeeperEvent
+}
 
 type BorderEvent struct {
 	// The moment when the border color was changed.
@@ -55,9 +56,26 @@ type BorderEvent struct {
 	previous_orNil *BorderEvent
 }
 
+type BeeperEvent struct {
+	// The moment when the beeper-event occurred.
+	// It is the number of T-states since the beginning of the frame.
+	tstate uint
+
+	// The beeper level (0 or 1)
+	level byte
+
+	// Previous event, if any.
+	// Constraint: (tstate >= previous_orNil.tstate)
+	previous_orNil *BeeperEvent
+}
+
 type Ports struct {
-	speccy       *Spectrum48k
+	speccy *Spectrum48k
+
 	borderEvents *BorderEvent // Might be nil
+
+	beeperLevel  byte
+	beeperEvents *BeeperEvent // Might be nil
 }
 
 
@@ -71,23 +89,30 @@ func (p *Ports) init(speccy *Spectrum48k) {
 
 func (p *Ports) reset() {
 	p.borderEvents = nil
+	p.beeperLevel = 0
+	p.beeperEvents = nil
 }
 
 
 func (p *Ports) frame_begin() {
 	borderColor := p.speccy.ula.getBorderColor()
 	p.borderEvents = &BorderEvent{tstate: 0, color: borderColor, previous_orNil: nil}
+	p.beeperEvents = &BeeperEvent{tstate: 0, level: p.beeperLevel, previous_orNil: nil}
 }
 
 func (p *Ports) frame_releaseMemory() {
 	// Release memory
 	p.borderEvents = nil
+	p.beeperEvents = nil
 }
 
 func (p *Ports) getBorderEvents() *BorderEvent {
 	return p.borderEvents
 }
 
+func (p *Ports) getBeeperEvents() *BeeperEvent {
+	return p.beeperEvents
+}
 
 func (p *Ports) readPort(address uint16) byte {
 	var result byte = 0xff
@@ -125,6 +150,13 @@ func (p *Ports) writePort(address uint16, b byte) {
 		if p.speccy.ula.getBorderColor() != color {
 			p.speccy.ula.setBorderColor(color)
 			p.borderEvents = &BorderEvent{p.speccy.Cpu.tstates, color, p.borderEvents}
+		}
+
+		// EAR output
+		newBeeperLevel := (b & 0x10) >> 4
+		if p.beeperLevel != newBeeperLevel {
+			p.beeperLevel = newBeeperLevel
+			p.beeperEvents = &BeeperEvent{p.speccy.Cpu.tstates, newBeeperLevel, p.beeperEvents}
 		}
 	}
 

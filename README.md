@@ -177,9 +177,9 @@ can override this behaviour copying your 48k rom in
 
 # Screenshots
 
-Batty running on GoSpeccy.
+Manic Miner running on GoSpeccy.
 
-![Batty running on GoSpeccy](http://sites.google.com/site/remogatto/batty.png)
+![Manic Miner running on GoSpeccy](http://sites.google.com/site/remogatto/gospeccy_running_scaled.png)
 
 # To Do
 

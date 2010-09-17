@@ -32,7 +32,6 @@ import (
 	"syscall"
 )
 
-
 /* The flags */
 
 const FLAG_C = 0x01
@@ -44,7 +43,6 @@ const FLAG_H = 0x10
 const FLAG_5 = 0x20
 const FLAG_Z = 0x40
 const FLAG_S = 0x80
-
 
 var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
 
@@ -386,12 +384,11 @@ func signExtend(v byte) int8 {
 }
 
 func (z80 *Z80) tapeSaveTrap() int {
-	panic("tapeSaveTrap() should never be called")
+	return 0
 }
 
 func (z80 *Z80) tapeLoadTrap() int {
-	/* Should never be called */
-	panic("tapeLoadTrap() should never be called")
+	return 0
 }
 
 func (z80 *Z80) jp() {

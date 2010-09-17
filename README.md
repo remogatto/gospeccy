@@ -13,7 +13,7 @@ Go. Moreover, thanks to the fundamental contribution of
 [⚛](http://github.com/0xe2-0x9a-0x9b), GoSpeccy is now animated by a
 deeply
 [concurrent](http://github.com/remogatto/gospeccy/wiki/Architecture)
-soul. We think this a strong peculiarity of GoSpeccy and it opens new
+soul. We think this a strong peculiarity of GoSpeccy as it opens new
 interesting scenarios in the world of emulators.
 
 Among other things, coding an emulator in Go is very enjoyable. The
@@ -185,9 +185,10 @@ Manic Miner running on GoSpeccy.
 
 * Fix some memory and I/O contention bugs
 * Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
+* Add support for tape
 * Better general performance
 * Add more filters and improve the scaler
-* Add new backends (exp/draw?)
+* Add new graphical backends (exp/draw?)
 
 # Credits
 

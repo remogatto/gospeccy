@@ -182,6 +182,7 @@ func main() {
 	scale2x := flag.Bool("2x", false, "2x display scaler")
 	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
 	fps := flag.Float("fps", spectrum.DefaultFPS, "Frames per second")
+	sound := flag.Bool("sound", true, "Enable or disable sound")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseKeyboard := flag.Bool("verbose-keyboard", false, "Enable debugging messages (keyboard events)")
 
@@ -263,15 +264,13 @@ func main() {
 	}
 
 	// Setup the audio
-	{
+	if *sound {
 		audio, err := spectrum.NewSDLAudio(app)
-		if err != nil {
+		if err == nil {
+			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
+		} else {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
-			app.RequestExit()
-			goto quit
 		}
-
-		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 	}
 
 	// Begin speccy emulation

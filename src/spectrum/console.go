@@ -169,7 +169,6 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 			speccy.CommandChannel <- Cmd_AddAudioReceiver{audio}
 		} else {
 			PrintfMsg("%s", err)
-			app.RequestExit()
 		}
 	} else {
 		finished := make(chan byte)

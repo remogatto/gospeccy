@@ -21,6 +21,8 @@ type DisplayInfo struct {
 	// Total number of frames that the DisplayReceiver did not receive
 	// because the send might block CPU emulation
 	numMissedFrames uint
+
+	missedChanges *DisplayData
 }
 
 type Spectrum48k struct {
@@ -251,7 +253,13 @@ func (speccy *Spectrum48k) Close() {
 }
 
 func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
-	d := &DisplayInfo{displayReceiver: display, lastFrame: nil, numMissedFrames: 0}
+	d := &DisplayInfo{
+		displayReceiver: display,
+		lastFrame:       nil,
+		numMissedFrames: 0,
+		missedChanges:   nil,
+	}
+
 	speccy.mutex.Lock()
 	speccy.displays.Push(d)
 	speccy.mutex.Unlock()

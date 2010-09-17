@@ -166,7 +166,7 @@ func (ula *ULA) screenAttrWrite(address uint16, oldValue byte, newValue byte) {
 
 func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 	sendDiffOnly := false
-	if (display.lastFrame != nil) && (*display.lastFrame == ula.frame-1) {
+	if (display.lastFrame != nil) {
 		sendDiffOnly = true
 	}
 
@@ -274,7 +274,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 		// screen.borderEvents
 		borderEvents := ula.speccy.Ports.getBorderEvents()
 		if (borderEvents != nil) && (borderEvents.previous_orNil == nil) {
-			// Only the one event which was added there at the start of the frame - ignore it
+			// Only one event (which was added there at the start of the frame) - ignore it
 			screen.borderEvents = nil
 		} else {
 			screen.borderEvents = borderEvents
@@ -288,6 +288,12 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 	displayData := ula.prepare(display)
 	displayData.completionTime_orNil = completionTime_orNil
 
+	if display.missedChanges != nil {
+		display.missedChanges.add(displayData)
+		displayData = display.missedChanges
+		display.missedChanges = nil
+	}
+
 	displayChannel := display.displayReceiver.getDisplayDataChannel()
 	nonBlockingSend := displayChannel <- displayData
 
@@ -295,12 +301,45 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 		if display.lastFrame == nil {
 			display.lastFrame = new(uint)
 		}
-		*display.lastFrame = ula.frame
+		*(display.lastFrame) = ula.frame
 	} else {
-		// Throw away the frame since the send would block.
-		// This allows the CPU emulation to proceed when the next tick arrives,
+		// Nothing was sent over the 'displayChannel', because the send would block.
+		// Avoiding the blocking allows the CPU emulation to proceed when the next tick arrives,
 		// instead of waiting for the display backend to receive the previous frame.
-		// Note that 'display.lastFrame' is NOT updated.
+		// The 'display.lastFrame' is NOT updated.
 		display.numMissedFrames++
+		display.missedChanges = displayData
+	}
+}
+
+// Adds the change-set 'b' to the change-set 'a'.
+// This modifies 'a' only, 'b' is left unchanged.
+// This is not a commutative operation, the order is significant.
+func (a *DisplayData) add(b *DisplayData) {
+	a_dirty := &a.dirty
+	a_bitmap := &a.bitmap
+	a_attr := &a.attr
+
+	b_dirty := &b.dirty
+	b_bitmap := &b.bitmap
+	b_attr := &b.attr
+
+	for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
+		attr_y8 := 8 * attr_y
+
+		for attr_x := uint(0); attr_x < ScreenWidth_Attr; attr_x++ {
+			attr_ofs := attr_y*ScreenWidth_Attr + attr_x
+
+			if b_dirty[attr_ofs] {
+				a_dirty[attr_ofs] = true
+
+				ofs := (attr_y8 << BytesPerLine_log2) + attr_x
+				for y := 0; y < 8; y++ {
+					a_bitmap[ofs] = b_bitmap[ofs]
+					a_attr[ofs] = b_attr[ofs]
+					ofs += BytesPerLine
+				}
+			}
+		}
 	}
 }

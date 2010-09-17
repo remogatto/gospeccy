@@ -46,7 +46,7 @@ const FLAG_Z = 0x40
 const FLAG_S = 0x80
 
 
-var opcodesMap [1536]func(z80 *Z80, tempaddr uint16)
+var opcodesMap [1536]func(z80 *Z80)
 
 const SHIFT_0xCB = 256
 const SHIFT_0xED = 512
@@ -112,6 +112,9 @@ type Z80 struct {
 	sp, r, r7, pc, iff1, iff2, im uint16
 
 	bc, bc_, hl, hl_, af, de, de_, ix, iy register16
+
+	// Needed when executing opcodes prefixed by 0xCB
+	tempaddr uint16
 
 	// Number of tstates since the beginning of the last frame.
 	// The value of this variable is usually smaller than TStatesPerFrame,
@@ -700,7 +703,7 @@ func (z80 *Z80) doOpcodes() {
 
 		z80_localInstructionCounter++
 
-		opcodesMap[opcode](z80, 0)
+		opcodesMap[opcode](z80)
 	}
 
 	// Update emulation efficiency counters
@@ -747,20 +750,20 @@ func (z80 *Z80) doOpcodes() {
 }
 
 
-func invalidOpcode(z80 *Z80, tempaddr uint16) {
+func invalidOpcode(z80 *Z80) {
 	panic("invalid opcode")
 }
 
-func opcode_cb(z80 *Z80, tempaddr uint16) {
+func opcode_cb(z80 *Z80) {
 	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
 	opcode2 = z80.memory.readByteInternal(z80.pc)
 	z80.pc++
 	z80.r++
-	opcodesMap[SHIFT_0xCB+int(opcode2)](z80, 0)
+	opcodesMap[SHIFT_0xCB+int(opcode2)](z80)
 }
 
-func opcode_ed(z80 *Z80, tempaddr uint16) {
+func opcode_ed(z80 *Z80) {
 	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
 	opcode2 = z80.memory.readByteInternal(z80.pc)
@@ -768,13 +771,13 @@ func opcode_ed(z80 *Z80, tempaddr uint16) {
 	z80.r++
 
 	if f := opcodesMap[SHIFT_0xED+int(opcode2)]; f != nil {
-		f(z80, 0)
+		f(z80)
 	} else {
-		invalidOpcode(z80, 0)
+		invalidOpcode(z80)
 	}
 }
 
-func opcode_dd(z80 *Z80, tempaddr uint16) {
+func opcode_dd(z80 *Z80) {
 	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
 	opcode2 = z80.memory.readByteInternal(z80.pc)
@@ -783,28 +786,27 @@ func opcode_dd(z80 *Z80, tempaddr uint16) {
 
 	switch opcode2 {
 	case 0xcb:
-		var tempaddr uint16
 		var opcode3 byte
 		z80.memory.contendRead(z80.pc, 3)
-		tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
 		z80.pc++
 		z80.memory.contendRead(z80.pc, 3)
 		opcode3 = z80.memory.readByteInternal(z80.pc)
 		z80.memory.contendReadNoMreq(z80.pc, 1)
 		z80.memory.contendReadNoMreq(z80.pc, 1)
 		z80.pc++
-		opcodesMap[SHIFT_0xDDCB+int(opcode3)](z80, tempaddr)
+		opcodesMap[SHIFT_0xDDCB+int(opcode3)](z80)
 	default:
 		if f := opcodesMap[SHIFT_0xDD+int(opcode2)]; f != nil {
-			f(z80, 0)
+			f(z80)
 		} else {
 			/* Instruction did not involve H or L */
-			opcodesMap[opcode2](z80, 0)
+			opcodesMap[opcode2](z80)
 		}
 	}
 }
 
-func opcode_fd(z80 *Z80, tempaddr uint16) {
+func opcode_fd(z80 *Z80) {
 	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
 	opcode2 = z80.memory.readByteInternal(z80.pc)
@@ -813,10 +815,9 @@ func opcode_fd(z80 *Z80, tempaddr uint16) {
 
 	switch opcode2 {
 	case 0xcb:
-		var tempaddr uint16
 		var opcode3 byte
 		z80.memory.contendRead(z80.pc, 3)
-		tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
 		z80.pc++
 		z80.memory.contendRead(z80.pc, 3)
 		opcode3 = z80.memory.readByteInternal(z80.pc)
@@ -824,14 +825,14 @@ func opcode_fd(z80 *Z80, tempaddr uint16) {
 		z80.memory.contendReadNoMreq(z80.pc, 1)
 		z80.pc++
 
-		opcodesMap[SHIFT_0xFDCB+int(opcode3)](z80, tempaddr)
+		opcodesMap[SHIFT_0xFDCB+int(opcode3)](z80)
 
 	default:
 		if f := opcodesMap[SHIFT_0xFD+int(opcode2)]; f != nil {
-			f(z80, 0)
+			f(z80)
 		} else {
 			/* Instruction did not involve H or L */
-			opcodesMap[opcode2](z80, 0)
+			opcodesMap[opcode2](z80)
 		}
 	}
 }

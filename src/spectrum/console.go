@@ -470,6 +470,10 @@ func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput boo
 			app.RequestExit()
 			return
 		}
+
+		if app.TerminationInProgress() || closed(app.HasTerminated) {
+			return
+		}
 	}
 
 	// This should be printed before executing "go readCode(...)",

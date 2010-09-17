@@ -429,9 +429,9 @@ CODE
 	print << "CODE";
    
 	var bytetemp byte
-	bytetemp = z80.memory.readByte( tempaddr );
-	z80.memory.contendReadNoMreq( tempaddr, 1 );
-	z80.memory.writeByte( tempaddr, bytetemp $operator $hex_mask );
+	bytetemp = z80.memory.readByte( z80.tempaddr );
+	z80.memory.contendReadNoMreq( z80.tempaddr, 1 );
+	z80.memory.writeByte( z80.tempaddr, bytetemp $operator $hex_mask );
 
 CODE
     }
@@ -454,10 +454,10 @@ sub rotate_shift ($$) {
 CODE
     } elsif( $register eq '(REGISTER+dd)' ) {
 	print << "CODE";
-	var bytetemp byte = z80.memory.readByte(tempaddr);
-	z80.memory.contendReadNoMreq( tempaddr, 1 );
+	var bytetemp byte = z80.memory.readByte(z80.tempaddr);
+	z80.memory.contendReadNoMreq( z80.tempaddr, 1 );
 	z80.$lcopcode(&bytetemp);
-	z80.memory.writeByte(tempaddr,bytetemp);
+	z80.memory.writeByte(z80.tempaddr, bytetemp);
 CODE
     }
 }
@@ -478,9 +478,9 @@ sub opcode_BIT (@) {
 	print "      z80.bit($bit, z80.$lcregister );\n";
     } elsif( $register eq '(REGISTER+dd)' ) {
 	print << "BIT";
-	bytetemp := z80.memory.readByte( tempaddr )
-	z80.memory.contendReadNoMreq( tempaddr, 1 )
-	z80.biti($bit, bytetemp, tempaddr)
+	bytetemp := z80.memory.readByte( z80.tempaddr )
+	z80.memory.contendReadNoMreq( z80.tempaddr, 1 )
+	z80.biti($bit, bytetemp, z80.tempaddr)
 BIT
     } else {
 	print << "BIT";
@@ -1074,10 +1074,9 @@ sub opcode_slttrap ($) {
 
 # 	print << "shift";
       
-# 	var tempaddr uint16
 # 	var opcode3 byte
 # 	z80.memory.contendRead( z80.pc, 3 )
-# 	tempaddr = uint16(int(z80.REGISTER()) + int(signExtend(z80.memory.readByteInternal( z80.pc ))))
+# 	z80.tempaddr = uint16(int(z80.REGISTER()) + int(signExtend(z80.memory.readByteInternal( z80.pc ))))
 # 	z80.pc++; z80.memory.contendRead( z80.pc, 3 )
 # 	opcode3 = z80.memory.readByteInternal( z80.pc )
 # 	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++
@@ -1255,7 +1254,7 @@ while(<>) {
 	next;
     }
 
-    print "opcodesMap[$shift_op] = func (z80 *Z80, tempaddr uint16) {\n";
+    print "opcodesMap[$shift_op] = func (z80 *Z80) {\n";
 
     # Handle the undocumented rotate-shift-or-bit and store-in-register
     # opcodes specially
@@ -1274,18 +1273,18 @@ while(<>) {
 	    my $hexmask = res_set_hexmask( $opcode, $bit );
 
 	    print << "CODE";
-      z80.$lcregister = z80.memory.readByte(tempaddr) $operator $hexmask
-      z80.memory.contendReadNoMreq(tempaddr, 1 )
-      z80.memory.writeByte(tempaddr, z80.$lcregister)
+      z80.$lcregister = z80.memory.readByte(z80.tempaddr) $operator $hexmask
+      z80.memory.contendReadNoMreq(z80.tempaddr, 1 )
+      z80.memory.writeByte(z80.tempaddr, z80.$lcregister)
 	}
 CODE
 	} else {
 
 	    print << "CODE";
-      z80.$lcregister = z80.memory.readByte(tempaddr)
-      z80.memory.contendReadNoMreq( tempaddr, 1 )
+      z80.$lcregister = z80.memory.readByte(z80.tempaddr)
+      z80.memory.contendReadNoMreq( z80.tempaddr, 1 )
       z80.$lcopcode(&z80.$lcregister)
-      z80.memory.writeByte(tempaddr, z80.$lcregister)
+      z80.memory.writeByte(z80.tempaddr, z80.$lcregister)
     }
 CODE
 	}

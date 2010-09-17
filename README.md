@@ -6,15 +6,13 @@ first Spectrum/Z80 emulator coded with the new language designed by
 certain well known Google employees.
 
 There are a lot of ZX Spectrum emulators around so, why reinventing
-the wheel? Well, mainly for
-[amarcord](http://en.wikipedia.org/wiki/Amarcord) reasons and then
-because it was a great learning experience about emulators and
-Go. Moreover, thanks to the fundamental contribution of
-[⚛](http://github.com/0xe2-0x9a-0x9b), GoSpeccy is now animated by a
-deeply
+the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord)
+reasons and then because it was a great learning experience about emulators
+and Go. In addition, thanks to the fundamental contribution of
+[⚛](http://github.com/0xe2-0x9a-0x9b), GoSpeccy is now based on a
 [concurrent](http://github.com/remogatto/gospeccy/wiki/Architecture)
-soul. We think this a strong peculiarity of GoSpeccy as it opens new
-interesting scenarios in the world of emulators.
+architecture. We think the concurrency is a strong peculiarity of GoSpeccy
+as it opens new interesting scenarios when developing and using the emulator.
 
 Among other things, coding an emulator in Go is very enjoyable. The
 language is simple, pragmatic and fast (well... fast enough to run a
@@ -32,7 +30,7 @@ development:
 * it has an int16 built-in type that helps dealing with 8/16 bit
   machines
 
-* as said before, it has goroutines to enable concurrency in the
+* as already mentioned, it has goroutines to enable concurrency in the
   emulator design and implementation
 
 The Zilog Z80 emulation is the core of GoSpeccy. The CPU emulation
@@ -58,8 +56,8 @@ don't forget to fork and send patches, of course ;)
 
 * Complete Zilog Z80 emulation
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
-* Beeper support (!)
-* A smart interactive console interface
+* Beeper support
+* An interactive console interface
 * SNA format support (48k version)
 * SDL backend
 * 2x scaler and fullscreen (to be improved)
@@ -122,9 +120,10 @@ games and demos in SNA format (well, good luck with that). For example:
 In order to create a SNA file from another 48k format, install the
 [FUSE](http://fuse-emulator.sourceforge.net/), load the original file
 into FUSE (e.g: fuse -m48 file.tap), wait until it loads, and save it
-in SNA format as "file.sna". For an example, you can test this procedure on
+in SNA format as "file.sna". For example, you can test this procedure on
 the [48K](http://pouet.net/prod.php?which=54504) ZX demo. All these things
-will hopefully improve as GoSpeccy matures.
+will hopefully improve as GoSpeccy matures, so that you won't need to resort
+to using other ZX Spectrum emulators.
 
 # Key bindings
 
@@ -158,15 +157,15 @@ mkdir -p $HOME/.gospeccy/roms		# System roms folder
 mkdir -p $HOME/.gospeccy/scripts	# Scripts folder
 </pre>
 
-Then put your snapshots, system roms and scripts files in the
-corresponding folder. At this point, to load
+Then put your snapshots, system roms or script files in the
+corresponding folder. After this, to load
 `$HOME/.gospeccy/sna/somegame.sna` simply execute:
 
 <pre>
 gospeccy somegame.sna
 </pre>
 
-The same applies for `load()` and `script()` functions in the
+The same applies to `load()` and `script()` functions in the
 interactive console.
 
 The default Spectrum 48k system ROM is copied in
@@ -185,10 +184,10 @@ Manic Miner running on GoSpeccy.
 
 * Fix some memory and I/O contention bugs
 * Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
-* Add support for tape
+* Add support for tape saving & loading
 * Better general performance
 * Add more filters and improve the scaler
-* Add new graphical backends (exp/draw?)
+* Add new graphical backends (Go's exp/draw?)
 
 # Credits
 

@@ -270,6 +270,10 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 			return
 		}
 
+		if display.fullscreen {
+			sdl.ShowCursor(sdl.DISABLE)
+		}
+
 		display.screenSurface.surface = surface
 	}
 

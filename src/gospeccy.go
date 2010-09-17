@@ -251,7 +251,6 @@ func main() {
 	{
 		if *fullscreen {
 			*scale2x = true
-			sdl.ShowCursor(sdl.DISABLE)
 		}
 
 		if *scale2x {

@@ -1,4 +1,9 @@
-0.5.0 / 2010-09-15
+0.5.1 / 2010-09-18
+==================
+
+        * Add an audio stress-test, improve the application shutdown procedure
+
+0.5.0 / 2010-09-18
 ==================
 
 	* Hide mouse cursor in fullscreen mode

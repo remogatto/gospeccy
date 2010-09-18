@@ -32,6 +32,8 @@ func init() {
 
 // Forward 'AudioData' objects from 'audio.data' to 'audio.playback'
 func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
+	audioDataChannel := audio.data
+
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -41,10 +43,30 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 				_, removed = <-audio.playback
 			}
 
+			audio.mutex.Lock()
+			{
+				if !audio.sdlAudioUnpaused {
+					// Unpause SDL Audio. This is needed in order to avoid
+					// a potential deadlock on 'sdl_audio.SendAudio_int16()'.
+					// (If audio is paused, 'sdl_audio.SendAudio_int16()' waits indefinitely.)
+					sdl_audio.PauseAudio(false)
+					audio.sdlAudioUnpaused = true
+				}
+			}
+			audio.mutex.Unlock()
+
 			close(audio.playback)
-			sdl_audio.CloseAudio()
 
 			<-audio.playbackLoopFinished
+
+			sdl_audio.CloseAudio()
+
+			audio.mutex.Lock()
+			forwarderLoopFinished := audio.forwarderLoopFinished
+			audio.mutex.Unlock()
+			if forwarderLoopFinished != nil {
+				forwarderLoopFinished <- 0
+			}
 
 			evtLoop.Pause <- 0
 
@@ -56,11 +78,18 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 			evtLoop.Terminate <- 0
 			return
 
-		case audioData := <-audio.data:
+		case audioData := <-audioDataChannel:
 			if audioData != nil {
 				audio.bufferAdd()
 				audio.playback <- audioData
 			} else {
+				// Prevent [any future message sent to 'audio.data'] to block the sender.
+				// We have to replace 'audioDataChannel' with a new dummy channel,
+				// because the next iteration of this for-loop would cause a run-time error
+				// since select on a closed channel isn't a legal operation.
+				close(audio.data)
+				audioDataChannel = make(chan *AudioData)
+
 				evtLoop.Delete()
 			}
 		}
@@ -99,7 +128,8 @@ type SDLAudio struct {
 	playback chan *AudioData
 
 	// A channel for properly synchronizing the audio shutdown procedure
-	playbackLoopFinished chan byte
+	playbackLoopFinished  chan byte
+	forwarderLoopFinished chan byte
 
 	// Whether SDL playback is active. Initial value is 'false'.
 	// Changed to 'true' after the first 'AudioData' object becomes available.
@@ -117,10 +147,13 @@ type SDLAudio struct {
 	// hovers around 'BUFSIZE_IDEAL'.
 	virtualFreq uint
 
+	// Sum of fractions which were lost because of integer truncation
 	numSamples_cummulativeFraction float
 
 	mutex sync.Mutex
 }
+
+var sdlAudio_instance *SDLAudio = nil
 
 func NewSDLAudio(app *Application) (*SDLAudio, os.Error) {
 	// Open SDL audio
@@ -139,13 +172,14 @@ func NewSDLAudio(app *Application) (*SDLAudio, os.Error) {
 	}
 
 	audio := &SDLAudio{
-		data:                 make(chan *AudioData),
-		playback:             make(chan *AudioData, 2*BUFSIZE_IDEAL), // Use a buffered Go channel
-		playbackLoopFinished: make(chan byte),
-		sdlAudioUnpaused:     false,
-		bufSize:              0,
-		freq:                 uint(spec.Freq),
-		virtualFreq:          uint(spec.Freq),
+		data:                  make(chan *AudioData),
+		playback:              make(chan *AudioData, 2*BUFSIZE_IDEAL), // Use a buffered Go channel
+		playbackLoopFinished:  make(chan byte),
+		forwarderLoopFinished: nil,
+		sdlAudioUnpaused:      false,
+		bufSize:               0,
+		freq:                  uint(spec.Freq),
+		virtualFreq:           uint(spec.Freq),
 	}
 
 	go forwarderLoop(app.NewEventLoop(), audio)
@@ -160,7 +194,17 @@ func (audio *SDLAudio) getAudioDataChannel() chan<- *AudioData {
 }
 
 func (audio *SDLAudio) close() {
+	audio.mutex.Lock()
+	audio.forwarderLoopFinished = make(chan byte)
+	audio.mutex.Unlock()
+
 	audio.data <- nil
+
+	<-audio.forwarderLoopFinished
+
+	audio.mutex.Lock()
+	audio.forwarderLoopFinished = nil
+	audio.mutex.Unlock()
 }
 
 // Called when the number of buffered 'AudioData' objects increases by 1
@@ -169,6 +213,7 @@ func (audio *SDLAudio) bufferAdd() {
 	{
 		audio.bufSize++
 
+		// Unpause SDL audio if we have BUFSIZE_IDEAL 'AudioData' objects
 		if !audio.sdlAudioUnpaused && (audio.bufSize == BUFSIZE_IDEAL) {
 			sdl_audio.PauseAudio(false)
 			audio.sdlAudioUnpaused = true

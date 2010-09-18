@@ -179,7 +179,7 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 	bpp     := surface.Bpp()
 	pixels  := &unscaledDisplay.pixels
 
-	for _,r := range *unscaledDisplay.changedRegions {
+	for _, r := range *unscaledDisplay.changedRegions {
 		end_x := uint(r.X) + uint(r.W)
 		end_y := uint(r.Y) + uint(r.H)
 

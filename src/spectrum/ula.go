@@ -166,7 +166,7 @@ func (ula *ULA) screenAttrWrite(address uint16, oldValue byte, newValue byte) {
 
 func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 	sendDiffOnly := false
-	if (display.lastFrame != nil) {
+	if display.lastFrame != nil {
 		sendDiffOnly = true
 	}
 

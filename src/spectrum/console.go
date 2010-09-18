@@ -73,16 +73,28 @@ func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func exit()
 func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	app.RequestExit()
 }
 
 // Signature: func reset()
 func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	speccy.CommandChannel <- Cmd_Reset{}
 }
 
 // Signature: func load(path string)
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	path := in[0].(eval.StringValue).Get(t)
 
 	data, err := ioutil.ReadFile(SnaPath(path))
@@ -101,6 +113,10 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func save(path string)
 func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	path := in[0].(eval.StringValue).Get(t)
 
 	ch := make(chan Snapshot)
@@ -124,6 +140,10 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func scale(n uint)
 func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	n := in[0].(eval.UintValue).Get(t)
 
 	switch n {
@@ -145,18 +165,30 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func fps(n float)
 func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	fps := in[0].(eval.FloatValue).Get(t)
 	speccy.CommandChannel <- Cmd_SetFPS{float(fps)}
 }
 
 // Signature: func ULA_accuracy(accurateEmulation bool)
 func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	accurateEmulation := in[0].(eval.BoolValue).Get(t)
 	speccy.CommandChannel <- Cmd_SetUlaEmulationAccuracy{accurateEmulation}
 }
 
 // Signature: func sound(enable bool)
 func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	enable := in[0].(eval.BoolValue).Get(t)
 
 	if enable {
@@ -179,6 +211,10 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func wait(milliseconds uint)
 func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
 	milliseconds := uint(in[0].(eval.UintValue).Get(t))
 	time.Sleep(1e6 * int64(milliseconds))
 }
@@ -385,6 +421,10 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 			havePrompt_mutex.Lock()
 			havePrompt = true
 			havePrompt_mutex.Unlock()
+
+			if app.TerminationInProgress() {
+				break
+			}
 
 			line := readline.ReadLine(PROMPT)
 

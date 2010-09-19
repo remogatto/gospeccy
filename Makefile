@@ -88,7 +88,7 @@ uninstall:
 _obj:
 	mkdir _obj
 
-_obj/gospeccy.$(O): ${FONTEND_FILES} _obj/spectrum.a
+_obj/gospeccy.$(O): ${FRONTEND_FILES} _obj/spectrum.a
 	$(GC) -I./_obj -o $@ ${FRONTEND_FILES}
 
 _obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)

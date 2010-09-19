@@ -3,7 +3,7 @@
 GoSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
 interesting fact is that it is written in Go and - AFAIK - it's the
 first Spectrum/Z80 emulator coded with the new language designed by
-certain well known Google employees.
+certain well known Google employees. Last but not least, GoSpeccy is Free Software.
 
 There are a lot of ZX Spectrum emulators around so, why reinventing
 the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord)

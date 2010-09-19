@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"syscall"
 	"strings"
 	"container/vector"
 	"⚛readline"
@@ -395,6 +396,9 @@ func (h handler_t) HandleSignal(s signal.Signal) {
 		switch ss {
 		case signal.SIGQUIT, signal.SIGTERM, signal.SIGALRM, signal.SIGTSTP, signal.SIGTTIN, signal.SIGTTOU:
 			readline.CleanupAfterSignal()
+			if ss == signal.SIGTSTP {
+				syscall.Kill(os.Getpid(), int(signal.SIGSTOP))
+			}
 
 		case signal.SIGINT:
 			readline.FreeLineState()
@@ -570,7 +574,7 @@ func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitA
 }
 
 
-type consoleMessageOutput struct{
+type consoleMessageOutput struct {
 	// This mutex is used to serialize the multiple calls to fmt.Printf
 	// used in function PrintfMsg. Otherwise, a concurrent entry to PrintfMsg
 	// would cause undesired interleaving of fmt.Printf calls.

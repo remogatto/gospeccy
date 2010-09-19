@@ -260,7 +260,7 @@ type MessageOutput interface {
 	PrintfMsg(format string, a ...interface{})
 }
 
-type stdoutMessageOutput struct{
+type stdoutMessageOutput struct {
 	mutex sync.Mutex
 }
 

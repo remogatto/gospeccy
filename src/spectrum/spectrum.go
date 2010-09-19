@@ -111,7 +111,7 @@ type Cmd_AddDisplay struct {
 	Display DisplayReceiver
 }
 type Cmd_CloseAllDisplays struct {
-	finished chan<- byte
+	Finished chan<- byte
 }
 type Cmd_SetFPS struct {
 	NewFPS float
@@ -123,7 +123,7 @@ type Cmd_AddAudioReceiver struct {
 	Receiver AudioReceiver
 }
 type Cmd_CloseAllAudioReceivers struct {
-	finished chan<- byte
+	Finished chan<- byte
 }
 type Cmd_LoadSna struct {
 	InformalFilename string // This is only used for logging purposes
@@ -149,7 +149,7 @@ func commandLoop(speccy *Spectrum48k) {
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				PrintfMsg("command loop: exit")
+				evtLoop.App().PrintfMsg("command loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -168,7 +168,7 @@ func commandLoop(speccy *Spectrum48k) {
 			case Cmd_CloseAllDisplays:
 				go func() {
 					speccy.closeAllDisplays()
-					cmd.finished <- 0
+					cmd.Finished <- 0
 				}()
 
 			case Cmd_SetFPS:
@@ -183,15 +183,15 @@ func commandLoop(speccy *Spectrum48k) {
 			case Cmd_CloseAllAudioReceivers:
 				go func() {
 					speccy.closeAllAudioReceivers()
-					cmd.finished <- 0
+					cmd.Finished <- 0
 				}()
 
 			case Cmd_LoadSna:
 				if speccy.app.Verbose {
 					if len(cmd.InformalFilename) > 0 {
-						PrintfMsg("loading SNA snapshot \"%s\"", cmd.InformalFilename)
+						speccy.app.PrintfMsg("loading SNA snapshot \"%s\"", cmd.InformalFilename)
 					} else {
-						PrintfMsg("loading a SNA snapshot")
+						speccy.app.PrintfMsg("loading a SNA snapshot")
 					}
 				}
 
@@ -241,13 +241,13 @@ func (speccy *Spectrum48k) Close() {
 	if speccy.app.Verbose {
 		eff := speccy.Cpu.GetEmulationEfficiency()
 		if eff != 0 {
-			PrintfMsg("emulation efficiency: %d host-CPU instructions per Z80 instruction", eff)
+			speccy.app.PrintfMsg("emulation efficiency: %d host-CPU instructions per Z80 instruction", eff)
 		} else {
-			PrintfMsg("emulation efficiency: -")
+			speccy.app.PrintfMsg("emulation efficiency: -")
 		}
 
 		for i, display := range speccy.displays {
-			PrintfMsg("display #%d: %d missed frames", i, display.(*DisplayInfo).numMissedFrames)
+			speccy.app.PrintfMsg("display #%d: %d missed frames", i, display.(*DisplayInfo).numMissedFrames)
 		}
 	}
 }
@@ -277,7 +277,7 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 	for i, d := range displays {
 		d.(*DisplayInfo).displayReceiver.close()
 		if speccy.app.Verbose {
-			PrintfMsg("display #%d: %d missed frames", i, d.(*DisplayInfo).numMissedFrames)
+			speccy.app.PrintfMsg("display #%d: %d missed frames", i, d.(*DisplayInfo).numMissedFrames)
 		}
 	}
 }

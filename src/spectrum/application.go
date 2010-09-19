@@ -2,6 +2,7 @@ package spectrum
 
 import (
 	"container/vector"
+	"fmt"
 	"sync"
 	"time"
 	"os/signal"
@@ -23,6 +24,8 @@ type Application struct {
 
 	mutex sync.Mutex
 
+	messageOutput MessageOutput
+
 	Verbose bool
 
 	CreationTime int64 // The time when this Application object was created, see time.Nanoseconds()
@@ -34,6 +37,7 @@ func NewApplication() *Application {
 		HasTerminated: make(chan byte),
 		eventLoops:    vector.Vector{},
 		CreationTime:  time.Nanoseconds(),
+		messageOutput: &stdoutMessageOutput{},
 	}
 
 	go appGoroutine(app)
@@ -106,8 +110,8 @@ func appGoroutine(app *Application) {
 
 	if app.Verbose {
 		endTime := time.Nanoseconds()
-		PrintfMsg("application shutdown completed after %f milliseconds", float(endTime-startTime)/1e6)
-		PrintfMsg("application has terminated")
+		app.PrintfMsg("application shutdown completed after %f milliseconds", float(endTime-startTime)/1e6)
+		app.PrintfMsg("application has terminated")
 	}
 
 	close(app.HasTerminated)
@@ -132,6 +136,27 @@ func (app *Application) TerminationInProgress() bool {
 	a := app.terminationInProgress
 	app.mutex.Unlock()
 	return a
+}
+
+// Replaces the MessageOutput, and returns the previous MessageOutput
+func (app *Application) SetMessageOutput(out MessageOutput) MessageOutput {
+	var prev MessageOutput
+	app.mutex.Lock()
+	{
+		prev = app.messageOutput
+		app.messageOutput = out
+	}
+	app.mutex.Unlock()
+
+	return prev
+}
+
+func (app *Application) PrintfMsg(format string, a ...interface{}) {
+	app.mutex.Lock()
+	out := app.messageOutput
+	app.mutex.Unlock()
+
+	out.PrintfMsg(format, a)
 }
 
 
@@ -224,9 +249,42 @@ func (e *EventLoop) Delete() {
 }
 
 
+// =============
+// MessageOutput
+// =============
+
+type MessageOutput interface {
+	// Prints a single-line message.
+	// If the format string does not end with the new-line character,
+	// the new-line character is appended automatically.
+	PrintfMsg(format string, a ...interface{})
+}
+
+type stdoutMessageOutput struct{
+	mutex sync.Mutex
+}
+
+func (out *stdoutMessageOutput) PrintfMsg(format string, a ...interface{}) {
+	out.mutex.Lock()
+	{
+		fmt.Printf(format, a)
+
+		appendNewLine := false
+		if (len(format) == 0) || (format[len(format)-1] != '\n') {
+			appendNewLine = true
+		}
+
+		if appendNewLine {
+			fmt.Println()
+		}
+	}
+	out.mutex.Unlock()
+}
+
+
 // ==============
 // Misc functions
-// =============
+// ==============
 
 func Drain(ticker *time.Ticker) {
 	var haveMessage bool

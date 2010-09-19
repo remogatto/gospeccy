@@ -6,7 +6,6 @@ SCRIPTS_PATH=$(DIST_PATH)/scripts
 
 SPECTRUM_FILES=\
 	src/spectrum/application.go\
-	src/spectrum/console.go\
 	src/spectrum/display.go\
 	src/spectrum/helpers.go\
 	src/spectrum/keyboard.go\
@@ -20,7 +19,11 @@ SPECTRUM_FILES=\
 	src/spectrum/ula.go\
 	src/spectrum/z80.go\
 	src/spectrum/z80_gen.go\
-	src/spectrum/z80_tables.go\
+	src/spectrum/z80_tables.go
+
+FRONTEND_FILES=\
+	src/console.go\
+	src/gospeccy.go
 
 
 PERF_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛perf.a
@@ -41,10 +44,10 @@ PKG_LIBS=\
 
 
 GOFMT_FILES=\
+	src/console.go\
 	src/gospeccy.go\
 	src/readline/readline.go\
 	src/spectrum/application.go\
-	src/spectrum/console.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
 	src/spectrum/port.go\
@@ -85,8 +88,8 @@ uninstall:
 _obj:
 	mkdir _obj
 
-_obj/gospeccy.$(O): src/gospeccy.go _obj/spectrum.a
-	$(GC) -I./_obj -o $@ src/gospeccy.go
+_obj/gospeccy.$(O): ${FONTEND_FILES} _obj/spectrum.a
+	$(GC) -I./_obj -o $@ ${FRONTEND_FILES}
 
 _obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)
 	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES)

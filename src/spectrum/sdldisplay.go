@@ -96,7 +96,7 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, ren
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				PrintfMsg("screen render loop: exit")
+				evtLoop.App().PrintfMsg("screen render loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -167,7 +167,7 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 
 		surface := sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, sdlMode)
 		if surface == nil {
-			PrintfMsg("%s", sdl.GetError())
+			display.app.PrintfMsg("%s", sdl.GetError())
 			display.app.RequestExit()
 			return
 		}
@@ -194,7 +194,7 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 	}
 
 	if unscaledDisplay.border_orNil != nil {
-		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, *unscaledDisplay.border_orNil)
+		SDL_renderSingleColorBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, *unscaledDisplay.border_orNil)
 	}
 
 	if screen.completionTime_orNil != nil {
@@ -265,7 +265,7 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 
 		surface := sdl.SetVideoMode(2*TotalScreenWidth, 2*TotalScreenHeight, 32, sdlMode)
 		if surface == nil {
-			PrintfMsg("%s", sdl.GetError())
+			display.app.PrintfMsg("%s", sdl.GetError())
 			display.app.RequestExit()
 			return
 		}
@@ -305,7 +305,7 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 	}
 
 	if unscaledDisplay.border_orNil != nil {
-		SDL_renderBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, *unscaledDisplay.border_orNil)
+		SDL_renderSingleColorBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, *unscaledDisplay.border_orNil)
 	}
 
 	if screen.completionTime_orNil != nil {
@@ -336,7 +336,7 @@ func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale ui
 	}
 }
 
-func SDL_renderBorder(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint, color byte) {
+func SDL_renderSingleColorBorder(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint, color byte) {
 	s := scale
 	c := palette[color]
 
@@ -399,15 +399,15 @@ func (l *ListOfRects) addBorder(scale uint) {
 	const BH = ScreenBorderY
 	const TW = TotalScreenWidth
 
-	l.add( int(s*0)     , int(s*0)     , s*TW, s*BH )
-	l.add( int(s*0)     , int(s*(BH+H)), s*TW, s*BH )
-	l.add( int(s*0)     , int(s*BH)    , s*BW, s*H  )
-	l.add( int(s*(BW+W)), int(s*BH)    , s*BW, s*H  )
+	l.add( int(s*0)     , int(s*0)     , s*TW, s*BH )	// Top
+	l.add( int(s*0)     , int(s*(BH+H)), s*TW, s*BH )	// Bottom
+	l.add( int(s*0)     , int(s*BH)    , s*BW, s*H  )	// Left
+	l.add( int(s*(BW+W)), int(s*BH)    , s*BW, s*H  )	// Right
 }
 
 
 // ===============
-// UnspacedDisplay
+// UnscaledDisplay
 // ===============
 
 type UnscaledDisplay struct {

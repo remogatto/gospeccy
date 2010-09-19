@@ -73,7 +73,7 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				PrintfMsg("audio forwarder loop: exit")
+				evtLoop.App().PrintfMsg("audio forwarder loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -103,7 +103,7 @@ func playbackLoop(app *Application, audio *SDLAudio) {
 	}
 
 	if app.Verbose {
-		PrintfMsg("audio playback loop: exit")
+		app.PrintfMsg("audio playback loop: exit")
 	}
 	audio.playbackLoopFinished <- 0
 }
@@ -167,7 +167,7 @@ func NewSDLAudio(app *Application) (*SDLAudio, os.Error) {
 			return nil, os.NewError(sdl.GetError())
 		}
 		if app.Verbose {
-			PrintfMsg("%#v", spec)
+			app.PrintfMsg("%#v", spec)
 		}
 	}
 

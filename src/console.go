@@ -1,6 +1,7 @@
-package spectrum
+package main
 
 import (
+	"spectrum"
 	"exp/eval"
 	"fmt"
 	"io/ioutil"
@@ -21,8 +22,8 @@ import (
 
 // These variables are set only once, before starting new goroutines,
 // so there is no need for controlling concurrent access via a sync.Mutex
-var app *Application
-var speccy *Spectrum48k
+var app *spectrum.Application
+var speccy *spectrum.Spectrum48k
 var w *eval.World
 
 const PROMPT = "gospeccy> "
@@ -63,7 +64,7 @@ func printHelp() {
 		fmt.Fprintf(&buf, "  %s\n", help_vals[i])
 	}
 
-	PrintfMsg("%s\n", buf.String())
+	app.PrintfMsg("%s\n", buf.String())
 }
 
 // Signature: func help()
@@ -86,7 +87,7 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		return
 	}
 
-	speccy.CommandChannel <- Cmd_Reset{}
+	speccy.CommandChannel <- spectrum.Cmd_Reset{}
 }
 
 // Signature: func load(path string)
@@ -97,17 +98,17 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	data, err := ioutil.ReadFile(SnaPath(path))
+	data, err := ioutil.ReadFile(spectrum.SnaPath(path))
 	if err != nil {
-		PrintfMsg("%s", err)
+		app.PrintfMsg("%s", err)
 		return
 	}
 
 	errChan := make(chan os.Error)
-	speccy.CommandChannel <- Cmd_LoadSna{path, data, errChan}
+	speccy.CommandChannel <- spectrum.Cmd_LoadSna{path, data, errChan}
 	err = <-errChan
 	if err != nil {
-		PrintfMsg("%s", err)
+		app.PrintfMsg("%s", err)
 	}
 }
 
@@ -119,22 +120,22 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	ch := make(chan Snapshot)
-	speccy.CommandChannel <- Cmd_SaveSna{ch}
+	ch := make(chan spectrum.Snapshot)
+	speccy.CommandChannel <- spectrum.Cmd_SaveSna{ch}
 
-	var snapshot Snapshot = <-ch
+	var snapshot spectrum.Snapshot = <-ch
 	if snapshot.Err != nil {
-		PrintfMsg("%s", snapshot.Err)
+		app.PrintfMsg("%s", snapshot.Err)
 		return
 	}
 
 	err := ioutil.WriteFile(path, snapshot.Data, 0600)
 	if err != nil {
-		PrintfMsg("%s", err)
+		app.PrintfMsg("%s", err)
 	}
 
 	if app.Verbose {
-		PrintfMsg("wrote SNA snapshot \"%s\"", path)
+		app.PrintfMsg("wrote SNA snapshot \"%s\"", path)
 	}
 }
 
@@ -149,17 +150,17 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	switch n {
 	case 1:
 		finished := make(chan byte)
-		speccy.CommandChannel <- Cmd_CloseAllDisplays{finished}
+		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
 
-		speccy.CommandChannel <- Cmd_AddDisplay{NewSDLScreen(speccy.app)}
+		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
 
 	case 2:
 		finished := make(chan byte)
-		speccy.CommandChannel <- Cmd_CloseAllDisplays{finished}
+		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
 
-		speccy.CommandChannel <- Cmd_AddDisplay{NewSDLScreen2x(speccy.app, /*fullscreen*/ false)}
+		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen2x(app, /*fullscreen*/ false)}
 	}
 }
 
@@ -170,7 +171,7 @@ func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	fps := in[0].(eval.FloatValue).Get(t)
-	speccy.CommandChannel <- Cmd_SetFPS{float(fps)}
+	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float(fps)}
 }
 
 // Signature: func ULA_accuracy(accurateEmulation bool)
@@ -180,7 +181,7 @@ func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	accurateEmulation := in[0].(eval.BoolValue).Get(t)
-	speccy.CommandChannel <- Cmd_SetUlaEmulationAccuracy{accurateEmulation}
+	speccy.CommandChannel <- spectrum.Cmd_SetUlaEmulationAccuracy{accurateEmulation}
 }
 
 // Signature: func sound(enable bool)
@@ -192,19 +193,19 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	enable := in[0].(eval.BoolValue).Get(t)
 
 	if enable {
-		audio, err := NewSDLAudio(speccy.app)
+		audio, err := spectrum.NewSDLAudio(app)
 		if err == nil {
 			finished := make(chan byte)
-			speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{finished}
+			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
 			<-finished
 
-			speccy.CommandChannel <- Cmd_AddAudioReceiver{audio}
+			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 		} else {
-			PrintfMsg("%s", err)
+			app.PrintfMsg("%s", err)
 		}
 	} else {
 		finished := make(chan byte)
-		speccy.CommandChannel <- Cmd_CloseAllAudioReceivers{finished}
+		speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
 		<-finished
 	}
 }
@@ -225,7 +226,7 @@ func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	err := runScript(w, scriptName, /*optional*/ false)
 	if err != nil {
-		PrintfMsg("%s", err)
+		app.PrintfMsg("%s", err)
 		return
 	}
 }
@@ -236,7 +237,7 @@ func wrapper_optionalScript(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	err := runScript(w, scriptName, /*optional*/ true)
 	if err != nil {
-		PrintfMsg("%s", err)
+		app.PrintfMsg("%s", err)
 		return
 	}
 }
@@ -355,13 +356,13 @@ func run(w *eval.World, sourceCode string) {
 	var code eval.Code
 	code, err = w.Compile(sourceCode)
 	if err != nil {
-		PrintfMsg("%s", err)
+		app.PrintfMsg("%s", err)
 		return
 	}
 
 	_, err = code.Run()
 	if err != nil {
-		PrintfMsg("%s", err)
+		app.PrintfMsg("%s", err)
 		return
 	}
 }
@@ -369,7 +370,7 @@ func run(w *eval.World, sourceCode string) {
 // Loads and evaluates the specified Go script
 func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	fileName := scriptName + ".go"
-	data, err := ioutil.ReadFile(ScriptPath(fileName))
+	data, err := ioutil.ReadFile(spectrum.ScriptPath(fileName))
 	if err != nil {
 		if !optional {
 			return err
@@ -410,13 +411,15 @@ func (h handler_t) HandleSignal(s signal.Signal) {
 // If no more input is available, an arbitrary value is sent through channel 'no_more_code'.
 //
 // This function is intended to be run in a separate goroutine.
-func readCode(app *Application, code chan string, no_more_code chan<- byte) {
+func readCode(app *spectrum.Application, code chan string, no_more_code chan<- byte) {
 	handler := handler_t(0)
-	InstallSignalHandler(handler)
+	spectrum.InstallSignalHandler(handler)
 
 	// BNF pattern: (string address)* nil
 	readline_channel := make(chan *string)
 	go func() {
+		prevMsgOut := app.SetMessageOutput(&consoleMessageOutput{})
+
 		for {
 			havePrompt_mutex.Lock()
 			havePrompt = true
@@ -439,13 +442,15 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 				<-readline_channel
 			}
 		}
+
+		app.SetMessageOutput(prevMsgOut)
 	}()
 
 	evtLoop := app.NewEventLoop()
 	for {
 		select {
 		case <-evtLoop.Pause:
-			UninstallSignalHandler(handler)
+			spectrum.UninstallSignalHandler(handler)
 
 			havePrompt_mutex.Lock()
 			if havePrompt && len(PROMPT) > 0 {
@@ -461,7 +466,7 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 
 		case <-evtLoop.Terminate:
 			if evtLoop.App().Verbose {
-				PrintfMsg("readCode loop: exit")
+				app.PrintfMsg("readCode loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -494,7 +499,11 @@ func readCode(app *Application, code chan string, no_more_code chan<- byte) {
 // This function exits in two cases: if the application was terminated (from outside of this function),
 // or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application
 // to terminate (controlled by the 'exitAppIfEndOfInput' parameter).
-func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput bool) {
+func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitAppIfEndOfInput bool) {
+	if app != nil {
+		panic("running multiple consoles is unsupported")
+	}
+
 	app = _app
 	speccy = _speccy
 	w = eval.NewWorld()
@@ -506,7 +515,7 @@ func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput boo
 		var err os.Error
 		err = runScript(w, STARTUP_SCRIPT, /*optional*/ false)
 		if err != nil {
-			PrintfMsg("%s", err)
+			app.PrintfMsg("%s", err)
 			app.RequestExit()
 			return
 		}
@@ -518,7 +527,7 @@ func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput boo
 
 	// This should be printed before executing "go readCode(...)",
 	// in order to ensure that this message *always* gets printed before printing the prompt
-	PrintfMsg("Hint: Input an empty line to see available commands")
+	app.PrintfMsg("Hint: Input an empty line to see available commands")
 
 	// Start a goroutine for reading code from os.Stdin.
 	// The code pieces are being received from the channel 'code_chan'.
@@ -535,14 +544,14 @@ func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput boo
 
 		case <-evtLoop.Terminate:
 			// Exit this function
-			if evtLoop.App().Verbose {
-				PrintfMsg("console loop: exit")
+			if app.Verbose {
+				app.PrintfMsg("console loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
 
 		case code := <-code_chan:
-			//PrintfMsg("code=\"%s\"", code)
+			//app.PrintfMsg("code=\"%s\"", code)
 			if len(code) > 0 {
 				run(w, code)
 			} else {
@@ -561,14 +570,21 @@ func RunConsole(_app *Application, _speccy *Spectrum48k, exitAppIfEndOfInput boo
 }
 
 
+type consoleMessageOutput struct{
+	// This mutex is used to serialize the multiple calls to fmt.Printf
+	// used in function PrintfMsg. Otherwise, a concurrent entry to PrintfMsg
+	// would cause undesired interleaving of fmt.Printf calls.
+	mutex sync.Mutex
+}
+
 // Prints a single-line message to 'os.Stdout' using 'fmt.Printf'.
 // If the format string does not end with the new-line character,
 // the new-line character is appended automatically.
 //
 // Using this function instead of 'fmt.Printf', 'println', etc,
 // ensures proper redisplay of the current command line.
-func PrintfMsg(format string, a ...interface{}) {
-	msg_mutex.Lock()
+func (out *consoleMessageOutput) PrintfMsg(format string, a ...interface{}) {
+	out.mutex.Lock()
 	{
 		havePrompt_mutex.Lock()
 		if havePrompt && len(PROMPT) > 0 {
@@ -598,10 +614,5 @@ func PrintfMsg(format string, a ...interface{}) {
 		}
 		havePrompt_mutex.Unlock()
 	}
-	msg_mutex.Unlock()
+	out.mutex.Unlock()
 }
-
-// This mutex is used to serialize the multiple calls to fmt.Printf
-// used in function PrintfMsg. Otherwise, a concurrent entry to PrintfMsg
-// would cause undesired interleaving of fmt.Printf calls.
-var msg_mutex sync.Mutex

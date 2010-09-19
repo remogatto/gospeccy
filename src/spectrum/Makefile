@@ -15,7 +15,6 @@ GOFILES=\
 	sdlsound.go\
 	keyboard.go\
 	spectrum.go\
-	console_dummy.go\
 	helpers.go\
 	application.go
 

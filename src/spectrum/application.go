@@ -54,10 +54,6 @@ func appGoroutine(app *Application) {
 		startTime = time.Nanoseconds()
 	}
 
-	app.mutex.Lock()
-	app.terminationInProgress = true
-	app.mutex.Unlock()
-
 	// Cycle until there are no EventLoop objects.
 	// Usually, the body of this 'for' statement executes only once
 	for {
@@ -128,6 +124,16 @@ func (app *Application) addEventLoop(e *EventLoop) {
 }
 
 func (app *Application) RequestExit() {
+	app.mutex.Lock()
+	{
+		if app.terminationInProgress {
+			app.mutex.Unlock()
+			return
+		}
+		app.terminationInProgress = true
+	}
+	app.mutex.Unlock()
+
 	close(app.exitApp)
 }
 

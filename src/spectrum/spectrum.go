@@ -1,6 +1,7 @@
 package spectrum
 
 import (
+	"spectrum/formats"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -125,17 +126,13 @@ type Cmd_AddAudioReceiver struct {
 type Cmd_CloseAllAudioReceivers struct {
 	Finished chan<- byte
 }
-type Cmd_LoadSna struct {
+type Cmd_LoadSnapshot struct {
 	InformalFilename string // This is only used for logging purposes
-	Data             []byte // The SNA snapshot data
+	Snapshot         Snapshot
 	ErrChan          chan<- os.Error
 }
-type Snapshot struct {
-	Data []byte // Constraint: (data == nil) != (err == nil)
-	Err  os.Error
-}
-type Cmd_SaveSna struct {
-	Chan chan<- Snapshot
+type Cmd_MakeSnapshot struct {
+	Chan chan<- *formats.FullSnapshot
 }
 
 func commandLoop(speccy *Spectrum48k) {
@@ -186,25 +183,23 @@ func commandLoop(speccy *Spectrum48k) {
 					cmd.Finished <- 0
 				}()
 
-			case Cmd_LoadSna:
+			case Cmd_LoadSnapshot:
 				if speccy.app.Verbose {
 					if len(cmd.InformalFilename) > 0 {
-						speccy.app.PrintfMsg("loading SNA snapshot \"%s\"", cmd.InformalFilename)
+						speccy.app.PrintfMsg("loading snapshot \"%s\"", cmd.InformalFilename)
 					} else {
-						speccy.app.PrintfMsg("loading a SNA snapshot")
+						speccy.app.PrintfMsg("loading a snapshot")
 					}
 				}
 
-				err := speccy.loadSna(cmd.Data)
+				err := speccy.loadSnapshot(cmd.Snapshot)
+
 				if cmd.ErrChan != nil {
 					cmd.ErrChan <- err
 				}
 
-			case Cmd_SaveSna:
-				data, err := speccy.Cpu.saveSna()
-				if cmd.Chan != nil {
-					cmd.Chan <- Snapshot{data, err}
-				}
+			case Cmd_MakeSnapshot:
+				cmd.Chan <- speccy.Cpu.makeSnapshot()
 			}
 		}
 	}
@@ -362,15 +357,22 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 }
 
 
-// Initializes state from data in SNA format.
+type Snapshot interface {
+	CpuState() formats.CpuState
+	UlaState() formats.UlaState
+	Memory() *[48 * 1024]byte
+	RETN() bool
+}
+
+// Initializes state from the specified snapshot.
 // Returns nil on success.
-func (speccy *Spectrum48k) loadSna(data []byte) os.Error {
+func (speccy *Spectrum48k) loadSnapshot(s Snapshot) os.Error {
 	err := speccy.reset()
 	if err != nil {
 		return err
 	}
 
-	err = speccy.Cpu.loadSna(data)
+	err = speccy.Cpu.loadSnapshot(s)
 	if err != nil {
 		return err
 	}

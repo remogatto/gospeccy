@@ -26,9 +26,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"fmt"
 	"⚛perf"
 	"os"
+	"spectrum/formats"
 	"syscall"
 )
 
@@ -105,11 +105,18 @@ func (r *register16) get() uint16 {
 }
 
 type Z80 struct {
-	a, f, b, c, d, e, h, i, l      byte
+	a, f, b, c, d, e, h, l         byte
 	a_, f_, b_, c_, d_, e_, h_, l_ byte
 	ixh, ixl, iyh, iyl             byte
+	i, iff1, iff2, im              byte
 
-	sp, r, r7, pc, iff1, iff2, im uint16
+	// The highest bit (bit 7) of the R register
+	r7 byte
+
+	// The low 7 bits of the R register. 16 bits long so it can also act as an RZX instruction counter.
+	r uint16
+
+	sp, pc uint16
 
 	bc, bc_, hl, hl_, af, de, de_, ix, iy register16
 
@@ -198,58 +205,58 @@ func (z80 *Z80) reset() {
 }
 
 
-// Initializes state from data in SNA format.
+// Initializes state from the specified snapshot.
 // Returns nil on success.
-func (z80 *Z80) loadSna(data []byte) os.Error {
-	if len(data) != 49179 {
-		return os.NewError(fmt.Sprintf("snapshot has invalid size"))
-	}
+func (z80 *Z80) loadSnapshot(s Snapshot) os.Error {
+	cpu := s.CpuState()
+	ula := s.UlaState()
+	mem := s.Memory()
 
 	// Populate registers
-	z80.i = data[0]
-	z80.l_ = data[1]
-	z80.h_ = data[2]
-	z80.e_ = data[3]
-	z80.d_ = data[4]
-	z80.c_ = data[5]
-	z80.b_ = data[6]
-	z80.f_ = data[7]
-	z80.a_ = data[8]
-	z80.l = data[9]
-	z80.h = data[10]
-	z80.e = data[11]
-	z80.d = data[12]
-	z80.c = data[13]
-	z80.b = data[14]
-	z80.iyl = data[15]
-	z80.iyh = data[16]
-	z80.ixl = data[17]
-	z80.ixh = data[18]
+	z80.a = cpu.A
+	z80.f = cpu.F
+	z80.b = cpu.B
+	z80.c = cpu.C
+	z80.d = cpu.D
+	z80.e = cpu.E
+	z80.h = cpu.H
+	z80.l = cpu.L
+	z80.a_ = cpu.A_
+	z80.f_ = cpu.F_
+	z80.b_ = cpu.B_
+	z80.c_ = cpu.C_
+	z80.d_ = cpu.D_
+	z80.e_ = cpu.E_
+	z80.h_ = cpu.H_
+	z80.l_ = cpu.L_
+	z80.ixl = byte(cpu.IX & 0xff)
+	z80.ixh = byte(cpu.IX >> 8)
+	z80.iyl = byte(cpu.IY & 0xff)
+	z80.iyh = byte(cpu.IY >> 8)
 
-	z80.iff1 = uint16(ternOpB((data[19]&0x04) != 0, 1, 0))
-	z80.iff2 = z80.iff1
+	z80.i = cpu.I
+	z80.iff1 = cpu.IFF1
+	z80.iff2 = cpu.IFF2
+	z80.im = cpu.IM
 
-	var r = uint16(data[20])
+	z80.r = uint16(cpu.R & 0x7f)
+	z80.r7 = cpu.R & 0x80
 
-	z80.r = r & 0x7f
-	z80.r7 = r & 0x80
-
-	z80.f = data[21]
-	z80.a = data[22]
-	z80.sp = uint16(data[23]) | (uint16(data[24]) << 8)
-	z80.im = uint16(data[25])
+	z80.pc = cpu.PC
+	z80.sp = cpu.SP
 
 	// Border color
-	z80.writePort(0xfe, data[26]&0x07)
+	z80.writePort(0xfe, ula.Border&0x07)
 
 	// Populate memory
 	for i := 0; i < 0xc000; i++ {
-		z80.memory.Data()[i+0x4000] = data[i+27]
+		z80.memory.Data()[i+0x4000] = mem[i]
 	}
 
-	// Send a RETN
-	z80.iff1 = z80.iff2
-	z80.ret()
+	if s.RETN() {
+		// Send a RETN
+		z80.ret()
+	}
 
 	if z80.iff1 != 0 {
 		z80.tstates = InterruptLength
@@ -260,65 +267,48 @@ func (z80 *Z80) loadSna(data []byte) os.Error {
 	return nil
 }
 
-func (z80 *Z80) saveSna() ([]byte, os.Error) {
-	var data [49179]byte
+func (z80 *Z80) makeSnapshot() *formats.FullSnapshot {
+	var s formats.FullSnapshot
 
 	// Save registers
-	data[0] = z80.i
-	data[1] = z80.l_
-	data[2] = z80.h_
-	data[3] = z80.e_
-	data[4] = z80.d_
-	data[5] = z80.c_
-	data[6] = z80.b_
-	data[7] = z80.f_
-	data[8] = z80.a_
-	data[9] = z80.l
-	data[10] = z80.h
-	data[11] = z80.e
-	data[12] = z80.d
-	data[13] = z80.c
-	data[14] = z80.b
-	data[15] = z80.iyl
-	data[16] = z80.iyh
-	data[17] = z80.ixl
-	data[18] = z80.ixh
+	s.Cpu.A = z80.a
+	s.Cpu.F = z80.f
+	s.Cpu.B = z80.b
+	s.Cpu.C = z80.c
+	s.Cpu.D = z80.d
+	s.Cpu.E = z80.e
+	s.Cpu.H = z80.h
+	s.Cpu.L = z80.l
+	s.Cpu.A_ = z80.a_
+	s.Cpu.F_ = z80.f_
+	s.Cpu.B_ = z80.b_
+	s.Cpu.C_ = z80.c_
+	s.Cpu.D_ = z80.d_
+	s.Cpu.E_ = z80.e_
+	s.Cpu.H_ = z80.h_
+	s.Cpu.L_ = z80.l_
+	s.Cpu.IX = uint16(z80.ixl) | (uint16(z80.ixh) << 8)
+	s.Cpu.IY = uint16(z80.iyl) | (uint16(z80.iyh) << 8)
 
-	if z80.iff1 != 0 {
-		data[19] = (1 << 2)
-	} else {
-		data[19] = (0 << 2)
-	}
+	s.Cpu.I = z80.i
+	s.Cpu.IFF1 = z80.iff1
+	s.Cpu.IFF2 = z80.iff2
+	s.Cpu.IM = z80.im
 
-	data[20] = byte(z80.r&0x7f) | byte(z80.r7&0x80)
+	s.Cpu.R = byte(z80.r&0x7f) | (z80.r7 & 0x80)
 
-	data[21] = z80.f
-	data[22] = z80.a
-
-	sp_afterSimulatedPushPC := z80.sp - 2
-	if (sp_afterSimulatedPushPC < 0x4000) || (sp_afterSimulatedPushPC > 0xfffe) {
-		// We would be saving the PC to ROM or outside of memory
-		return nil, os.NewError(fmt.Sprintf("failed to simulate a RETN"))
-	}
-
-	data[23] = byte(sp_afterSimulatedPushPC & 0xff)
-	data[24] = byte(sp_afterSimulatedPushPC >> 8)
-	data[25] = byte(z80.im)
+	s.Cpu.SP = z80.sp
+	s.Cpu.PC = z80.pc
 
 	// Border color
-	data[26] = z80.speccy.ula.getBorderColor() & 0x07
+	s.Ula.Border = z80.speccy.ula.getBorderColor() & 0x07
 
 	// Memory
 	for i := 0; i < 0xc000; i++ {
-		data[i+27] = z80.memory.Data()[i+0x4000]
+		s.Memory[i] = z80.memory.Data()[i+0x4000]
 	}
 
-	// Push PC
-	pch, pcl := splitWord(z80.pc)
-	data[(sp_afterSimulatedPushPC-0x4000+0)+27] = pcl
-	data[(sp_afterSimulatedPushPC-0x4000+1)+27] = pch
-
-	return data[0:], nil
+	return &s
 }
 
 
@@ -674,7 +664,10 @@ func (z80 *Z80) decSP() {
 
 
 func (z80 *Z80) IR() uint16 {
-	return uint16(uint16(z80.i)<<8 | (z80.r7 & 0x80) | (z80.r & 0x7f))
+	var ir uint16
+	ir |= uint16(z80.i) << 8
+	ir |= uint16(z80.r7&0x80) | (z80.r & 0x7f)
+	return ir
 }
 
 func (z80 *Z80) sltTrap(address int16, level byte) int {

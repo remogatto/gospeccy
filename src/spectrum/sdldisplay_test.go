@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"unsafe"
+	"spectrum/formats"
 )
 
 func (s *SDLSurface) At(x, y int) image.Color {
@@ -202,7 +203,14 @@ func BenchmarkRender(b *testing.B) {
 			panic(err)
 		}
 
-		if err := speccy.loadSna(data); err != nil {
+		var snapshot *formats.SNA
+		snapshot, err = formats.SnapshotData(data).DecodeSNA()
+		if err != nil {
+			panic(err)
+		}
+
+		err = speccy.loadSnapshot(snapshot)
+		if err != nil {
 			panic(err)
 		}
 

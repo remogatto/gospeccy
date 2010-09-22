@@ -27,6 +27,7 @@ package main
 
 import (
 	"spectrum"
+	"spectrum/formats"
 	"⚛sdl"
 	"fmt"
 	"flag"
@@ -234,8 +235,11 @@ func main() {
 			goto quit
 		}
 
+		var snapshot *formats.SNA
+		snapshot, err = formats.SnapshotData(data).DecodeSNA()
+
 		errChan := make(chan os.Error)
-		speccy.CommandChannel <- spectrum.Cmd_LoadSna{spectrum.SnaPath(flag.Arg(0)), data, errChan}
+		speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{spectrum.SnaPath(flag.Arg(0)), snapshot, errChan}
 		err = <-errChan
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

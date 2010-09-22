@@ -1,4 +1,5 @@
-include $(GOROOT)/src/Make.inc
+GOSPECCY_ROOT=../..
+include $(GOSPECCY_ROOT)/Make.inc-head
 
 TARG=spectrum
 GOFILES=\
@@ -18,4 +19,8 @@ GOFILES=\
 	helpers.go\
 	application.go
 
+sdldisplay_test.go: $(FORMATS_PKG_LIB)
+z80_test.go: $(FORMATS_PKG_LIB)
+
 include $(GOROOT)/src/Make.pkg
+include $(GOSPECCY_ROOT)/Make.inc-tail

@@ -34,6 +34,7 @@ import (
 	"os"
 	"bufio"
 	"container/vector"
+	"spectrum/formats"
 )
 
 var (
@@ -53,7 +54,7 @@ func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
 
 	out.Push(fmt.Sprintf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
 		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc))
-	out.Push(fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|(z80.r&0x7f),
+	out.Push(fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|byte(z80.r&0x7f),
 		z80.iff1, z80.iff2, z80.im, halted, z80.tstates))
 }
 
@@ -308,16 +309,16 @@ func TestDoOpcodes(t *testing.T) {
 			z80.i = byte(i)
 
 			r, _ := strconv.Btoui64(otherRegs[1], 16)
-			z80.r, z80.r7 = uint16(r), uint16(r)
+			z80.r, z80.r7 = uint16(r), byte(r)
 
 			iff1, _ := strconv.Btoui64(otherRegs[2], 16)
-			z80.iff1 = uint16(iff1)
+			z80.iff1 = byte(iff1)
 
 			iff2, _ := strconv.Btoui64(otherRegs[3], 16)
-			z80.iff2 = uint16(iff2)
+			z80.iff2 = byte(iff2)
 
 			im, _ := strconv.Btoui64(otherRegs[4], 16)
-			z80.im = uint16(im)
+			z80.im = byte(im)
 
 			halted, _ := strconv.Btoui64(otherRegs[5], 10)
 
@@ -446,7 +447,14 @@ func BenchmarkZ80(b *testing.B) {
 			panic(err)
 		}
 
-		if err := speccy.loadSna(data); err != nil {
+		var snapshot *formats.SNA
+		snapshot, err = formats.SnapshotData(data).DecodeSNA()
+		if err != nil {
+			panic(err)
+		}
+
+		err = speccy.loadSnapshot(snapshot)
+		if err != nil {
 			panic(err)
 		}
 

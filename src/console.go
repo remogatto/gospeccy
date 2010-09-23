@@ -2,6 +2,8 @@ package main
 
 import (
 	"spectrum"
+	"spectrum/formats"
+	"spectrum/readline"
 	"exp/eval"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +12,6 @@ import (
 	"syscall"
 	"strings"
 	"container/vector"
-	"⚛readline"
 	"sync"
 	"bytes"
 	"time"
@@ -105,8 +106,11 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		return
 	}
 
+	var snapshot *formats.SNA
+	snapshot, err = formats.SnapshotData(data).DecodeSNA()
+
 	errChan := make(chan os.Error)
-	speccy.CommandChannel <- spectrum.Cmd_LoadSna{path, data, errChan}
+	speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{path, snapshot, errChan}
 	err = <-errChan
 	if err != nil {
 		app.PrintfMsg("%s", err)
@@ -121,16 +125,18 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	ch := make(chan spectrum.Snapshot)
-	speccy.CommandChannel <- spectrum.Cmd_SaveSna{ch}
+	ch := make(chan *formats.FullSnapshot)
+	speccy.CommandChannel <- spectrum.Cmd_MakeSnapshot{ch}
 
-	var snapshot spectrum.Snapshot = <-ch
-	if snapshot.Err != nil {
-		app.PrintfMsg("%s", snapshot.Err)
+	fullSnapshot := <-ch
+
+	data, err := fullSnapshot.EncodeSNA()
+	if err != nil {
+		app.PrintfMsg("%s", err)
 		return
 	}
 
-	err := ioutil.WriteFile(path, snapshot.Data, 0600)
+	err = ioutil.WriteFile(path, data, 0600)
 	if err != nil {
 		app.PrintfMsg("%s", err)
 	}

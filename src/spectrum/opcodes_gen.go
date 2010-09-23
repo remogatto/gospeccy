@@ -2638,7 +2638,7 @@ func initOpcodes() {
 		z80.memory.contendReadNoMreq(z80.IR(), 1)
 		/* Keep the RZX instruction counter right */
 		z80.rzxInstructionsOffset += (int(z80.r) - int(z80.a))
-		z80.r, z80.r7 = uint16(z80.a), uint16(z80.a)
+		z80.r, z80.r7 = uint16(z80.a), z80.a
 	}
 	/* IN D,(C) */
 	opcodesMap[shift0xed(0x50)] = func(z80 *Z80) {
@@ -2709,7 +2709,7 @@ func initOpcodes() {
 	/* LD A,R */
 	opcodesMap[shift0xed(0x5f)] = func(z80 *Z80) {
 		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.a = byte((z80.r & 0x7f) | (z80.r7 & 0x80))
+		z80.a = byte(z80.r&0x7f) | (z80.r7 & 0x80)
 		z80.f = (z80.f & FLAG_C) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
 	}
 	/* IN H,(C) */

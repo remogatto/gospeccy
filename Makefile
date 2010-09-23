@@ -1,4 +1,5 @@
-include $(GOROOT)/src/Make.inc
+GOSPECCY_ROOT=.
+include Make.inc-head
 
 DIST_PATH=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/gospeccy
 SYSTEM_ROM_PATH=$(DIST_PATH)/roms
@@ -21,22 +22,15 @@ SPECTRUM_FILES=\
 	src/spectrum/z80_gen.go\
 	src/spectrum/z80_tables.go
 
-FRONTEND_FILES=\
-	src/console.go\
-	src/gospeccy.go
-
 
 PERF_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛perf.a
-
-READLINE_FILES=src/readline/readline.go
-READLINE_ARCHIVE=src/readline/_obj/⚛readline.a
-READLINE_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛readline.a
 
 SDL_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl.a
 SDL_AUDIO_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl/audio.a
 
 
 PKG_LIBS=\
+	$(FORMATS_PKG_LIB)\
 	$(PERF_PKG_LIB)\
 	$(READLINE_PKG_LIB)\
 	$(SDL_PKG_LIB)\
@@ -46,7 +40,6 @@ PKG_LIBS=\
 GOFMT_FILES=\
 	src/console.go\
 	src/gospeccy.go\
-	src/readline/readline.go\
 	src/spectrum/application.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
@@ -56,16 +49,18 @@ GOFMT_FILES=\
 	src/spectrum/spectrum.go\
 	src/spectrum/ula.go\
 	src/spectrum/z80*.go\
+	$(FORMATS_FILES)\
+	$(FRONTEND_FILES)\
+	$(READLINE_FILES)
 
 gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O) $(PKG_LIBS)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)
 
 .PHONY: clean
-clean:
+clean: formats-clean readline-clean
 	rm -f gospeccy
 	rm -f src/spectrum/path_gen_*.go
 	rm -rf _obj
-	make -C src/readline clean
 
 .PHONY: gofmt
 gofmt:
@@ -80,16 +75,16 @@ install: gospeccy
 	cp -a scripts/* $(SCRIPTS_PATH)
 
 .PHONY: uninstall
-uninstall:
+uninstall: formats-uninstall readline-uninstall
 	rm -f $(GOBIN)/gospeccy
 	rm -rf $(DIST_PATH)
-	make -C src/readline uninstall
+	rm -rf $(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum
 
 _obj:
 	mkdir _obj
 
-_obj/gospeccy.$(O): ${FRONTEND_FILES} _obj/spectrum.a
-	$(GC) -I./_obj -o $@ ${FRONTEND_FILES}
+_obj/gospeccy.$(O): $(FRONTEND_FILES) _obj/spectrum.a
+	$(GC) -I./_obj -o $@ $(FRONTEND_FILES)
 
 _obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)
 	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES)
@@ -97,24 +92,23 @@ _obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)
 
 
 #
-# Installation of external dependencies and internal libraries
+# Installation of external dependencies
 #
 
+PERF_URL=github.com/0xe2-0x9a-0x9b/Go-PerfEvents
+SDL_URL=github.com/0xe2-0x9a-0x9b/Go-SDL
+
 $(PERF_PKG_LIB):
-	goinstall -u github.com/0xe2-0x9a-0x9b/Go-PerfEvents || exit 0
-	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-PerfEvents clean
-	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-PerfEvents install
-
-$(READLINE_PKG_LIB): $(READLINE_ARCHIVE)
-	make -C src/readline clean
-	make -C src/readline install
-
-$(READLINE_ARCHIVE): $(READLINE_FILES)
-	make -C src/readline
+	goinstall -u $(PERF_URL) || exit 0
+	make -C $(GOROOT)/src/pkg/$(PERF_URL) clean
+	make -C $(GOROOT)/src/pkg/$(PERF_URL) install
 
 $(SDL_PKG_LIB):
-	goinstall -u github.com/0xe2-0x9a-0x9b/Go-SDL || exit 0
-	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-SDL clean
-	make -C $(GOROOT)/src/pkg/github.com/0xe2-0x9a-0x9b/Go-SDL install
+	goinstall -u $(SDL_URL) || exit 0
+	make -C $(GOROOT)/src/pkg/$(SDL_URL) clean
+	make -C $(GOROOT)/src/pkg/$(SDL_URL) install
 
 $(SDL_AUDIO_PKG_LIBS): $(SDL_PKG_LIB)
+
+
+include Make.inc-tail

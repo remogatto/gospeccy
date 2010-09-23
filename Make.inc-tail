@@ -1,0 +1,28 @@
+# Definitions of various build rules
+
+ifneq ($(TARG),spectrum/formats)
+$(FORMATS_PKG_LIB): $(FORMATS_FILES)
+	make -C $(GOSPECCY_ROOT)/src/formats install
+
+.PHONY: formats-clean
+formats-clean:
+	make -C $(GOSPECCY_ROOT)/src/formats clean
+
+.PHONY: formats-uninstall
+formats-uninstall:
+	make -C $(GOSPECCY_ROOT)/src/formats uninstall
+endif
+
+
+ifneq ($(TARG),spectrum/readline)
+$(READLINE_PKG_LIB): $(READLINE_FILES)
+	make -C $(GOSPECCY_ROOT)/src/readline install
+
+.PHONY: readline-clean
+readline-clean:
+	make -C $(GOSPECCY_ROOT)/src/readline clean
+
+.PHONY: readline-uninstall
+readline-uninstall:
+	make -C $(GOSPECCY_ROOT)/src/readline uninstall
+endif

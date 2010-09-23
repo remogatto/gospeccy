@@ -1,0 +1,21 @@
+# Definitions of various variables.
+# There shouldn't be any Makefile build rules in this file.
+
+include $(GOROOT)/src/Make.inc
+
+FORMATS_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum/formats.a
+
+FORMATS_FILES=\
+	$(GOSPECCY_ROOT)/src/formats/common.go\
+	$(GOSPECCY_ROOT)/src/formats/SNA.go
+
+
+READLINE_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum/readline.a
+
+READLINE_FILES=\
+	$(GOSPECCY_ROOT)/src/readline/readline.go
+
+
+FRONTEND_FILES=\
+	$(GOSPECCY_ROOT)/src/console.go\
+	$(GOSPECCY_ROOT)/src/gospeccy.go

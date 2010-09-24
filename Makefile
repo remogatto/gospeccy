@@ -31,6 +31,7 @@ SDL_AUDIO_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl/audio.a
 
 PKG_LIBS=\
 	$(FORMATS_PKG_LIB)\
+	$(PRETTYFILE_PKG_LIB)\
 	$(PERF_PKG_LIB)\
 	$(READLINE_PKG_LIB)\
 	$(SDL_PKG_LIB)\
@@ -57,9 +58,8 @@ gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O) $(PKG_LIBS)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)
 
 .PHONY: clean
-clean: formats-clean readline-clean
+clean: formats-clean prettytest-clean readline-clean
 	rm -f gospeccy
-	rm -f src/spectrum/path_gen_*.go
 	rm -rf _obj
 
 .PHONY: gofmt
@@ -75,7 +75,7 @@ install: gospeccy
 	cp -a scripts/* $(SCRIPTS_PATH)
 
 .PHONY: uninstall
-uninstall: formats-uninstall readline-uninstall
+uninstall: formats-uninstall prettytest-uninstall readline-uninstall
 	rm -f $(GOBIN)/gospeccy
 	rm -rf $(DIST_PATH)
 	rm -rf $(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum

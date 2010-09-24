@@ -13,6 +13,18 @@ formats-uninstall:
 	make -C $(GOSPECCY_ROOT)/src/formats uninstall
 endif
 
+ifneq ($(TARG),spectrum/prettytest)
+$(PRETTYTEST_PKG_LIB): $(PRETTYTEST_FILES)
+	make -C $(GOSPECCY_ROOT)/src/prettytest install
+
+.PHONY: prettytest-clean
+prettytest-clean:
+	make -C $(GOSPECCY_ROOT)/src/prettytest clean
+
+.PHONY: prettytest-uninstall
+prettytest-uninstall:
+	make -C $(GOSPECCY_ROOT)/src/prettytest uninstall
+endif
 
 ifneq ($(TARG),spectrum/readline)
 $(READLINE_PKG_LIB): $(READLINE_FILES)

@@ -51,6 +51,7 @@ GOFMT_FILES=\
 	src/spectrum/ula.go\
 	src/spectrum/z80*.go\
 	$(FORMATS_FILES)\
+	$(PRETTYTEST_FILES)\
 	$(FRONTEND_FILES)\
 	$(READLINE_FILES)
 

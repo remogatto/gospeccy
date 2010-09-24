@@ -46,12 +46,17 @@ func testAssertEqual(assert *assertions) {
 	assert.False(assert.Equal("foo", "bar"))
 }
 
+func testPending(assert *assertions) {
+	assert.Pending("testPending")
+}
+
 func TestPrettyTest(t *testing.T) {
 	Run(
 		t,
-		"true/false Assertions",
+		"TestPrettyTest",
 		testAssertTrue,
 		testAssertFalse,
+		testPending,
 	)
 
 	DryRun(

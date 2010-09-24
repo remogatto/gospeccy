@@ -45,6 +45,8 @@ import (
 
 const FAIL = "\033[31;1mFAIL\033[0m"
 const PASS = "\033[32;1mOK\033[0m"
+const NOT_YET_IMPLEMENTED = "\033[33;1mNYI\033[0m"
+
 const formatTag = "\t%s\t"
 
 type assertions struct {
@@ -109,6 +111,10 @@ func (assertion *assertions) False(value bool) bool {
 		assertion.reportPASS(fmt.Sprintf(formatTag + "value == false\n", PASS))
 	}
 	return true
+}
+
+func (assertion *assertions) Pending(msg string) {
+	fmt.Printf(formatTag + "%s\n", NOT_YET_IMPLEMENTED, msg)
 }
 
 // Run tests.

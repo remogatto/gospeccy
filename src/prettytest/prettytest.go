@@ -49,18 +49,18 @@ const NOT_YET_IMPLEMENTED = "\033[33;1mNYI\033[0m"
 
 const formatTag = "\t%s\t"
 
-type assertions struct {
+type Assertions struct {
 	T *testing.T
 	Dry bool
 }
 
-func (assertion *assertions) reportPASS(pass string) {
+func (assertion *Assertions) reportPASS(pass string) {
 	if !assertion.Dry {
 		fmt.Print(pass)
 	}	
 }
 
-func (assertion *assertions) reportFAIL(fail, expected string) {
+func (assertion *Assertions) reportFAIL(fail, expected string) {
 	if !assertion.Dry {
 		fmt.Print(fail)
 		assertion.T.Errorf(expected)
@@ -69,7 +69,7 @@ func (assertion *assertions) reportFAIL(fail, expected string) {
 
 // Assert that the expected value equals the actual value. Return true
 // on success.
-func (assertion *assertions) Equal(exp, act interface{}) bool {
+func (assertion *Assertions) Equal(exp, act interface{}) bool {
 	if exp != act {
 		_, fn, line, _ := runtime.Caller(1)
 		assertion.reportFAIL(
@@ -84,7 +84,7 @@ func (assertion *assertions) Equal(exp, act interface{}) bool {
 }
 
 // Assert that the value is true.
-func (assertion *assertions) True(value bool) bool {
+func (assertion *Assertions) True(value bool) bool {
 	if !value {
 		_, fn, line, _ := runtime.Caller(1)
 		assertion.reportFAIL(
@@ -99,7 +99,7 @@ func (assertion *assertions) True(value bool) bool {
 }
 
 // Assert that the value is false.
-func (assertion *assertions) False(value bool) bool {
+func (assertion *Assertions) False(value bool) bool {
 	if value {
 		_, fn, line, _ := runtime.Caller(1)
 		assertion.reportFAIL(
@@ -113,23 +113,23 @@ func (assertion *assertions) False(value bool) bool {
 	return true
 }
 
-func (assertion *assertions) Pending(msg string) {
+func (assertion *Assertions) Pending(msg string) {
 	fmt.Printf(formatTag + "%s\n", NOT_YET_IMPLEMENTED, msg)
 }
 
 // Run tests.
-func Run(t *testing.T, description string, tests... func (*assertions)) {
+func Run(t *testing.T, description string, tests... func (*Assertions)) {
 	fmt.Printf("\n%s:\n", description)
 	for _, test := range tests {
-		test(&assertions{t, false})
+		test(&Assertions{t, false})
 	}
 }
 
 // Run tests but don't emit output and don't fail on failing
-// assertions.
-func DryRun(t *testing.T, tests... func (*assertions)) {
+// Assertions.
+func DryRun(t *testing.T, tests... func (*Assertions)) {
 	for _, test := range tests {
-		test(&assertions{t, true})
+		test(&Assertions{t, true})
 	}
 }
 

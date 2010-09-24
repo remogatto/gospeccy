@@ -29,24 +29,24 @@ import (
 	"testing"
 )
 
-func testAssertTrue(assert *assertions) {
+func testAssertTrue(assert *Assertions) {
 	if !assert.True(true) {
 		assert.T.Errorf("True(true) should return true\n")
 	}
 }
 
-func testAssertFalse(assert *assertions) {
+func testAssertFalse(assert *Assertions) {
 	if !assert.False(false) {
 		assert.T.Errorf("False(false) should return true\n")
 	}
 }
 
-func testAssertEqual(assert *assertions) {
+func testAssertEqual(assert *Assertions) {
 	assert.True(assert.Equal("foo", "foo"))
 	assert.False(assert.Equal("foo", "bar"))
 }
 
-func testPending(assert *assertions) {
+func testPending(assert *Assertions) {
 	assert.Pending("testPending")
 }
 

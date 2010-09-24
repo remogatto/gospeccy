@@ -207,7 +207,7 @@ func (z80 *Z80) reset() {
 
 // Initializes state from the specified snapshot.
 // Returns nil on success.
-func (z80 *Z80) loadSnapshot(s Snapshot) os.Error {
+func (z80 *Z80) loadSnapshot(s formats.Snapshot) os.Error {
 	cpu := s.CpuState()
 	ula := s.UlaState()
 	mem := s.Memory()
@@ -245,6 +245,8 @@ func (z80 *Z80) loadSnapshot(s Snapshot) os.Error {
 	z80.pc = cpu.PC
 	z80.sp = cpu.SP
 
+	z80.tstates = cpu.Tstate
+
 	// Border color
 	z80.writePort(0xfe, ula.Border&0x07)
 
@@ -256,12 +258,6 @@ func (z80 *Z80) loadSnapshot(s Snapshot) os.Error {
 	if s.RETN() {
 		// Send a RETN
 		z80.ret()
-	}
-
-	if z80.iff1 != 0 {
-		z80.tstates = InterruptLength
-	} else {
-		z80.tstates = 0
 	}
 
 	return nil

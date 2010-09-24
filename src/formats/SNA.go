@@ -2,7 +2,6 @@ package formats
 
 import (
 	"os"
-	"fmt"
 )
 
 type SNA struct {
@@ -15,7 +14,7 @@ type SNA struct {
 // Decode SNA from binary data
 func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
 	if len(data) != 49179 {
-		return nil, os.NewError(fmt.Sprintf("snapshot has invalid size"))
+		return nil, os.NewError("snapshot has invalid size")
 	}
 
 	var s SNA
@@ -57,6 +56,12 @@ func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
 
 	for i := 0; i < 0xc000; i++ {
 		s.mem[i] = data[i+27]
+	}
+
+	if s.cpu.IFF1 != 0 {
+		s.cpu.Tstate = InterruptLength
+	} else {
+		s.cpu.Tstate = 0
 	}
 
 	return &s, nil
@@ -101,7 +106,7 @@ func (s *FullSnapshot) EncodeSNA() ([]byte, os.Error) {
 	sp_afterSimulatedPushPC := s.Cpu.SP - 2
 	if (sp_afterSimulatedPushPC < 0x4000) || (sp_afterSimulatedPushPC > 0xfffe) {
 		// We would be saving the PC to ROM or outside of memory
-		return nil, os.NewError(fmt.Sprintf("failed to simulate a RETN"))
+		return nil, os.NewError("failed to simulate a RETN")
 	}
 
 	data[23] = byte(sp_afterSimulatedPushPC & 0xff)

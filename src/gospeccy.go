@@ -218,7 +218,7 @@ func main() {
 	// Create new emulator core
 	speccy, err := spectrum.NewSpectrum48k(app, spectrum.SystemRomPath("48.rom"))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		app.PrintfMsg("%s", err)
 		app.RequestExit()
 		goto quit
 	}
@@ -228,28 +228,35 @@ func main() {
 		var data []byte
 		var err os.Error
 
-		data, err = ioutil.ReadFile(spectrum.SnaPath(flag.Arg(0)))
+		file := flag.Arg(0)
+
+		data, err = ioutil.ReadFile(spectrum.SnaPath(file))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			app.PrintfMsg("%s", err)
 			app.RequestExit()
 			goto quit
 		}
 
-		var snapshot *formats.SNA
-		snapshot, err = formats.SnapshotData(data).DecodeSNA()
+		var snapshot formats.Snapshot
+		snapshot, err = formats.SnapshotData(data).Decode(file)
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			app.RequestExit()
+			goto quit
+		}
 
 		errChan := make(chan os.Error)
 		speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{spectrum.SnaPath(flag.Arg(0)), snapshot, errChan}
 		err = <-errChan
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			app.PrintfMsg("%s", err)
 			app.RequestExit()
 			goto quit
 		}
 	}
 
 	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
-		fmt.Fprintf(os.Stderr, "%s\n", sdl.GetError())
+		app.PrintfMsg("%s", sdl.GetError())
 		app.RequestExit()
 		goto quit
 	}
@@ -275,7 +282,7 @@ func main() {
 		if err == nil {
 			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 		} else {
-			fmt.Fprintf(os.Stderr, "%s\n", err)
+			app.PrintfMsg("%s", err)
 		}
 	}
 

@@ -106,8 +106,12 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		return
 	}
 
-	var snapshot *formats.SNA
-	snapshot, err = formats.SnapshotData(data).DecodeSNA()
+	var snapshot formats.Snapshot
+	snapshot, err = formats.SnapshotData(data).Decode(path)
+	if err != nil {
+		app.PrintfMsg("%s", err)
+		return
+	}
 
 	errChan := make(chan os.Error)
 	speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{path, snapshot, errChan}

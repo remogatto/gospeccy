@@ -128,7 +128,7 @@ type Cmd_CloseAllAudioReceivers struct {
 }
 type Cmd_LoadSnapshot struct {
 	InformalFilename string // This is only used for logging purposes
-	Snapshot         Snapshot
+	Snapshot         formats.Snapshot
 	ErrChan          chan<- os.Error
 }
 type Cmd_MakeSnapshot struct {
@@ -357,16 +357,9 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 }
 
 
-type Snapshot interface {
-	CpuState() formats.CpuState
-	UlaState() formats.UlaState
-	Memory() *[48 * 1024]byte
-	RETN() bool
-}
-
 // Initializes state from the specified snapshot.
 // Returns nil on success.
-func (speccy *Spectrum48k) loadSnapshot(s Snapshot) os.Error {
+func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
 	err := speccy.reset()
 	if err != nil {
 		return err

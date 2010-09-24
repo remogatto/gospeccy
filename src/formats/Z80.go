@@ -338,6 +338,10 @@ func z80_loadMemBlocks(s *Z80, data []byte) os.Error {
 		return os.NewError("invalid Z80 snapshot")
 	}
 
+	if len(pages) != 3 {
+		return os.NewError("invalid Z80 snapshot")
+	}
+
 	for page, pageData := range pages {
 		var addr, length int
 
@@ -351,6 +355,8 @@ func z80_loadMemBlocks(s *Z80, data []byte) os.Error {
 		case 5:
 			addr = 0xc000
 			length = 0x4000
+		default:
+			return os.NewError("invalid Z80 snapshot")
 		}
 
 		if len(pageData) != length {

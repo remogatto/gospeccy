@@ -1,8 +1,11 @@
 # Definitions of various build rules
 
 ifneq ($(TARG),spectrum/formats)
-$(FORMATS_PKG_LIB): $(FORMATS_FILES)
+$(FORMATS_PKG_LIB): $(GOSPECCY_ROOT)/src/formats/_obj/spectrum/formats.a
 	make -C $(GOSPECCY_ROOT)/src/formats install
+
+$(GOSPECCY_ROOT)/src/formats/_obj/spectrum/formats.a: $(FORMATS_FILES) $(ZIP_PKG_LIB)
+	make -C $(GOSPECCY_ROOT)/src/formats
 
 .PHONY: formats-clean
 formats-clean:
@@ -15,8 +18,11 @@ endif
 
 
 ifneq ($(TARG),spectrum/readline)
-$(READLINE_PKG_LIB): $(READLINE_FILES)
+$(READLINE_PKG_LIB): $(GOSPECCY_ROOT)/src/readline/_obj/spectrum/readline.a
 	make -C $(GOSPECCY_ROOT)/src/readline install
+
+$(GOSPECCY_ROOT)/src/readline/_obj/spectrum/readline.a: $(READLINE_FILES)
+	make -C $(GOSPECCY_ROOT)/src/readline
 
 .PHONY: readline-clean
 readline-clean:
@@ -26,3 +32,8 @@ readline-clean:
 readline-uninstall:
 	make -C $(GOSPECCY_ROOT)/src/readline uninstall
 endif
+
+
+$(ZIP_PKG_LIB):
+	goinstall -u $(ZIP_URL)
+

@@ -33,7 +33,6 @@ import (
 	"flag"
 	"os"
 	"time"
-	"io/ioutil"
 	"os/signal"
 )
 
@@ -225,20 +224,9 @@ func main() {
 
 	// Load snapshot (if any)
 	if flag.Arg(0) != "" {
-		var data []byte
-		var err os.Error
-
 		file := flag.Arg(0)
 
-		data, err = ioutil.ReadFile(spectrum.SnaPath(file))
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
-		}
-
-		var snapshot formats.Snapshot
-		snapshot, err = formats.SnapshotData(data).Decode(file)
+		snapshot, err := formats.ReadSnapshot(spectrum.SnaPath(file))
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			app.RequestExit()

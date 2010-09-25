@@ -100,14 +100,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	data, err := ioutil.ReadFile(spectrum.SnaPath(path))
-	if err != nil {
-		app.PrintfMsg("%s", err)
-		return
-	}
-
-	var snapshot formats.Snapshot
-	snapshot, err = formats.SnapshotData(data).Decode(path)
+	snapshot, err := formats.ReadSnapshot(spectrum.SnaPath(path))
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		return

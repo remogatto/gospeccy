@@ -58,7 +58,7 @@ don't forget to fork and send patches, of course ;)
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
 * Beeper support
 * An interactive console interface
-* SNA format support (48k version)
+* Format support (48k versions): SNA, Z80, snapshot in a ZIP file
 * SDL backend
 * 2x scaler and fullscreen (to be improved)
 
@@ -101,30 +101,31 @@ And see your shining new ZX Spectrum 48k responding :)
 
 For a nice picture of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
 
-To load a SNA file:
+To load a Z80 snapshot file:
 
-    ./gospeccy IMAGE.sna
+    ./gospeccy file.z80
 
 And if you're curious to see what this machine can do, try the simple
 [Fire104b](http://pouet.net/prod.php?which=54076) intro by Andrew
 Gerrand included in the gospeccy distribution! In the gospeccy folder,
 run:
 
-    ./gospeccy -2x snapshots/Syntax09nF.sna
+    ./gospeccy -2x snapshots/Syntax09nF.z80
 
 For more, try searching the Internet find some ZX Spectrum 48k
-games and demos in SNA format (well, good luck with that). For example:
+games and demos in Z80 format. For example:
 
 * [World of spectrum](http://www.worldofspectrum.org/archive.html)
 * [Pouet.net search](http://pouet.net/prodlist.php?platform[]=ZX+Spectrum)
+* [Forever](http://forever.zeroteam.sk/download.htm)
 
-In order to create a SNA file from another 48k format, install the
+In order to create a Z80 file from another 48k format, install
 [FUSE](http://fuse-emulator.sourceforge.net/), load the original file
 into FUSE (e.g: fuse -m48 file.tap), wait until it loads, and save it
-in SNA format as "file.sna". For example, you can test this procedure on
-the [48K](http://pouet.net/prod.php?which=54504) ZX demo. All these things
-will hopefully improve as GoSpeccy matures, so that you won't need to resort
-to using other ZX Spectrum emulators.
+in Z80 format as "file.z80". For example, you can test this procedure on
+the [48K](http://forever.zeroteam.sk/download/f11speccy.zip) ZX demo. All these
+things will hopefully improve as GoSpeccy matures, so that you won't need to
+resort to using other ZX Spectrum emulators.
 
 # Key bindings
 
@@ -142,9 +143,7 @@ For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 Generally, proprietary roms are protected by copyright so none of them
 is included in GoSpeccy (with the exception of the 48k rom that can be
 freely distributed). BTW, you can find tons of roms for the ZX
-Spectrum on the Internet. Take a look at:
-
-* JSSpeccy [svn](http://svn.matt.west.co.tt/svn/jsspec/trunk/snapshots/) repository
+Spectrum on the Internet.
 
 # Convention over Configuration
 
@@ -160,10 +159,10 @@ mkdir -p $HOME/.gospeccy/scripts	# Scripts folder
 
 Then put your snapshots, system roms or script files in the
 corresponding folder. After this, to load
-`$HOME/.gospeccy/sna/somegame.sna` simply execute:
+`$HOME/.gospeccy/sna/somegame.z80` simply execute:
 
 <pre>
-gospeccy somegame.sna
+gospeccy somegame.z80
 </pre>
 
 The same applies to `load()` and `script()` functions in the

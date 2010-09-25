@@ -205,7 +205,13 @@ func (data SnapshotData) decodeZ80_v2() (*Z80, os.Error) {
 
 	// data[35]: no meaning in 48k mode
 	// data[36]: no meaning in 48k mode
-	// data[37]: ignored
+
+	var modifyHardware bool = ((data[37] >> 7) != 0)
+	if modifyHardware {
+		return nil, os.NewError("read Z80 snapshot version 2.01: unsupported hardware mode")
+	}
+
+	// rest of data[37]: ignored
 	// data[38]: ignored
 	// data[39..54]: ignored
 
@@ -253,7 +259,13 @@ func (data SnapshotData) decodeZ80_v3() (*Z80, os.Error) {
 
 	// data[35]: no meaning in 48k mode
 	// data[36]: no meaning in 48k mode
-	// data[37]: ignored
+
+	var modifyHardware bool = ((data[37] >> 7) != 0)
+	if modifyHardware {
+		return nil, os.NewError("read Z80 snapshot version 3.0x: unsupported hardware mode")
+	}
+
+	// rest of data[37]: ignored
 	// data[38]: ignored
 	// data[39..54]: ignored
 

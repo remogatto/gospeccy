@@ -281,7 +281,7 @@ func defineFunctions(w *eval.World) {
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
 		w.DefineVar("load", funcType, funcValue)
 		help_keys.Push("load(path string)")
-		help_vals.Push("Load state from file (SNA format)")
+		help_vals.Push("Load state from file (.SNA, .Z80, .Z80.ZIP, etc)")
 	}
 
 	{

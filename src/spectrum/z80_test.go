@@ -438,31 +438,24 @@ func BenchmarkZ80(b *testing.B) {
 	romPath := "testdata/48.rom"
 	app := NewApplication()
 
-	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
+	speccy, err := NewSpectrum48k(app, romPath)
+	if err != nil {
 		panic(err)
-	} else {
+	}
 
-		data, err := ioutil.ReadFile("testdata/fire.sna")
-		if err != nil {
-			panic(err)
-		}
+	snapshot, err := formats.ReadSnapshot("testdata/fire.sna")
+	if err != nil {
+		panic(err)
+	}
 
-		var snapshot *formats.SNA
-		snapshot, err = formats.SnapshotData(data).DecodeSNA()
-		if err != nil {
-			panic(err)
-		}
+	err = speccy.loadSnapshot(snapshot)
+	if err != nil {
+		panic(err)
+	}
 
-		err = speccy.loadSnapshot(snapshot)
-		if err != nil {
-			panic(err)
-		}
+	b.StartTimer()
 
-		b.StartTimer()
-
-		for i := 0; i < b.N; i++ {
-			speccy.doOpcodes()
-		}
-
+	for i := 0; i < b.N; i++ {
+		speccy.doOpcodes()
 	}
 }

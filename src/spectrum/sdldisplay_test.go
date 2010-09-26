@@ -193,47 +193,40 @@ func BenchmarkRender(b *testing.B) {
 
 	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}, newUnscaledDisplay(), app}
 
-	if speccy, err := NewSpectrum48k(app, "testdata/48.rom"); err != nil {
+	speccy, err := NewSpectrum48k(app, "testdata/48.rom")
+	if err != nil {
 		panic(err)
-	} else {
-		speccy.addDisplay(sdlScreen)
+	}
 
-		data, err := ioutil.ReadFile("testdata/fire.sna")
-		if err != nil {
-			panic(err)
-		}
+	speccy.addDisplay(sdlScreen)
 
-		var snapshot *formats.SNA
-		snapshot, err = formats.SnapshotData(data).DecodeSNA()
-		if err != nil {
-			panic(err)
-		}
+	snapshot, err := formats.ReadSnapshot("testdata/fire.sna")
+	if err != nil {
+		panic(err)
+	}
 
-		err = speccy.loadSnapshot(snapshot)
-		if err != nil {
-			panic(err)
-		}
+	err = speccy.loadSnapshot(snapshot)
+	if err != nil {
+		panic(err)
+	}
 
-		go func() {
-			for i := 0; i < numFrames; i++ {
-				speccy.renderFrame(nil)
-			}
-		}()
-
+	go func() {
 		for i := 0; i < numFrames; i++ {
-			frames[i] = <-sdlScreen.screenChannel
+			speccy.renderFrame(nil)
 		}
+	}()
 
-		var j int
+	for i := 0; i < numFrames; i++ {
+		frames[i] = <-sdlScreen.screenChannel
+	}
 
-		b.StartTimer()
-		for i := 0; i < b.N; i++ {
-			j %= numFrames
-			sdlScreen.render(frames[j], prevFrame)
-			prevFrame = frames[j]
-			j++
-		}
-
+	var j int
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		j %= numFrames
+		sdlScreen.render(frames[j], prevFrame)
+		prevFrame = frames[j]
+		j++
 	}
 
 	sdl.Quit()

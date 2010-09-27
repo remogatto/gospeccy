@@ -29,39 +29,59 @@ import (
 	"testing"
 )
 
-func testAssertTrue(assert *Assertions) {
-	if !assert.True(true) {
-		assert.T.Errorf("True(true) should return true\n")
+func testAssertTrue(assert *Assertions) *Assertions {
+	if assert.True(true).IsFailed() {
+		assert.T.Errorf("True(true) should not fail\n")
 	}
-}
-
-func testAssertFalse(assert *Assertions) {
-	if !assert.False(false) {
-		assert.T.Errorf("False(false) should return true\n")
+	if !assert.True(false).IsFailed() {
+		assert.T.Errorf("True(false) should fail\n")
 	}
+	return assert
 }
 
-func testAssertEqual(assert *Assertions) {
-	assert.True(assert.Equal("foo", "foo"))
-	assert.False(assert.Equal("foo", "bar"))
+func testAssertFalse(assert *Assertions) *Assertions {
+	if assert.False(false).IsFailed() {
+		assert.T.Errorf("False(false) should not fail\n")
+	}
+	if !assert.False(true).IsFailed() {
+		assert.T.Errorf("False(true) should fail\n")
+	}
+	return assert
 }
 
-func testPending(assert *Assertions) {
-	assert.Pending("testPending")
+func testAssertEqual(assert *Assertions) *Assertions {
+	if assert.Equal("foo", "foo").IsFailed() {
+		assert.T.Errorf("Equal(foo, foo) should not fail")
+	}
+	if !assert.Equal("foo", "bar").IsFailed() {
+		assert.T.Errorf("Equal(foo, bar) should fail")
+	}
+	return assert
 }
 
-func TestPrettyTest(t *testing.T) {
-	Run(
-		t,
-		"TestPrettyTest",
-		testAssertTrue,
-		testAssertFalse,
-		testPending,
-	)
-
+func TestBaseAssertions(t *testing.T) {
 	DryRun(
 		t,
+		testAssertTrue,
+		testAssertFalse,
 		testAssertEqual,
 	)
-		
 }
+
+func testPending(assert *Assertions) *Assertions {
+	return assert.Pending()
+}
+
+func testPass(assert *Assertions) *Assertions {
+	assert.True(true)
+	return assert
+}
+
+func TestRunner(t *testing.T) {
+	Run(
+		t,
+		testPending,
+		testPass,
+	)
+}
+

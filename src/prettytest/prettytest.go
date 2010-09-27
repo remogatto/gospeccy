@@ -43,92 +43,117 @@ import (
 	"fmt"
 )
 
-const FAIL = "\033[31;1mFAIL\033[0m"
-const PASS = "\033[32;1mOK\033[0m"
-const NOT_YET_IMPLEMENTED = "\033[33;1mNYI\033[0m"
+const LABEL_FAIL = "\033[31;1mFAIL\033[0m"
+const LABEL_PASS = "\033[32;1mOK\033[0m"
+const LABEL_PENDING= "\033[33;1mPENDING\033[0m"
+
+const (
+	STATUS_PASS = iota
+	STATUS_FAIL
+	STATUS_PENDING
+)
 
 const formatTag = "\t%s\t"
 
+type callerInfo struct {
+	name, fn string
+	line int
+}
+
 type Assertions struct {
 	T   *testing.T
+	Status byte
 	Dry bool
+
+	callerInfo *callerInfo
 }
 
-func (assertion *Assertions) reportPASS(pass string) {
-	if !assertion.Dry {
-		fmt.Print(pass)
+func newCallerInfo(skip int) *callerInfo {
+	pc, fn, line, ok := runtime.Caller(skip)
+	if !ok {
+		panic("An error occured while retrieving caller info!")
 	}
+	callerName := runtime.FuncForPC(pc).Name()
+	return &callerInfo{callerName, fn, line}
 }
 
-func (assertion *Assertions) reportFAIL(fail, expected string) {
+func (assertion *Assertions) fail(exp, act interface{}, info *callerInfo) *Assertions {
 	if !assertion.Dry {
-		fmt.Print(fail)
-		assertion.T.Errorf(expected)
+		assertion.T.Errorf("Expected %s but got %s -- %s:%d\n", exp, act, info.fn, info.line)
 	}
+	assertion.Status = STATUS_FAIL
+	return assertion
+}
+
+func (assertion *Assertions) setup() *Assertions {
+	assertion.callerInfo = newCallerInfo(3)
+	return assertion
 }
 
 // Assert that the expected value equals the actual value. Return true
 // on success.
-func (assertion *Assertions) Equal(exp, act interface{}) bool {
+func (assertion *Assertions) Equal(exp, act interface{}) *Assertions {
+	assertion.setup()
 	if exp != act {
-		_, fn, line, _ := runtime.Caller(1)
-		assertion.reportFAIL(
-			fmt.Sprintf(formatTag+"%s == %s\n", FAIL, act, exp),
-			fmt.Sprintf("Expected %s but got %s -- %s:%d", exp, act, fn, line),
-		)
-		return false
-	} else {
-		assertion.reportPASS(fmt.Sprintf(formatTag+"%s == %s\n", PASS, act, exp))
+		return assertion.fail(exp, act, assertion.callerInfo)
 	}
-	return true
+	return assertion
 }
 
 // Assert that the value is true.
-func (assertion *Assertions) True(value bool) bool {
+func (assertion *Assertions) True(value bool) *Assertions {
+	assertion.setup()
 	if !value {
-		_, fn, line, _ := runtime.Caller(1)
-		assertion.reportFAIL(
-			fmt.Sprintf(formatTag+"value == true\n", FAIL),
-			fmt.Sprintf("Expected true but got false -- %s:%d", fn, line),
-		)
-		return false
-	} else {
-		assertion.reportPASS(fmt.Sprintf(formatTag+"value == true\n", PASS))
+		return assertion.fail("true", "false", assertion.callerInfo)
 	}
-	return true
+	return assertion
 }
 
 // Assert that the value is false.
-func (assertion *Assertions) False(value bool) bool {
+func (assertion *Assertions) False(value bool) *Assertions {
+	assertion.setup()
 	if value {
-		_, fn, line, _ := runtime.Caller(1)
-		assertion.reportFAIL(
-			fmt.Sprintf(formatTag+"value == false\n", FAIL),
-			fmt.Sprintf("Expected false but got true -- %s:%d", fn, line),
-		)
-		return false
-	} else {
-		assertion.reportPASS(fmt.Sprintf(formatTag+"value == false\n", PASS))
+		return assertion.fail("false", "true", assertion.callerInfo)
 	}
-	return true
+	return assertion
 }
 
-func (assertion *Assertions) Pending(msg string) {
-	fmt.Printf(formatTag+"%s\n", NOT_YET_IMPLEMENTED, msg)
+// Mark the test function as pending.
+func (assertion *Assertions) Pending() *Assertions {
+	assertion.setup()
+	assertion.Status = STATUS_PENDING
+	return assertion
+}
+
+// Check if the test function has failed.
+func (assertion *Assertions) IsFailed() bool {
+	return assertion.Status == STATUS_FAIL
 }
 
 // Run tests.
-func Run(t *testing.T, description string, tests ...func(*Assertions)) {
-	fmt.Printf("\n%s:\n", description)
+func Run(t *testing.T, tests ...func(*Assertions) *Assertions) {
+	pc, _, _, _ := runtime.Caller(1)
+	callerName := runtime.FuncForPC(pc).Name()
+	fmt.Printf("\n%s:\n", callerName)
 	for _, test := range tests {
-		test(&Assertions{t, false})
+		assertions := &Assertions{t, STATUS_PASS, false, nil}
+		test(assertions)
+		switch assertions.Status {
+		case STATUS_FAIL:
+			fmt.Printf(formatTag+"%s\n", LABEL_FAIL, assertions.callerInfo.name)
+		case STATUS_PASS:
+			fmt.Printf(formatTag + "%s\n", LABEL_PASS, assertions.callerInfo.name)
+		case STATUS_PENDING:
+			fmt.Printf(formatTag + "%s\n", LABEL_PENDING, assertions.callerInfo.name)
+			
+		}
 	}
 }
 
 // Run tests but don't emit output and don't fail on failing
 // assertions.
-func DryRun(t *testing.T, tests ...func(*Assertions)) {
+func DryRun(t *testing.T, tests ...func(*Assertions) *Assertions) {
 	for _, test := range tests {
-		test(&Assertions{t, true})
+		test(&Assertions{t, STATUS_PASS, true, nil})
 	}
 }

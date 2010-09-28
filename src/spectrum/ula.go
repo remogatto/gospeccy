@@ -294,6 +294,7 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 		display.missedChanges = nil
 	}
 
+	displayData.completionTime_orNil = completionTime_orNil
 	displayChannel := display.displayReceiver.getDisplayDataChannel()
 	nonBlockingSend := displayChannel <- displayData
 
@@ -342,4 +343,7 @@ func (a *DisplayData) add(b *DisplayData) {
 			}
 		}
 	}
+
+	a.border = b.border
+	a.borderEvents = b.borderEvents
 }

@@ -245,20 +245,15 @@ func (z80 *Z80) loadSnapshot(s formats.Snapshot) os.Error {
 	z80.pc = cpu.PC
 	z80.sp = cpu.SP
 
-	z80.tstates = cpu.Tstate
-
 	// Border color
-	z80.writePort(0xfe, ula.Border&0x07)
+	z80.ports.writePortInternal(0xfe, ula.Border&0x07, /*contend*/ false)
 
 	// Populate memory
 	for i := 0; i < 0xc000; i++ {
 		z80.memory.Data()[i+0x4000] = mem[i]
 	}
 
-	if s.RETN() {
-		// Send a RETN
-		z80.ret()
-	}
+	z80.tstates = cpu.Tstate
 
 	return nil
 }
@@ -318,45 +313,40 @@ func joinBytes(h, l byte) uint16 {
 /* Process a z80 maskable interrupt */
 func (z80 *Z80) interrupt() {
 	if z80.iff1 != 0 {
-
 		if z80.halted {
 			z80.pc++
 			z80.halted = false
 		}
 
-		z80.iff1, z80.iff2 = 0, 0
-
-		pch, pcl := splitWord(z80.pc)
-
-		z80.sp--
-
-		z80.memory.writeByte(z80.sp, pch)
-
-		z80.sp--
-
-		z80.memory.writeByte(z80.sp, pcl)
+		z80.tstates += 7
 
 		z80.r = (z80.r + 1) & 0x7f
+		z80.iff1, z80.iff2 = 0, 0
+
+		// push PC
+		{
+			pch, pcl := splitWord(z80.pc)
+
+			z80.sp--
+			z80.memory.writeByte(z80.sp, pch)
+			z80.sp--
+			z80.memory.writeByte(z80.sp, pcl)
+		}
 
 		switch z80.im {
-		case 0:
+		case 0, 1:
 			z80.pc = 0x0038
-			break
-		case 1:
-			z80.pc = 0x0038
-			break
+
 		case 2:
-			var inttemp uint16 = (0x100 * uint16(z80.i)) + 0xff
+			var inttemp uint16 = (uint16(z80.i) << 8) | 0xff
 			pcl := z80.memory.readByte(inttemp)
 			inttemp++
 			pch := z80.memory.readByte(inttemp)
 			z80.pc = joinBytes(pch, pcl)
-			break
+
 		default:
 			panic("Unknown interrupt mode")
 		}
-
-		z80.tstates += InterruptLength
 	}
 }
 
@@ -693,6 +683,16 @@ func (z80 *Z80) doOpcodes() {
 		z80_localInstructionCounter++
 
 		opcodesMap[opcode](z80)
+	}
+
+	if z80.halted {
+		// Repeat emulating the HALT instruction until 'z80.eventNextEvent'
+		for z80.tstates < z80.eventNextEvent {
+			z80.memory.contendRead(z80.pc, 4)
+
+			z80.r = (z80.r + 1) & 0x7f
+			z80_localInstructionCounter++
+		}
 	}
 
 	// Update emulation efficiency counters

@@ -41,6 +41,7 @@ GOFMT_FILES=\
 	src/console.go\
 	src/gospeccy.go\
 	src/spectrum/application.go\
+	src/spectrum/display.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
 	src/spectrum/port.go\

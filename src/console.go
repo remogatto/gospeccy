@@ -506,7 +506,7 @@ func readCode(app *spectrum.Application, code chan string, no_more_code chan<- b
 // This function exits in two cases: if the application was terminated (from outside of this function),
 // or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application
 // to terminate (controlled by the 'exitAppIfEndOfInput' parameter).
-func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitAppIfEndOfInput bool) {
+func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitAppIfEndOfInput bool, startupFinished chan<- byte) {
 	if app != nil {
 		panic("running multiple consoles is unsupported")
 	}
@@ -521,6 +521,7 @@ func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitA
 	{
 		var err os.Error
 		err = runScript(w, STARTUP_SCRIPT, /*optional*/ false)
+		startupFinished <- 0
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			app.RequestExit()

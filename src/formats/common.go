@@ -37,7 +37,6 @@ type Snapshot interface {
 	CpuState() CpuState
 	UlaState() UlaState
 	Memory() *[48 * 1024]byte
-	RETN() bool
 }
 
 

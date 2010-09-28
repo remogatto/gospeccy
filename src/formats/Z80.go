@@ -446,7 +446,3 @@ func (s *Z80) UlaState() UlaState {
 func (s *Z80) Memory() *[48 * 1024]byte {
 	return &s.mem
 }
-
-func (s *Z80) RETN() bool {
-	return false
-}

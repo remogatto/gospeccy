@@ -50,7 +50,13 @@ func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
 	s.cpu.F = data[21]
 	s.cpu.A = data[22]
 	s.cpu.SP = uint16(data[23]) | (uint16(data[24]) << 8)
-	s.cpu.IM = data[25]
+
+	switch IM := data[25]; IM {
+	case 0, 1, 2:
+		s.cpu.IM = IM
+	default:
+		return nil, os.NewError("invalid interrupt mode")
+	}
 
 	s.ula.Border = data[26] & 0x07
 
@@ -58,11 +64,10 @@ func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
 		s.mem[i] = data[i+27]
 	}
 
-	if s.cpu.IFF1 != 0 {
-		s.cpu.Tstate = InterruptLength
-	} else {
-		s.cpu.Tstate = 0
-	}
+	s.cpu.Tstate = 0
+
+	// Start by executing RETN at address 0x72 in ROM
+	s.cpu.PC = 0x72
 
 	return &s, nil
 }
@@ -140,8 +145,4 @@ func (s *SNA) UlaState() UlaState {
 
 func (s *SNA) Memory() *[48 * 1024]byte {
 	return &s.mem
-}
-
-func (s *SNA) RETN() bool {
-	return true
 }

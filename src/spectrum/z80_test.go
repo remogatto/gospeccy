@@ -155,28 +155,36 @@ type testPort struct {
 	z80 *Z80
 }
 
-func (p *testPort) readPort(port uint16) byte {
-	var r byte = byte(port >> 8)
-	p.contendPortPreio(port)
 
-	events.Push(fmt.Sprintf("%5d PR %04x %02x\n", p.z80.tstates, port, r))
+func (p *testPort) readPortInternal(address uint16, contend bool) byte {
+	var r byte = byte(address >> 8)
+	p.contendPortPreio(address)
 
-	p.contendPortPostio(port)
+	events.Push(fmt.Sprintf("%5d PR %04x %02x\n", p.z80.tstates, address, r))
+
+	p.contendPortPostio(address)
 	return r
 }
 
+func (p *testPort) readPort(port uint16) byte {
+	return p.readPortInternal(port, false)
+}
+
+func (p *testPort) writePortInternal(address uint16, b byte, contend bool) {
+	p.contendPortPreio(address)
+
+	events.Push(fmt.Sprintf("%5d PW %04x %02x\n", p.z80.tstates, address, b))
+
+	p.contendPortPostio(address)
+}
+
 func (p *testPort) writePort(port uint16, b byte) {
-	p.contendPortPreio(port)
-
-	events.Push(fmt.Sprintf("%5d PW %04x %02x\n", p.z80.tstates, port, b))
-
-	p.contendPortPostio(port)
+	p.writePortInternal(port, b, false)
 }
 
 func (p *testPort) contendPortPreio(port uint16) {
 	if (port & 0xc000) == 0x4000 {
 		events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
-
 	}
 	p.z80.tstates++
 }
@@ -438,31 +446,24 @@ func BenchmarkZ80(b *testing.B) {
 	romPath := "testdata/48.rom"
 	app := NewApplication()
 
-	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
+	speccy, err := NewSpectrum48k(app, romPath)
+	if err != nil {
 		panic(err)
-	} else {
+	}
 
-		data, err := ioutil.ReadFile("testdata/fire.sna")
-		if err != nil {
-			panic(err)
-		}
+	snapshot, err := formats.ReadSnapshot("testdata/fire.sna")
+	if err != nil {
+		panic(err)
+	}
 
-		var snapshot *formats.SNA
-		snapshot, err = formats.SnapshotData(data).DecodeSNA()
-		if err != nil {
-			panic(err)
-		}
+	err = speccy.loadSnapshot(snapshot)
+	if err != nil {
+		panic(err)
+	}
 
-		err = speccy.loadSnapshot(snapshot)
-		if err != nil {
-			panic(err)
-		}
+	b.StartTimer()
 
-		b.StartTimer()
-
-		for i := 0; i < b.N; i++ {
-			speccy.doOpcodes()
-		}
-
+	for i := 0; i < b.N; i++ {
+		speccy.Cpu.doOpcodes()
 	}
 }

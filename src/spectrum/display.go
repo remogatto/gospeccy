@@ -37,7 +37,7 @@ const (
 	ScreenHeight_Attr     = ScreenHeight / 8 // =24
 
 	ScreenBorderX = 32
-	ScreenBorderY = 24
+	ScreenBorderY = 32
 
 	// Screen dimensions, including the border
 	TotalScreenWidth  = ScreenWidth + ScreenBorderX*2
@@ -60,7 +60,7 @@ const (
 
 	TSTATES_PER_LINE = (LINE_RIGHT_BORDER + LINE_SCREEN + LINE_LEFT_BORDER + LINE_RETRACE) // 224 T states
 
-	FIRST_SCREEN_BYTE = 14336 // T states before the first byte of the screen (16384) is displayed
+	FIRST_SCREEN_BYTE = 14336 // T-state when the first byte of the screen (16384) is displayed
 
 	// Vertical
 	LINES_TOP     = 64
@@ -71,7 +71,8 @@ const (
 
 	// The T-state which corresponds to pixel (0,0) on the (SDL) surface.
 	// That pixel belongs to the border.
-	DISPLAY_START = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE)
+	BORDER_TSTATE_ADJUSTMENT = 4
+	DISPLAY_START            = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE + BORDER_TSTATE_ADJUSTMENT)
 )
 
 
@@ -84,21 +85,21 @@ func (color RGBA) value32() uint32 {
 }
 
 var palette [16]uint32 = [16]uint32{
-	RGBA{0  , 0  , 0  , 255}.value32(),
-	RGBA{0  , 0  , 192, 255}.value32(),
-	RGBA{192, 0  , 0  , 255}.value32(),
-	RGBA{192, 0  , 192, 255}.value32(),
-	RGBA{0  , 192, 0  , 255}.value32(),
-	RGBA{0  , 192, 192, 255}.value32(),
-	RGBA{192, 192, 0  , 255}.value32(),
+	RGBA{000, 000, 000, 255}.value32(),
+	RGBA{000, 000, 192, 255}.value32(),
+	RGBA{192, 000, 000, 255}.value32(),
+	RGBA{192, 000, 192, 255}.value32(),
+	RGBA{000, 192, 000, 255}.value32(),
+	RGBA{000, 192, 192, 255}.value32(),
+	RGBA{192, 192, 000, 255}.value32(),
 	RGBA{192, 192, 192, 255}.value32(),
-	RGBA{0  , 0  , 0  , 255}.value32(),
-	RGBA{0  , 0  , 255, 255}.value32(),
-	RGBA{255, 0  , 0  , 255}.value32(),
-	RGBA{255, 0  , 255, 255}.value32(),
-	RGBA{0  , 255, 0  , 255}.value32(),
-	RGBA{0  , 255, 255, 255}.value32(),
-	RGBA{255, 255, 0  , 255}.value32(),
+	RGBA{000, 000, 000, 255}.value32(),
+	RGBA{000, 000, 255, 255}.value32(),
+	RGBA{255, 000, 000, 255}.value32(),
+	RGBA{255, 000, 255, 255}.value32(),
+	RGBA{000, 255, 000, 255}.value32(),
+	RGBA{000, 255, 255, 255}.value32(),
+	RGBA{255, 255, 000, 255}.value32(),
 	RGBA{255, 255, 255, 255}.value32(),
 }
 
@@ -155,5 +156,20 @@ func init() {
 	for y := uint8(0); y < ScreenHeight; y++ {
 		addr := xy_to_screenAddr(0, y)
 		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
+	}
+}
+
+
+func init() {
+	// Some sanity checks
+	assert(ScreenBorderX <= LINE_RIGHT_BORDER*PIXELS_PER_TSTATE)
+	assert(ScreenBorderY <= LINE_RIGHT_BORDER*PIXELS_PER_TSTATE)
+	assert(ScreenBorderY <= LINES_TOP)
+	assert(ScreenBorderY <= LINES_BOTTOM)
+}
+
+func assert(condition bool) {
+	if !condition {
+		panic("internal error")
 	}
 }

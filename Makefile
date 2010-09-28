@@ -42,6 +42,7 @@ GOFMT_FILES=\
 	src/console.go\
 	src/gospeccy.go\
 	src/spectrum/application.go\
+	src/spectrum/display.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
 	src/spectrum/port.go\
@@ -55,7 +56,7 @@ GOFMT_FILES=\
 	$(FRONTEND_FILES)\
 	$(READLINE_FILES)
 
-gospeccy: _obj _obj/spectrum.a _obj/gospeccy.$(O) $(PKG_LIBS)
+gospeccy: _obj _obj/gospeccy.$(O)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)
 
 .PHONY: clean
@@ -84,7 +85,7 @@ uninstall: formats-uninstall prettytest-uninstall readline-uninstall
 _obj:
 	mkdir _obj
 
-_obj/gospeccy.$(O): $(FRONTEND_FILES) _obj/spectrum.a
+_obj/gospeccy.$(O): $(FRONTEND_FILES) _obj/spectrum.a $(PKG_LIBS)
 	$(GC) -I./_obj -o $@ $(FRONTEND_FILES)
 
 _obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)

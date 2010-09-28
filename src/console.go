@@ -100,14 +100,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	data, err := ioutil.ReadFile(spectrum.SnaPath(path))
-	if err != nil {
-		app.PrintfMsg("%s", err)
-		return
-	}
-
-	var snapshot formats.Snapshot
-	snapshot, err = formats.SnapshotData(data).Decode(path)
+	snapshot, err := formats.ReadSnapshot(spectrum.SnaPath(path))
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		return
@@ -288,7 +281,7 @@ func defineFunctions(w *eval.World) {
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
 		w.DefineVar("load", funcType, funcValue)
 		help_keys.Push("load(path string)")
-		help_vals.Push("Load state from file (SNA format)")
+		help_vals.Push("Load state from file (.SNA, .Z80, .Z80.ZIP, etc)")
 	}
 
 	{
@@ -513,7 +506,7 @@ func readCode(app *spectrum.Application, code chan string, no_more_code chan<- b
 // This function exits in two cases: if the application was terminated (from outside of this function),
 // or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application
 // to terminate (controlled by the 'exitAppIfEndOfInput' parameter).
-func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitAppIfEndOfInput bool) {
+func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitAppIfEndOfInput bool, startupFinished chan<- byte) {
 	if app != nil {
 		panic("running multiple consoles is unsupported")
 	}
@@ -528,6 +521,7 @@ func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitA
 	{
 		var err os.Error
 		err = runScript(w, STARTUP_SCRIPT, /*optional*/ false)
+		startupFinished <- 0
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			app.RequestExit()

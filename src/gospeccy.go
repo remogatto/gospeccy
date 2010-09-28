@@ -32,9 +32,9 @@ import (
 	"fmt"
 	"flag"
 	"os"
-	"time"
-	"io/ioutil"
 	"os/signal"
+	"runtime"
+	"time"
 )
 
 // A Go routine for processing SDL events.
@@ -181,6 +181,12 @@ func (h *handler_SIGTERM) HandleSignal(s signal.Signal) {
 }
 
 func main() {
+	// Use at least two OS threads. This helps to prevent sound buffer underflows
+	// in case SDL rendering is consuming too much CPU.
+	if runtime.GOMAXPROCS(-1) < 2 {
+		runtime.GOMAXPROCS(2)
+	}
+
 	help := flag.Bool("help", false, "Show usage")
 	scale2x := flag.Bool("2x", false, "2x display scaler")
 	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
@@ -225,20 +231,9 @@ func main() {
 
 	// Load snapshot (if any)
 	if flag.Arg(0) != "" {
-		var data []byte
-		var err os.Error
-
 		file := flag.Arg(0)
 
-		data, err = ioutil.ReadFile(spectrum.SnaPath(file))
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
-		}
-
-		var snapshot formats.Snapshot
-		snapshot, err = formats.SnapshotData(data).Decode(file)
+		snapshot, err := formats.ReadSnapshot(spectrum.SnaPath(file))
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			app.RequestExit()
@@ -261,37 +256,55 @@ func main() {
 		goto quit
 	}
 
-	// Setup the display
+	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
+
+	// Run startup scripts and start the console goroutine.
+	// The startup scripts may create a display/audio receiver.
 	{
-		if *fullscreen {
-			*scale2x = true
-		}
+		startupFinished := make(chan byte)
+		go runConsole(app, speccy, true, startupFinished)
+		<-startupFinished
 
-		if *scale2x {
-			speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen2x(app, *fullscreen)}
-		} else {
-			speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
+		if app.TerminationInProgress() || closed(app.HasTerminated) {
+			goto quit
 		}
-
-		sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 	}
 
-	// Setup the audio
-	if *sound {
-		audio, err := spectrum.NewSDLAudio(app)
-		if err == nil {
-			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
-		} else {
-			app.PrintfMsg("%s", err)
+	{
+		n := make(chan uint)
+
+		// Setup the display
+		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
+		if <-n == 0 {
+			if *fullscreen {
+				*scale2x = true
+			}
+
+			if *scale2x {
+				speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen2x(app, *fullscreen)}
+			} else {
+				speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
+			}
 		}
+
+		// Setup the audio
+		speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
+		if *sound && (<-n == 0) {
+			audio, err := spectrum.NewSDLAudio(app)
+			if err == nil {
+				speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
+			} else {
+				app.PrintfMsg("%s", err)
+			}
+		}
+
+		close(n)
 	}
 
 	// Begin speccy emulation
 	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
 	go emulatorLoop(app.NewEventLoop(), speccy)
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
-
-	go runConsole(app, speccy, true)
 
 quit:
 	<-app.HasTerminated

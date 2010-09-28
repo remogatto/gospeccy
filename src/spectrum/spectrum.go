@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sync"
 	"container/vector"
 )
 
@@ -53,8 +52,6 @@ type Spectrum48k struct {
 
 	// A vector of 'AudioReceiver', initially empty
 	audioReceivers vector.Vector
-
-	mutex sync.RWMutex
 
 	app *Application
 }
@@ -108,6 +105,9 @@ type Cmd_RenderFrame struct {
 	// The time is obtained via a call to time.Nanoseconds().
 	CompletionTime_orNil chan<- int64
 }
+type Cmd_GetNumDisplayReceivers struct {
+	N chan<- uint
+}
 type Cmd_AddDisplay struct {
 	Display DisplayReceiver
 }
@@ -119,6 +119,9 @@ type Cmd_SetFPS struct {
 }
 type Cmd_SetUlaEmulationAccuracy struct {
 	AccurateEmulation bool
+}
+type Cmd_GetNumAudioReceivers struct {
+	N chan<- uint
 }
 type Cmd_AddAudioReceiver struct {
 	Receiver AudioReceiver
@@ -159,6 +162,9 @@ func commandLoop(speccy *Spectrum48k) {
 			case Cmd_RenderFrame:
 				speccy.renderFrame(cmd.CompletionTime_orNil)
 
+			case Cmd_GetNumDisplayReceivers:
+				cmd.N <- uint(speccy.displays.Len())
+
 			case Cmd_AddDisplay:
 				speccy.addDisplay(cmd.Display)
 
@@ -173,6 +179,9 @@ func commandLoop(speccy *Spectrum48k) {
 
 			case Cmd_SetUlaEmulationAccuracy:
 				speccy.ula.setEmulationAccuracy(cmd.AccurateEmulation)
+
+			case Cmd_GetNumAudioReceivers:
+				cmd.N <- uint(speccy.audioReceivers.Len())
 
 			case Cmd_AddAudioReceiver:
 				speccy.addAudioReceiver(cmd.Receiver)
@@ -255,18 +264,14 @@ func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
 		missedChanges:   nil,
 	}
 
-	speccy.mutex.Lock()
 	speccy.displays.Push(d)
-	speccy.mutex.Unlock()
 }
 
 func (speccy *Spectrum48k) closeAllDisplays() {
 	var displays vector.Vector
 	{
-		speccy.mutex.Lock()
 		displays = speccy.displays
 		speccy.displays = vector.Vector{}
-		speccy.mutex.Unlock()
 	}
 
 	for i, d := range displays {
@@ -289,18 +294,14 @@ func (speccy *Spectrum48k) setFPS(newFPS float) {
 }
 
 func (speccy *Spectrum48k) addAudioReceiver(receiver AudioReceiver) {
-	speccy.mutex.Lock()
 	speccy.audioReceivers.Push(receiver)
-	speccy.mutex.Unlock()
 }
 
 func (speccy *Spectrum48k) closeAllAudioReceivers() {
 	var audioReceivers vector.Vector
 	{
-		speccy.mutex.Lock()
 		audioReceivers = speccy.audioReceivers
 		speccy.audioReceivers = vector.Vector{}
-		speccy.mutex.Unlock()
 	}
 
 	for _, r := range audioReceivers {
@@ -308,22 +309,17 @@ func (speccy *Spectrum48k) closeAllAudioReceivers() {
 	}
 }
 
-// Execute the number of T-states corresponding to one screen frame
-func (speccy *Spectrum48k) doOpcodes() {
-	speccy.Cpu.eventNextEvent = TStatesPerFrame
-	speccy.Cpu.tstates = (speccy.Cpu.tstates % TStatesPerFrame)
-	speccy.Cpu.doOpcodes()
-}
-
 func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Ports.frame_begin()
 	speccy.ula.frame_begin()
 
+	// Execute instructions corresponding to one screen frame
+	speccy.Cpu.tstates = (speccy.Cpu.tstates % TStatesPerFrame)
 	speccy.Cpu.interrupt()
-	speccy.doOpcodes()
+	speccy.Cpu.eventNextEvent = TStatesPerFrame
+	speccy.Cpu.doOpcodes()
 
 	// Send display data to display backend(s)
-	speccy.mutex.RLock()
 	{
 		firstDisplay := true
 		for _, display := range speccy.displays {
@@ -337,10 +333,8 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 			firstDisplay = false
 		}
 	}
-	speccy.mutex.RUnlock()
 
 	// Send audio data to audio backend(s)
-	speccy.mutex.RLock()
 	{
 		audioData := AudioData{
 			fps:          speccy.currentFPS,
@@ -351,7 +345,6 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 			audioReceiver.(AudioReceiver).getAudioDataChannel() <- &audioData
 		}
 	}
-	speccy.mutex.RUnlock()
 
 	speccy.Ports.frame_releaseMemory()
 }

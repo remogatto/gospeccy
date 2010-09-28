@@ -28,6 +28,8 @@ package spectrum
 type PortAccessor interface {
 	readPort(address uint16) byte
 	writePort(address uint16, b byte)
+	readPortInternal(address uint16, contend bool) byte
+	writePortInternal(address uint16, b byte, contend bool)
 	contendPortPreio(address uint16)
 	contendPortPostio(address uint16)
 
@@ -115,8 +117,16 @@ func (p *Ports) getBeeperEvents() *BeeperEvent {
 }
 
 func (p *Ports) readPort(address uint16) byte {
+	return p.readPortInternal(address, true)
+}
+
+func (p *Ports) readPortInternal(address uint16, contend bool) byte {
+	if contend {
+		p.contendPortPreio(address)
+		p.contendPortPostio(address)
+	}
+
 	var result byte = 0xff
-	p.contendPortPreio(address)
 
 	if (address & 0x0001) == 0x0000 {
 		// Read keyboard
@@ -126,22 +136,26 @@ func (p *Ports) readPort(address uint16) byte {
 				result &= p.speccy.Keyboard.GetKeyState(row)
 			}
 		}
-		return result
 	} else if (address & 0x00e0) == 0x0000 {
 		// Kempston joystick: treat this as attached but
 		// unused (for the benefit of Manic Miner)
-		return 0x00
+		result = 0x00
 	} else {
-		return 0xff // Unassigned port
+		// Unassigned port
+		result = 0xff
 	}
-
-	p.contendPortPostio(address)
 
 	return result
 }
 
 func (p *Ports) writePort(address uint16, b byte) {
-	p.contendPortPreio(address)
+	p.writePortInternal(address, b, true)
+}
+
+func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
+	if contend {
+		p.contendPortPreio(address)
+	}
 
 	if (address & 0x0001) == 0 {
 		color := (b & 0x07)
@@ -160,7 +174,9 @@ func (p *Ports) writePort(address uint16, b byte) {
 		}
 	}
 
-	p.contendPortPostio(address)
+	if contend {
+		p.contendPortPostio(address)
+	}
 }
 
 func (p *Ports) contend(time uint) {

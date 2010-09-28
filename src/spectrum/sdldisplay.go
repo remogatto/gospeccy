@@ -323,17 +323,53 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 // ==============
 
 func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint) {
-	if scale == 1 {
-		surface.UpdateRects(*surfaceChanges)
-	} else {
-		scaledRects := make([]sdl.Rect, len(*surfaceChanges))
+	// Implementation note:
+	//   This function does NOT make use of 'surface.UpdateRects',
+	//   although in theory that would be much more efficient than 'surface.UpdateRect'.
+	//   The reason is that using multiple rectangles makes SDL send *multiple*
+	//   messages the X server, thus causing serious visual artifacting.
+	//   For example, the Overscan demo by Busy Soft looks really bad
+	//   if 'surface.UpdateRects' is used.
+	//
+	//   However, the current implementation should be more efficient
+	//   than simply calling 'surface.Flip'.
 
-		for i, r := range *surfaceChanges {
-			scaledRects[i] = sdl.Rect{int16(scale) * r.X, int16(scale) * r.Y, uint16(scale) * r.W, uint16(scale) * r.H}
-		}
-
-		surface.UpdateRects(scaledRects)
+	n := len(*surfaceChanges)
+	if n == 0 {
+		return
 	}
+
+	minx := int((*surfaceChanges)[0].X)
+	miny := int((*surfaceChanges)[0].Y)
+	maxx := minx + int((*surfaceChanges)[0].W)
+	maxy := miny + int((*surfaceChanges)[0].H)
+
+	for i := 1; i < n; i++ {
+		rect_i := &(*surfaceChanges)[i]
+		minx_i := int(rect_i.X)
+		miny_i := int(rect_i.Y)
+		maxx_i := minx_i + int(rect_i.W)
+		maxy_i := miny_i + int(rect_i.H)
+
+		if minx_i < minx {
+			minx = minx_i
+		}
+		if miny_i < miny {
+			miny = miny_i
+		}
+		if maxx_i > maxx {
+			maxx = maxx_i
+		}
+		if maxy_i > maxy {
+			maxy = maxy_i
+		}
+	}
+
+	x := int32(scale) * int32(minx)
+	y := int32(scale) * int32(miny)
+	w := uint32(scale) * uint32(maxx-minx)
+	h := uint32(scale) * uint32(maxy-miny)
+	surface.UpdateRect(x, y, w, h)
 }
 
 func SDL_renderSingleColorBorder(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint, color byte) {
@@ -444,9 +480,18 @@ type simplifiedBorderEvent_t struct {
 	color  byte
 }
 
+// Set pixels from (minx,y) to (maxx,y). Both bounds are inclusive.
 func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
 	wy := TotalScreenWidth * y
 	pixels := &disp.pixels
+
+	if !(minx <= maxx) {
+		return
+	}
+
+	if maxx >= TotalScreenWidth {
+		maxx = TotalScreenWidth - 1
+	}
 
 	if (y < ScreenBorderY) || (y >= TotalScreenHeight-ScreenBorderY) {
 		for x := minx; x <= maxx; x++ {
@@ -464,37 +509,34 @@ func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
 
 // Render border in the interval [start,end)
 func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorderEvent_t, end *simplifiedBorderEvent_t) {
-	start_y := (int(start.tstate) - DISPLAY_START) / TSTATES_PER_LINE
-	end_y   := (int(end.tstate)-1 - DISPLAY_START) / TSTATES_PER_LINE
+	assert(start.tstate < end.tstate)
 
-	start_x := (int(start.tstate) - DISPLAY_START) - start_y*TSTATES_PER_LINE
-	end_x   := (int(end.tstate)-1 - DISPLAY_START) - end_y*TSTATES_PER_LINE
+	if start.tstate < DISPLAY_START {
+		start.tstate = DISPLAY_START
+	}
+	if end.tstate-1 < DISPLAY_START {
+		return
+	}
+	if start.tstate >= DISPLAY_START+TotalScreenHeight*TSTATES_PER_LINE {
+		return
+	}
+
+	start_y := (start.tstate - DISPLAY_START) / TSTATES_PER_LINE
+	end_y   := (end.tstate-1 - DISPLAY_START) / TSTATES_PER_LINE
+
+	start_x := (start.tstate - DISPLAY_START) % TSTATES_PER_LINE
+	end_x   := (end.tstate-1 - DISPLAY_START) % TSTATES_PER_LINE
+
+	start_x <<= PIXELS_PER_TSTATE_LOG2
+	end_x   <<= PIXELS_PER_TSTATE_LOG2
+
+	end_x += (PIXELS_PER_TSTATE - 1)
 
 	// Clip to visible screen area
 	{
-		if start_y < 0 {
-			start_x = 0
-			start_y = 0
-		}
 		if end_y >= TotalScreenHeight {
 			end_x = TotalScreenWidth - 1
 			end_y = TotalScreenHeight - 1
-		}
-		if start_x < 0 {
-			start_x = 0
-		}
-		if end_x < 0 {
-			end_x = 0
-		}
-
-		if end_y < 0 {
-			return
-		}
-		if !(start_y <= end_y) {
-			return
-		}
-		if (start_y == end_y) && !(start_x <= end_x) {
-			return
 		}
 	}
 
@@ -502,18 +544,18 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	color := start.color
 	if start_y == end_y {
 		y := start_y
-		disp.scanlineFill(uint(start_x), uint(end_x), uint(y), color)
+		disp.scanlineFill(start_x, end_x, y, color)
 	} else {
 		// Top scanline (start_y)
-		disp.scanlineFill(uint(start_x), TotalScreenWidth-1, uint(start_y), color)
+		disp.scanlineFill(start_x, TotalScreenWidth-1, start_y, color)
 
 		// Scanlines (start_y+1) ... (end_y-1)
 		for y := (start_y + 1); y < end_y; y++ {
-			disp.scanlineFill(0, TotalScreenWidth-1, uint(y), color)
+			disp.scanlineFill(0, TotalScreenWidth-1, y, color)
 		}
 
 		// Bottom scanline (end_y)
-		disp.scanlineFill(0, uint(end_x), uint(end_y), color)
+		disp.scanlineFill(0, end_x, end_y, color)
 	}
 }
 
@@ -537,11 +579,16 @@ func (disp *UnscaledDisplay) renderBorderEvents(lastEvent_orNil *BorderEvent) {
 
 		// The [border color from the last event] lasts until the end of the frame
 		if lastEvent_orNil != nil {
-			events[numEvents] = simplifiedBorderEvent_t{TStatesPerFrame, lastEvent_orNil.color}
+			if lastEvent_orNil.tstate < TStatesPerFrame {
+				events[numEvents] = simplifiedBorderEvent_t{TStatesPerFrame, lastEvent_orNil.color}
+			} else {
+				numEvents--
+			}
 		}
 	}
 
-	// Note: If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil. But this is OK.
+	// Note: If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil.
+	//       But this is OK, because the body of the below for-loop is never executed.
 
 	for i := 0; i < numEvents; i++ {
 		disp.renderBorderBetweenTwoEvents(&events[i], &events[i+1])

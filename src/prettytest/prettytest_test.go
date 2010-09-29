@@ -77,6 +77,38 @@ func testPass(assert *Assertions) *Assertions {
 	return assert
 }
 
+var state int = 0
+
+func before(assert *Assertions) *Assertions {
+	state += 2
+	return assert
+}
+
+func after(assert *Assertions) *Assertions {
+	state--
+	return assert
+}
+
+func beforeAll(assert *Assertions) *Assertions {
+	state = 0
+	return assert
+}
+
+func afterAll(assert *Assertions) *Assertions {
+	state = 0
+	return assert
+}
+
+func testSetup_1(assert *Assertions) *Assertions {
+	assert.Equal(2, state)
+	return assert
+}
+
+func testSetup_2(assert *Assertions) *Assertions {
+	assert.Equal(3, state)
+	return assert
+}
+
 func TestRunner(t *testing.T) {
 	Run(
 		t,
@@ -85,3 +117,39 @@ func TestRunner(t *testing.T) {
 	)
 }
 
+func TestSetupTeardown(t *testing.T) {
+	Run(
+		t,
+		before,
+		after,
+		testSetup_1,
+		testSetup_2,
+	)
+}
+
+func TestMisplacedSetupTeardown(t *testing.T) {
+	state = 0
+	Run(
+		t,
+		testSetup_1,
+		before,
+		testSetup_2,
+		after,
+	)	
+}
+
+func TestSetupAllTeardownAll(t *testing.T) {
+	state = 10
+	Run(
+		t,
+		beforeAll,
+		afterAll,
+		before,
+		after,
+		testSetup_1,
+		testSetup_2,
+	)
+	if state != 0 {
+		t.Errorf("state should be 0 afterAll tests\n")
+	}
+}

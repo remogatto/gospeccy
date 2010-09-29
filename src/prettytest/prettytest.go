@@ -40,6 +40,8 @@ package prettytest
 import (
 	"testing"
 	"runtime"
+	"reflect"
+	"regexp"
 	"fmt"
 )
 
@@ -130,23 +132,78 @@ func (assertion *Assertions) IsFailed() bool {
 	return assertion.Status == STATUS_FAIL
 }
 
+func getFuncId(pattern string, tests ...func(*Assertions) *Assertions) (id int) {
+	id = -1
+
+	for i, test := range tests {
+		funcValue := reflect.NewValue(test)
+
+		switch f := funcValue.(type) {
+		case *reflect.FuncValue:
+			funcName := runtime.FuncForPC(f.Get()).Name()
+			matched, err := regexp.MatchString(pattern, funcName)
+			if err == nil && matched {
+				id = i
+			}
+		}
+	}
+
+	return
+}
+
 // Run tests.
 func Run(t *testing.T, tests ...func(*Assertions) *Assertions) {
 	pc, _, _, _ := runtime.Caller(1)
 	callerName := runtime.FuncForPC(pc).Name()
 	fmt.Printf("\n%s:\n", callerName)
-	for _, test := range tests {
-		assertions := &Assertions{t, STATUS_PASS, false, nil}
+
+	setupFuncId := getFuncId(".*\\.before$", tests)
+	teardownFuncId := getFuncId(".*\\.after$", tests)
+
+	beforeAllFuncId := getFuncId(".*\\.beforeAll$", tests)
+	afterAllFuncId := getFuncId(".*\\.afterAll$", tests)
+
+	for i, test := range tests {
+
+		assertions := &Assertions{t, STATUS_PASS, false, &callerInfo{"", "", 0}}
+
+		if i == beforeAllFuncId {
+			tests[beforeAllFuncId](assertions)
+			continue
+		}
+
+		if i == afterAllFuncId {
+			continue
+		}
+
+		if i == setupFuncId || i == teardownFuncId {
+			continue
+		}
+ 
+		if setupFuncId >= 0 {
+			tests[setupFuncId](assertions)
+		}
+		
 		test(assertions)
+
+		if teardownFuncId >= 0 {
+			tests[teardownFuncId](assertions)
+		}
+
 		switch assertions.Status {
 		case STATUS_FAIL:
-			fmt.Printf(formatTag+"%s\n", LABEL_FAIL, assertions.callerInfo.name)
+			fmt.Printf(formatTag + "%s\n", LABEL_FAIL, assertions.callerInfo.name)
 		case STATUS_PASS:
 			fmt.Printf(formatTag + "%s\n", LABEL_PASS, assertions.callerInfo.name)
 		case STATUS_PENDING:
 			fmt.Printf(formatTag + "%s\n", LABEL_PENDING, assertions.callerInfo.name)
 			
 		}
+	}
+
+	if afterAllFuncId >= 0 {
+		assertions := &Assertions{t, STATUS_PASS, false, &callerInfo{"", "", 0}}
+		tests[afterAllFuncId](assertions)
 	}
 }
 

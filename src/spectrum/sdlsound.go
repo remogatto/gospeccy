@@ -150,6 +150,10 @@ type SDLAudio struct {
 	// Sum of fractions which were lost because of integer truncation
 	numSamples_cummulativeFraction float
 
+	// Array for storing samples. It is declared here in order
+	// to avoid repetitive allocation of this array in method 'render'.
+	samples_int16 []int16
+
 	mutex sync.Mutex
 }
 
@@ -251,48 +255,48 @@ func (audio *SDLAudio) bufferRemove() {
 	audio.mutex.Unlock()
 }
 
+
+type simplifiedBeeperEvent_t struct {
+	tstate uint
+	level  byte
+}
+
+type simplifiedBeeperEvent_array_t struct {
+	events []simplifiedBeeperEvent_t
+}
+
+func (a *simplifiedBeeperEvent_array_t) Init(n int) {
+	a.events = make([]simplifiedBeeperEvent_t, n)
+}
+
+func (a *simplifiedBeeperEvent_array_t) Set(i int, _e Event) {
+	e := _e.(*BeeperEvent)
+	a.events[i] = simplifiedBeeperEvent_t{e.tstate, e.level}
+}
+
+
 func (audio *SDLAudio) render(audioData *AudioData) {
-	var lastEvent_orNil *BeeperEvent = audioData.beeperEvents
+	var events []simplifiedBeeperEvent_t
 
-	// Determine the number of beeper-events
-	numEvents := 0
-	for e := lastEvent_orNil; e != nil; e = e.previous_orNil {
-		numEvents++
+	if audioData.beeperEvents_orNil != nil {
+		var lastEvent *BeeperEvent = audioData.beeperEvents_orNil
+		assert(lastEvent.tstate == TStatesPerFrame)
+
+		// Put the events in an array, sorted by T-state value in ascending order
+		events_array := &simplifiedBeeperEvent_array_t{}
+		EventListToArray_Ascending(lastEvent, events_array, nil)
+
+		events = events_array.events
+	} else {
+		events = make([]simplifiedBeeperEvent_t, 2)
+		events[0] = simplifiedBeeperEvent_t{tstate: 0, level: 0}
+		events[1] = simplifiedBeeperEvent_t{tstate: TStatesPerFrame, level: 0}
 	}
 
-	type simplifiedBeeperEvent_t struct {
-		tstate uint
-		level  byte
-	}
-
-	// Create an array called 'events' and initialize it with
-	// the events sorted by T-state value in *ascending* order
-	events := make([]simplifiedBeeperEvent_t, numEvents+1)
-	var tstate_max1 uint = 0
-	{
-		i := numEvents - 1
-		for e := lastEvent_orNil; e != nil; e = e.previous_orNil {
-			events[i] = simplifiedBeeperEvent_t{e.tstate, e.level}
-			i--
-		}
-		// At this point: 'i' should equal to -1
-
-		// The [beeper-level from the last event] lasts until the end of the frame
-		if lastEvent_orNil != nil {
-			events[numEvents] = simplifiedBeeperEvent_t{TStatesPerFrame, lastEvent_orNil.level}
-
-			// Make sure 'events[numEvents].tstate' is greater than 'events[numEvents-1].tstate'
-			if (numEvents > 0) && !(events[numEvents].tstate > events[numEvents-1].tstate) {
-				events[numEvents].tstate = events[numEvents-1].tstate + 1
-			}
-
-			tstate_max1 = events[numEvents].tstate
-		}
-	}
-
-	// Note: If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil. But this is OK.
+	numEvents := len(events)
 
 	var numSamples uint
+	var samples_int16 []int16
 	{
 		audio.mutex.Lock()
 
@@ -305,17 +309,24 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 			audio.numSamples_cummulativeFraction -= 1.0
 		}
 
+		if len(audio.samples_int16) < int(numSamples) {
+			audio.samples_int16 = make([]int16, numSamples)
+		}
+		samples_int16 = audio.samples_int16
+
 		audio.mutex.Unlock()
 	}
 
-	var k float = float(numSamples) / float(tstate_max1)
+	var k float = float(numSamples) / TStatesPerFrame
 
 	samples := make([]float, numSamples+1)
-	for i := 0; i < numEvents; i++ {
+	for i := 0; i < numEvents-1; i++ {
 		start := events[i]
-		end := events[i+1]
 
-		if start.level != 0 {
+		if start.level > 0 {
+			level := float(start.level)
+			end := events[i+1]
+
 			var position0 float = float(start.tstate) * k
 			var position1 float = float(end.tstate) * k
 
@@ -323,25 +334,24 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 			pos1 := uint(position1)
 
 			if pos0 == pos1 {
-				samples[pos0] += 0x7fff * (position1 - position0)
+				samples[pos0] += level * (position1 - position0)
 			} else {
-				samples[pos0] += 0x7fff * (float(pos0+1) - position0)
+				samples[pos0] += level * (float(pos0+1) - position0)
 				for p := pos0 + 1; p < pos1; p++ {
-					samples[p] = 0x7fff
+					samples[p] = level
 				}
-				samples[pos1] += 0x7fff * (position1 - float(pos1))
+				samples[pos1] += level * (position1 - float(pos1))
 			}
 		}
 	}
 
-	samples_int16 := make([]int16, numSamples)
 	for i := uint(0); i < numSamples; i++ {
-		s := uint(samples[i])
+		s := uint(samples[i] * (0x7fff / MAX_AUDIO_LEVEL))
 		if s > 0x7fff {
 			s = 0x7fff
 		}
 		samples_int16[i] = int16(s)
 	}
 
-	sdl_audio.SendAudio_int16(samples_int16)
+	sdl_audio.SendAudio_int16(samples_int16[0:numSamples])
 }

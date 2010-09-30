@@ -17,11 +17,12 @@ GOFILES=\
 	keyboard.go\
 	spectrum.go\
 	helpers.go\
-	application.go
+	application.go\
+	event.go
+
+include $(GOROOT)/src/Make.pkg
+include $(GOSPECCY_ROOT)/Make.inc-tail
 
 sdldisplay_test.go: $(FORMATS_PKG_LIB)
 z80_test.go: $(FORMATS_PKG_LIB)
 spectrum_test.go: $(PRETTYTEST_PKG_LIB)
-
-include $(GOROOT)/src/Make.pkg
-include $(GOSPECCY_ROOT)/Make.inc-tail

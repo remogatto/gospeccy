@@ -604,7 +604,7 @@ func (out *consoleMessageOutput) PrintfMsg(format string, a ...interface{}) {
 			appendNewLine = true
 		}
 
-		fmt.Printf(format, a)
+		fmt.Printf(format, a...)
 		if appendNewLine {
 			fmt.Println()
 		}

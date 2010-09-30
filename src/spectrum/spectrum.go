@@ -345,8 +345,8 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	// Send audio data to audio backend(s)
 	{
 		audioData := AudioData{
-			fps:          speccy.currentFPS,
-			beeperEvents: speccy.Ports.getBeeperEvents(),
+			fps:                speccy.currentFPS,
+			beeperEvents_orNil: speccy.Ports.getBeeperEvents_orNil(),
 		}
 
 		for _, audioReceiver := range speccy.audioReceivers {
@@ -354,7 +354,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 		}
 	}
 
-	speccy.Ports.frame_releaseMemory()
+	speccy.Ports.frame_end()
 }
 
 

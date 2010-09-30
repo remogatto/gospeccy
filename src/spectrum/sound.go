@@ -13,8 +13,10 @@ type AudioData struct {
 	// The FPS (frames per second) value that applies to this AudioData object
 	fps float
 
-	beeperEvents *BeeperEvent // Might be nil
+	beeperEvents_orNil *BeeperEvent
 }
+
+const MAX_AUDIO_LEVEL = 3
 
 // Interface to an audio device awaiting audio data
 type AudioReceiver interface {

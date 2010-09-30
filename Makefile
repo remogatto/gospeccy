@@ -8,6 +8,7 @@ SCRIPTS_PATH=$(DIST_PATH)/scripts
 SPECTRUM_FILES=\
 	src/spectrum/application.go\
 	src/spectrum/display.go\
+	src/spectrum/event.go\
 	src/spectrum/helpers.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
@@ -43,6 +44,7 @@ GOFMT_FILES=\
 	src/gospeccy.go\
 	src/spectrum/application.go\
 	src/spectrum/display.go\
+	src/spectrum/event.go\
 	src/spectrum/keyboard.go\
 	src/spectrum/memory.go\
 	src/spectrum/port.go\

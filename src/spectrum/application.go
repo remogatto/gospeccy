@@ -162,7 +162,7 @@ func (app *Application) PrintfMsg(format string, a ...interface{}) {
 	out := app.messageOutput
 	app.mutex.Unlock()
 
-	out.PrintfMsg(format, a)
+	out.PrintfMsg(format, a...)
 }
 
 
@@ -273,7 +273,7 @@ type stdoutMessageOutput struct {
 func (out *stdoutMessageOutput) PrintfMsg(format string, a ...interface{}) {
 	out.mutex.Lock()
 	{
-		fmt.Printf(format, a)
+		fmt.Printf(format, a...)
 
 		appendNewLine := false
 		if (len(format) == 0) || (format[len(format)-1] != '\n') {

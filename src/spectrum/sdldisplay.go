@@ -193,10 +193,6 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 		}
 	}
 
-	if unscaledDisplay.border_orNil != nil {
-		SDL_renderSingleColorBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, *unscaledDisplay.border_orNil)
-	}
-
 	if screen.completionTime_orNil != nil {
 		screen.completionTime_orNil <- time.Nanoseconds()
 	}
@@ -304,10 +300,6 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 		}
 	}
 
-	if unscaledDisplay.border_orNil != nil {
-		SDL_renderSingleColorBorder(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, *unscaledDisplay.border_orNil)
-	}
-
 	if screen.completionTime_orNil != nil {
 		screen.completionTime_orNil <- time.Nanoseconds()
 	}
@@ -372,26 +364,6 @@ func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale ui
 	surface.UpdateRect(x, y, w, h)
 }
 
-func SDL_renderSingleColorBorder(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint, color byte) {
-	s := scale
-	c := palette[color]
-
-	const W = ScreenWidth
-	const H = ScreenHeight
-	const BW = ScreenBorderX
-	const BH = ScreenBorderY
-	const TW = TotalScreenWidth
-
-	surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*0)     , uint16(s*TW), uint16(s*BH)}, c )
-	surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*(BH+H)), uint16(s*TW), uint16(s*BH)}, c )
-	surface.FillRect( &sdl.Rect{int16(s*0)     , int16(s*BH)    , uint16(s*BW), uint16(s*H )}, c )
-	surface.FillRect( &sdl.Rect{int16(s*(BW+W)), int16(s*BH)    , uint16(s*BW), uint16(s*H )}, c )
-
-	// This is NOT a typo, the scale is actually 1 here.
-	// The rectangles will be scaled later.
-	surfaceChanges.addBorder( /*scale*/ 1)
-}
-
 
 // ===========
 // ListOfRects
@@ -449,35 +421,21 @@ func (l *ListOfRects) addBorder(scale uint) {
 type UnscaledDisplay struct {
 	pixels         [TotalScreenWidth * TotalScreenHeight]byte
 	changedRegions *ListOfRects
-	border_orNil   *byte // Valid in case the whole border has a single color
+
+	// This is the border which was rendered to 'pixels'
+	border_orNil *BorderEvent
 }
 
 func newUnscaledDisplay() *UnscaledDisplay {
-	return &UnscaledDisplay{changedRegions: newListOfRects(), border_orNil: nil}
+	return &UnscaledDisplay{changedRegions: newListOfRects()}
 }
 
 func (disp *UnscaledDisplay) newFrame() {
 	disp.changedRegions = newListOfRects()
-	disp.border_orNil = nil
 }
 
 func (disp *UnscaledDisplay) releaseMemory() {
 	disp.changedRegions = nil
-	disp.border_orNil = nil
-}
-
-func (disp *UnscaledDisplay) renderBorder(screen, oldScreen_orNil *DisplayData) {
-	if (oldScreen_orNil == nil) || (screen.border != oldScreen_orNil.border) || (oldScreen_orNil.borderEvents != nil) {
-		var border byte = screen.border
-		disp.border_orNil = &border
-
-		disp.changedRegions.addBorder( /*scale*/ 1)
-	}
-}
-
-type simplifiedBorderEvent_t struct {
-	tstate uint
-	color  byte
 }
 
 // Set pixels from (minx,y) to (maxx,y). Both bounds are inclusive.
@@ -527,10 +485,9 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	start_x := (start.tstate - DISPLAY_START) % TSTATES_PER_LINE
 	end_x   := (end.tstate-1 - DISPLAY_START) % TSTATES_PER_LINE
 
-	start_x <<= PIXELS_PER_TSTATE_LOG2
-	end_x   <<= PIXELS_PER_TSTATE_LOG2
-
-	end_x += (PIXELS_PER_TSTATE - 1)
+	start_x = (start_x << PIXELS_PER_TSTATE_LOG2) &^ 7
+	end_x = (end_x << PIXELS_PER_TSTATE_LOG2) &^ 7
+	end_x += 7
 
 	// Clip to visible screen area
 	{
@@ -559,42 +516,31 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	}
 }
 
-func (disp *UnscaledDisplay) renderBorderEvents(lastEvent_orNil *BorderEvent) {
-	// Determine the number of border-events
-	numEvents := 0
-	for e := lastEvent_orNil; e != nil; e = e.previous_orNil {
-		numEvents++
-	}
-
-	// Create an array called 'events' and initialize it with
-	// the events sorted by T-state value in *ascending* order
-	events := make([]simplifiedBorderEvent_t, numEvents+1)
-	{
-		i := numEvents - 1
-		for e := lastEvent_orNil; e != nil; e = e.previous_orNil {
-			events[i] = simplifiedBorderEvent_t{e.tstate, e.color}
-			i--
-		}
-		// At this point: 'i' should equal to -1
-
-		// The [border color from the last event] lasts until the end of the frame
+func (disp *UnscaledDisplay) renderBorder(lastEvent_orNil *BorderEvent) {
+	if !disp.border_orNil.Equals(lastEvent_orNil) {
 		if lastEvent_orNil != nil {
-			if lastEvent_orNil.tstate < TStatesPerFrame {
-				events[numEvents] = simplifiedBorderEvent_t{TStatesPerFrame, lastEvent_orNil.color}
-			} else {
-				numEvents--
+			lastEvent := lastEvent_orNil
+			assert(lastEvent.tstate == TStatesPerFrame)
+
+			// Put the events in an array, sorted by T-state value in ascending order
+			var events []simplifiedBorderEvent_t
+			{
+				events_array := &simplifiedBorderEvent_array_t{}
+				EventListToArray_Ascending(lastEvent, events_array, nil)
+				events = events_array.events
 			}
+
+			numEvents := len(events)
+
+			for i := 0; i < numEvents-1; i++ {
+				disp.renderBorderBetweenTwoEvents(&events[i], &events[i+1])
+			}
+
+			disp.changedRegions.addBorder( /*scale*/ 1)
 		}
+
+		disp.border_orNil = lastEvent_orNil
 	}
-
-	// Note: If 'lastEvent_orNil' is nil, then 'event[numEvents]' is also nil.
-	//       But this is OK, because the body of the below for-loop is never executed.
-
-	for i := 0; i < numEvents; i++ {
-		disp.renderBorderBetweenTwoEvents(&events[i], &events[i+1])
-	}
-
-	disp.changedRegions.addBorder( /*scale*/ 1)
 }
 
 // Table for extracting the numeric value of individual bits in an 8-bit number
@@ -658,9 +604,28 @@ func (disp *UnscaledDisplay) render(screen, oldScreen_orNil *DisplayData) {
 		}
 	}
 
-	if screen.borderEvents != nil {
-		disp.renderBorderEvents(screen.borderEvents)
-	} else {
-		disp.renderBorder(screen, oldScreen_orNil)
-	}
+	disp.renderBorder(screen.borderEvents_orNil)
+}
+
+
+// =======================
+// Simplified border-event
+// =======================
+
+type simplifiedBorderEvent_t struct {
+	tstate uint
+	color  byte
+}
+
+type simplifiedBorderEvent_array_t struct {
+	events []simplifiedBorderEvent_t
+}
+
+func (a *simplifiedBorderEvent_array_t) Init(n int) {
+	a.events = make([]simplifiedBorderEvent_t, n)
+}
+
+func (a *simplifiedBorderEvent_array_t) Set(i int, _e Event) {
+	e := _e.(*BorderEvent)
+	a.events[i] = simplifiedBorderEvent_t{e.tstate, e.color}
 }

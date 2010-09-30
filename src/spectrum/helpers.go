@@ -116,3 +116,11 @@ func ScriptPath(fileName string) string {
 
 	return path
 }
+
+
+// Panic if condition is false
+func assert(condition bool) {
+	if !condition {
+		panic("internal error")
+	}
+}

@@ -71,8 +71,8 @@ const (
 
 	// The T-state which corresponds to pixel (0,0) on the (SDL) surface.
 	// That pixel belongs to the border.
-	BORDER_TSTATE_ADJUSTMENT = 4
 	DISPLAY_START            = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE + BORDER_TSTATE_ADJUSTMENT)
+	BORDER_TSTATE_ADJUSTMENT = 2
 )
 
 
@@ -105,8 +105,16 @@ var palette [16]uint32 = [16]uint32{
 
 
 func screenAddr_to_xy(screenAddr uint16) (x, y uint8) {
+	// address: [0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0]
 	x = uint8((screenAddr & 0x001f) << 3)
 	y = uint8(((screenAddr & 0x0700) >> 8) | ((screenAddr & 0x00e0) >> 2) | ((screenAddr & 0x1800) >> 5))
+	return
+}
+
+func screenAddr_to_attrXY(screenAddr uint16) (attr_x, attr_y uint8) {
+	// address: [0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0]
+	attr_x = uint8(screenAddr & 0x001f)
+	attr_y = uint8((((screenAddr & 0x0700) >> 8) | ((screenAddr & 0x00e0) >> 2) | ((screenAddr & 0x1800) >> 5)) >> 3)
 	return
 }
 
@@ -128,11 +136,11 @@ type attr_4bit byte
 //
 // The content of 'bitmap' and 'attr' corresponding to non-dirty regions is unspecified.
 type DisplayData struct {
-	bitmap       [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
-	attr         [BytesPerLine * ScreenHeight]attr_4bit     // Linear y-coordinate
-	dirty        [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
-	border       byte
-	borderEvents *BorderEvent // Might be nil
+	bitmap [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
+	attr   [BytesPerLine * ScreenHeight]attr_4bit     // Linear y-coordinate
+	dirty  [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
+
+	borderEvents_orNil *BorderEvent
 
 	// From structure Cmd_RenderFrame
 	completionTime_orNil chan<- int64
@@ -166,10 +174,4 @@ func init() {
 	assert(ScreenBorderY <= LINE_RIGHT_BORDER*PIXELS_PER_TSTATE)
 	assert(ScreenBorderY <= LINES_TOP)
 	assert(ScreenBorderY <= LINES_BOTTOM)
-}
-
-func assert(condition bool) {
-	if !condition {
-		panic("internal error")
-	}
 }

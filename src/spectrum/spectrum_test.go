@@ -8,7 +8,7 @@ import (
 
 var speccy *Spectrum48k
 
-func before(t *prettytest.Assertions) *prettytest.Assertions {
+func before(t *prettytest.T) {
 	var err os.Error
 	app := NewApplication()
 	speccy, err = NewSpectrum48k(app, "testdata/48.rom")
@@ -18,7 +18,7 @@ func before(t *prettytest.Assertions) *prettytest.Assertions {
 	return t
 }
 
-func testSaveScreen(t *prettytest.Assertions) *prettytest.Assertions {
+func testSaveScreen(t *prettytest.T) {
 	return t.Pending()
 }
 

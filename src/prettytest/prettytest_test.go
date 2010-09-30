@@ -25,11 +25,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package prettytest
 
-import (
-	"testing"
-)
+import "testing"
 
-func testAssertTrue(assert *Assertions) {
+func testAssertTrue(assert *T) {
 	assert.True(true)
 	if assert.IsFailed() {
 		assert.T.Errorf("True(true) should not fail\n")
@@ -41,7 +39,7 @@ func testAssertTrue(assert *Assertions) {
 	}
 }
 
-func testAssertFalse(assert *Assertions) {
+func testAssertFalse(assert *T) {
 	assert.False(false)
 	if assert.IsFailed() {
 		assert.T.Errorf("False(false) should not fail\n")
@@ -53,7 +51,7 @@ func testAssertFalse(assert *Assertions) {
 	}
 }
 
-func testAssertEqual(assert *Assertions) {
+func testAssertEqual(assert *T) {
 	assert.Equal("foo", "foo")
 	if assert.IsFailed() {
 		assert.T.Errorf("Equal(foo, foo) should not fail")
@@ -74,37 +72,37 @@ func TestBaseAssertions(t *testing.T) {
 	)
 }
 
-func testPending(assert *Assertions) { 
+func testPending(assert *T) { 
 	assert.Pending()
 }
 
-func testPass(assert *Assertions) { 
+func testPass(assert *T) { 
 	assert.True(true)
 }
 
 var state int = 0
 
-func before(assert *Assertions) {
+func before(assert *T) {
 	state += 2
 }
 
-func after(assert *Assertions) {
+func after(assert *T) {
 	state--
 }
 
-func beforeAll(assert *Assertions) {
+func beforeAll(assert *T) {
 	state = 0
 }
 
-func afterAll(assert *Assertions) {
+func afterAll(assert *T) {
 	state = 0
 }
 
-func testSetup_1(assert *Assertions) {
+func testSetup_1(assert *T) {
 	assert.Equal(2, state)
 }
 
-func testSetup_2(assert *Assertions) {
+func testSetup_2(assert *T) {
 	assert.Equal(3, state)
 }
 

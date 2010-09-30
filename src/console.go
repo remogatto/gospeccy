@@ -38,7 +38,6 @@ var havePrompt_mutex sync.Mutex
 const SCRIPT_DIRECTORY = "scripts"
 const STARTUP_SCRIPT = "startup"
 
-
 // ================
 // Various commands
 // ================

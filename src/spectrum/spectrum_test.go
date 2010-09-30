@@ -2,10 +2,11 @@ package spectrum
 
 import (
 	"testing"
-	"spectrum/prettytest"
 	"os"
+	"spectrum/prettytest"
 )
 
+const scrFilename = "testdata/screen.scr"
 var speccy *Spectrum48k
 
 func before(t *prettytest.T) {
@@ -15,18 +16,40 @@ func before(t *prettytest.T) {
 	if err != nil {
 		panic(err)
 	}
-	return t
 }
 
-func testSaveScreen(t *prettytest.T) {
-	return t.Pending()
+func after(t *prettytest.T) {
+	speccy = nil
+	os.Remove("testdata/screen.scr")
+}
+
+func testMakeVideoMemoryDump(t *prettytest.T) {
+	speccy.makeVideoMemoryDump(scrFilename)
+	fileInfo, err := os.Stat(scrFilename)
+
+	t.True(err == nil)
+	t.Equal(int64(6912), fileInfo.Size)
+}
+
+func testMakeVideoMemoryDumpCmd(t *prettytest.T) {
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- Cmd_MakeVideoMemoryDump{ scrFilename, errChan }
+
+	<-errChan
+
+	fileInfo, err := os.Stat(scrFilename)
+	
+	t.True(err == nil)
+	t.Equal(int64(6912), fileInfo.Size)
 }
 
 func TestSaveScreen(t *testing.T) {
 	prettytest.Run(
 		t,
 		before,
-		testSaveScreen,
+		after,
+		testMakeVideoMemoryDump,
+		testMakeVideoMemoryDumpCmd,
 	)
 }
 

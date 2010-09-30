@@ -213,23 +213,20 @@ func (p *testPort) contendPortPostio(port uint16) {
 }
 
 func (p *testPort) frame_begin() {
-
 }
 
-func (p *testPort) frame_releaseMemory() {
-
+func (p *testPort) frame_end() {
 }
 
-func (p *testPort) getBorderEvents() *BorderEvent {
+func (p *testPort) getBorderEvents_orNil() *BorderEvent {
 	return nil
 }
 
-func (p *testPort) getBeeperEvents() *BeeperEvent {
+func (p *testPort) getBeeperEvents_orNil() *BeeperEvent {
 	return nil
 }
 
 func (p *testPort) reset() {
-
 }
 
 var maxLines = 20000

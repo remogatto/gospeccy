@@ -56,11 +56,12 @@ func loadExpectedImage(filename string) image.Image {
 	return image
 }
 
-func loadScreen(filename string, speccy *Spectrum48k) *ULA {
+func loadScreen(filename string, speccy *Spectrum48k, borderColor byte) *ULA {
 	memory := NewMemory()
 	memory.init(speccy)
 	ula := NewULA()
 	ula.init(speccy)
+	ula.speccy.Ports.writePortInternal(254, borderColor, false)
 	image, _ := ioutil.ReadFile(filename)
 	for offset, value := range image {
 		speccy.Memory.Write(0x4000+uint16(offset), value)
@@ -111,7 +112,7 @@ func (r *RenderTest) renderScreen(speccy *Spectrum48k) bool {
 	speccy.addDisplay(renderedSDLScreen)
 
 	expectedImage := loadExpectedImage(r.out)
-	inputScreen := loadScreen(r.in, speccy)
+	inputScreen := loadScreen(r.in, speccy, r.borderColor)
 
 	inputScreen.borderColor = r.borderColor
 

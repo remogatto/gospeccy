@@ -45,7 +45,7 @@ import (
 
 const LABEL_FAIL = "\033[31;1mFAIL\033[0m"
 const LABEL_PASS = "\033[32;1mOK\033[0m"
-const LABEL_PENDING= "\033[33;1mPENDING\033[0m"
+const LABEL_PENDING = "\033[33;1mPENDING\033[0m"
 
 const (
 	STATUS_PASS = iota
@@ -57,13 +57,13 @@ const formatTag = "\t%s\t"
 
 type callerInfo struct {
 	name, fn string
-	line int
+	line     int
 }
 
 type Assertions struct {
-	T   *testing.T
+	T      *testing.T
 	Status byte
-	Dry bool
+	Dry    bool
 
 	callerInfo *callerInfo
 }
@@ -142,10 +142,10 @@ func Run(t *testing.T, tests ...func(*Assertions) *Assertions) {
 		case STATUS_FAIL:
 			fmt.Printf(formatTag+"%s\n", LABEL_FAIL, assertions.callerInfo.name)
 		case STATUS_PASS:
-			fmt.Printf(formatTag + "%s\n", LABEL_PASS, assertions.callerInfo.name)
+			fmt.Printf(formatTag+"%s\n", LABEL_PASS, assertions.callerInfo.name)
 		case STATUS_PENDING:
-			fmt.Printf(formatTag + "%s\n", LABEL_PENDING, assertions.callerInfo.name)
-			
+			fmt.Printf(formatTag+"%s\n", LABEL_PENDING, assertions.callerInfo.name)
+
 		}
 	}
 }

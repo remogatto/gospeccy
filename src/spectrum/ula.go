@@ -102,11 +102,8 @@ func (ula *ULA) frame_begin() {
 }
 
 func (ula *ULA) screenBitmapTouch(address uint16) {
-	// address: [0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0]
-	var attr_x = (address & 0x001f)
-	var attr_y = (((address & 0x0700) >> 8) | ((address & 0x00e0) >> 2) | ((address & 0x1800) >> 5)) / 8
-
-	ula.dirtyScreen[attr_y*ScreenWidth_Attr+attr_x] = true
+	var attr_x, attr_y uint8 = screenAddr_to_attrXY(address)
+	ula.dirtyScreen[uint(attr_y)*ScreenWidth_Attr+uint(attr_x)] = true
 }
 
 func (ula *ULA) screenAttrTouch(address uint16) {
@@ -268,17 +265,8 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 			}
 		}
 
-		// screen.border
-		screen.border = ula.borderColor
-
 		// screen.borderEvents
-		borderEvents := ula.speccy.Ports.getBorderEvents()
-		if (borderEvents != nil) && (borderEvents.previous_orNil == nil) {
-			// Only one event (which was added there at the start of the frame) - ignore it
-			screen.borderEvents = nil
-		} else {
-			screen.borderEvents = borderEvents
-		}
+		screen.borderEvents_orNil = ula.speccy.Ports.getBorderEvents_orNil()
 	}
 
 	return &screen
@@ -344,6 +332,5 @@ func (a *DisplayData) add(b *DisplayData) {
 		}
 	}
 
-	a.border = b.border
-	a.borderEvents = b.borderEvents
+	a.borderEvents_orNil = b.borderEvents_orNil
 }

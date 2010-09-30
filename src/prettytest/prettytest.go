@@ -79,52 +79,46 @@ func newCallerInfo(skip int) *callerInfo {
 	return &callerInfo{callerName, fn, line}
 }
 
-func (assertion *Assertions) fail(exp, act interface{}, info *callerInfo) *Assertions {
+func (assertion *Assertions) fail(exp, act interface{}, info *callerInfo) {
 	if !assertion.Dry {
 		assertion.T.Errorf("Expected %s but got %s -- %s:%d\n", exp, act, info.fn, info.line)
 	}
 	assertion.Status = STATUS_FAIL
-	return assertion
 }
 
-func (assertion *Assertions) setup() *Assertions {
+func (assertion *Assertions) setup() {
 	assertion.callerInfo = newCallerInfo(3)
-	return assertion
 }
 
 // Assert that the expected value equals the actual value. Return true
 // on success.
-func (assertion *Assertions) Equal(exp, act interface{}) *Assertions {
+func (assertion *Assertions) Equal(exp, act interface{}) {
 	assertion.setup()
 	if exp != act {
-		return assertion.fail(exp, act, assertion.callerInfo)
+		assertion.fail(exp, act, assertion.callerInfo)
 	}
-	return assertion
 }
 
 // Assert that the value is true.
-func (assertion *Assertions) True(value bool) *Assertions {
+func (assertion *Assertions) True(value bool) {
 	assertion.setup()
 	if !value {
-		return assertion.fail("true", "false", assertion.callerInfo)
+		assertion.fail("true", "false", assertion.callerInfo)
 	}
-	return assertion
 }
 
 // Assert that the value is false.
-func (assertion *Assertions) False(value bool) *Assertions {
+func (assertion *Assertions) False(value bool) {
 	assertion.setup()
 	if value {
-		return assertion.fail("false", "true", assertion.callerInfo)
+		assertion.fail("false", "true", assertion.callerInfo)
 	}
-	return assertion
 }
 
 // Mark the test function as pending.
-func (assertion *Assertions) Pending() *Assertions {
+func (assertion *Assertions) Pending() {
 	assertion.setup()
 	assertion.Status = STATUS_PENDING
-	return assertion
 }
 
 // Check if the test function has failed.
@@ -132,7 +126,7 @@ func (assertion *Assertions) IsFailed() bool {
 	return assertion.Status == STATUS_FAIL
 }
 
-func getFuncId(pattern string, tests ...func(*Assertions) *Assertions) (id int) {
+func getFuncId(pattern string, tests ...func(*Assertions)) (id int) {
 	id = -1
 
 	for i, test := range tests {
@@ -152,7 +146,7 @@ func getFuncId(pattern string, tests ...func(*Assertions) *Assertions) (id int) 
 }
 
 // Run tests.
-func Run(t *testing.T, tests ...func(*Assertions) *Assertions) {
+func Run(t *testing.T, tests ...func(*Assertions)) {
 	pc, _, _, _ := runtime.Caller(1)
 	callerName := runtime.FuncForPC(pc).Name()
 	fmt.Printf("\n%s:\n", callerName)
@@ -209,7 +203,7 @@ func Run(t *testing.T, tests ...func(*Assertions) *Assertions) {
 
 // Run tests but don't emit output and don't fail on failing
 // assertions.
-func DryRun(t *testing.T, tests ...func(*Assertions) *Assertions) {
+func DryRun(t *testing.T, tests ...func(*Assertions)) {
 	for _, test := range tests {
 		test(&Assertions{t, STATUS_PASS, true, nil})
 	}

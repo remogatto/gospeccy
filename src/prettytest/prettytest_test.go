@@ -29,34 +29,40 @@ import (
 	"testing"
 )
 
-func testAssertTrue(assert *Assertions) *Assertions {
-	if assert.True(true).IsFailed() {
+func testAssertTrue(assert *Assertions) {
+	assert.True(true)
+	if assert.IsFailed() {
 		assert.T.Errorf("True(true) should not fail\n")
 	}
-	if !assert.True(false).IsFailed() {
+
+	assert.True(false)
+	if !assert.IsFailed() {
 		assert.T.Errorf("True(false) should fail\n")
 	}
-	return assert
 }
 
-func testAssertFalse(assert *Assertions) *Assertions {
-	if assert.False(false).IsFailed() {
+func testAssertFalse(assert *Assertions) {
+	assert.False(false)
+	if assert.IsFailed() {
 		assert.T.Errorf("False(false) should not fail\n")
 	}
-	if !assert.False(true).IsFailed() {
+
+	assert.False(true)
+	if !assert.IsFailed() {
 		assert.T.Errorf("False(true) should fail\n")
 	}
-	return assert
 }
 
-func testAssertEqual(assert *Assertions) *Assertions {
-	if assert.Equal("foo", "foo").IsFailed() {
+func testAssertEqual(assert *Assertions) {
+	assert.Equal("foo", "foo")
+	if assert.IsFailed() {
 		assert.T.Errorf("Equal(foo, foo) should not fail")
 	}
-	if !assert.Equal("foo", "bar").IsFailed() {
+
+	assert.Equal("foo", "bar")
+	if !assert.IsFailed() {
 		assert.T.Errorf("Equal(foo, bar) should fail")
 	}
-	return assert
 }
 
 func TestBaseAssertions(t *testing.T) {
@@ -68,45 +74,38 @@ func TestBaseAssertions(t *testing.T) {
 	)
 }
 
-func testPending(assert *Assertions) *Assertions {
-	return assert.Pending()
+func testPending(assert *Assertions) { 
+	assert.Pending()
 }
 
-func testPass(assert *Assertions) *Assertions {
+func testPass(assert *Assertions) { 
 	assert.True(true)
-	return assert
 }
 
 var state int = 0
 
-func before(assert *Assertions) *Assertions {
+func before(assert *Assertions) {
 	state += 2
-	return assert
 }
 
-func after(assert *Assertions) *Assertions {
+func after(assert *Assertions) {
 	state--
-	return assert
 }
 
-func beforeAll(assert *Assertions) *Assertions {
+func beforeAll(assert *Assertions) {
 	state = 0
-	return assert
 }
 
-func afterAll(assert *Assertions) *Assertions {
+func afterAll(assert *Assertions) {
 	state = 0
-	return assert
 }
 
-func testSetup_1(assert *Assertions) *Assertions {
+func testSetup_1(assert *Assertions) {
 	assert.Equal(2, state)
-	return assert
 }
 
-func testSetup_2(assert *Assertions) *Assertions {
+func testSetup_2(assert *Assertions) {
 	assert.Equal(3, state)
-	return assert
 }
 
 func TestRunner(t *testing.T) {

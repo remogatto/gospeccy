@@ -151,11 +151,11 @@ func Run(t *testing.T, tests ...func(*T)) {
 	callerName := runtime.FuncForPC(pc).Name()
 	fmt.Printf("\n%s:\n", callerName)
 
-	setupFuncId := getFuncId(".*\\.before$", tests)
-	teardownFuncId := getFuncId(".*\\.after$", tests)
+	setupFuncId := getFuncId(".*\\.before$", tests...)
+	teardownFuncId := getFuncId(".*\\.after$", tests...)
 
-	beforeAllFuncId := getFuncId(".*\\.beforeAll$", tests)
-	afterAllFuncId := getFuncId(".*\\.afterAll$", tests)
+	beforeAllFuncId := getFuncId(".*\\.beforeAll$", tests...)
+	afterAllFuncId := getFuncId(".*\\.afterAll$", tests...)
 
 	for i, test := range tests {
 

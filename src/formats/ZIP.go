@@ -1,7 +1,7 @@
 package formats
 
 import (
-	"github.com/nf/zip"
+	"archive/zip"
 	"io"
 	"io/ioutil"
 	"os"

@@ -84,7 +84,6 @@ The following dependencies are installed automatically:
 
 * [⚛Go-SDL](http://github.com/0xe2-0x9a-0x9b/Go-SDL)
 * [⚛Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
-* [ZIP](http://github.com/nf/zip)
 
 To make the screen bigger try the "-2x" command line option,
 or type "scale(2)" in the interactive console.

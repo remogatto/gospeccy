@@ -4,7 +4,7 @@ ifneq ($(TARG),spectrum/formats)
 $(FORMATS_PKG_LIB): $(GOSPECCY_ROOT)/src/formats/_obj/spectrum/formats.a
 	make -C $(GOSPECCY_ROOT)/src/formats install
 
-$(GOSPECCY_ROOT)/src/formats/_obj/spectrum/formats.a: $(FORMATS_FILES) $(ZIP_PKG_LIB)
+$(GOSPECCY_ROOT)/src/formats/_obj/spectrum/formats.a: $(FORMATS_FILES)
 	make -C $(GOSPECCY_ROOT)/src/formats
 
 .PHONY: formats-clean
@@ -44,8 +44,3 @@ readline-clean:
 readline-uninstall:
 	make -C $(GOSPECCY_ROOT)/src/readline uninstall
 endif
-
-
-$(ZIP_PKG_LIB):
-	goinstall -u $(ZIP_URL)
-

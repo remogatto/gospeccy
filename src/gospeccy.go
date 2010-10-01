@@ -229,27 +229,6 @@ func main() {
 		goto quit
 	}
 
-	// Load snapshot (if any)
-	if flag.Arg(0) != "" {
-		file := flag.Arg(0)
-
-		snapshot, err := formats.ReadSnapshot(spectrum.SnaPath(file))
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
-		}
-
-		errChan := make(chan os.Error)
-		speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{spectrum.SnaPath(flag.Arg(0)), snapshot, errChan}
-		err = <-errChan
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
-		}
-	}
-
 	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
 		app.PrintfMsg("%s", sdl.GetError())
 		app.RequestExit()
@@ -258,14 +237,33 @@ func main() {
 
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 
-	// Run startup scripts and start the console goroutine.
-	// The startup scripts may create a display/audio receiver.
+	// Run startup scripts. The startup scripts may create a display/audio receiver.
 	{
-		startupFinished := make(chan byte)
-		go runConsole(app, speccy, true, startupFinished)
-		<-startupFinished
+		initConsole(app, speccy)
 
 		if app.TerminationInProgress() || closed(app.HasTerminated) {
+			goto quit
+		}
+	}
+
+	// Load snapshot (if any)
+	if flag.Arg(0) != "" {
+		file := flag.Arg(0)
+		path := spectrum.SnaPath(file)
+
+		snapshot, err := formats.ReadSnapshot(path)
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			app.RequestExit()
+			goto quit
+		}
+
+		errChan := make(chan os.Error)
+		speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{file, snapshot, errChan}
+		err = <-errChan
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			app.RequestExit()
 			goto quit
 		}
 	}
@@ -305,6 +303,9 @@ func main() {
 	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
 	go emulatorLoop(app.NewEventLoop(), speccy)
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
+
+	// Start the console goroutine.
+	go runConsole(true)
 
 quit:
 	<-app.HasTerminated

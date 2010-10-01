@@ -92,6 +92,16 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	speccy.CommandChannel <- spectrum.Cmd_Reset{}
 }
 
+// Signature: func addSearchPath(path string)
+func wrapper_addSearchPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
+	path := in[0].(eval.StringValue).Get(t)
+	spectrum.AddCustomSearchPath(path)
+}
+
 // Signature: func load(path string)
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
@@ -178,7 +188,7 @@ func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float(fps)}
 }
 
-// Signature: func ULA_accuracy(accurateEmulation bool)
+// Signature: func ula_accuracy(accurateEmulation bool)
 func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
 		return
@@ -278,6 +288,14 @@ func defineFunctions(w *eval.World) {
 
 	{
 		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_addSearchPath, functionSignature)
+		w.DefineVar("addSearchPath", funcType, funcValue)
+		help_keys.Push("addSearchPath(path string)")
+		help_vals.Push("Append a path to the list of paths searched when loading snapshots")
+	}
+
+	{
+		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
 		w.DefineVar("load", funcType, funcValue)
 		help_keys.Push("load(path string)")
@@ -311,8 +329,8 @@ func defineFunctions(w *eval.World) {
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_ulaAccuracy, functionSignature)
-		w.DefineVar("ULA_accuracy", funcType, funcValue)
-		help_keys.Push("ULA_accuracy(accurateEmulation bool)")
+		w.DefineVar("ula_accuracy", funcType, funcValue)
+		help_keys.Push("ula_accuracy(accurateEmulation bool)")
 		help_vals.Push("Enable/disable accurate emulation of screen bitmap and screen attributes")
 	}
 
@@ -500,13 +518,7 @@ func readCode(app *spectrum.Application, code chan string, no_more_code chan<- b
 	}
 }
 
-
-// Reads lines of Go code from standard input and evaluates the code.
-//
-// This function exits in two cases: if the application was terminated (from outside of this function),
-// or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application
-// to terminate (controlled by the 'exitAppIfEndOfInput' parameter).
-func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitAppIfEndOfInput bool, startupFinished chan<- byte) {
+func initConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k) {
 	if app != nil {
 		panic("running multiple consoles is unsupported")
 	}
@@ -518,21 +530,22 @@ func runConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, exitA
 	defineFunctions(w)
 
 	// Run the startup script
-	{
-		var err os.Error
-		err = runScript(w, STARTUP_SCRIPT, /*optional*/ false)
-		startupFinished <- 0
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			return
-		}
-
-		if app.TerminationInProgress() || closed(app.HasTerminated) {
-			return
-		}
+	var err os.Error
+	err = runScript(w, STARTUP_SCRIPT, /*optional*/ false)
+	if err != nil {
+		app.PrintfMsg("%s", err)
+		app.RequestExit()
+		return
 	}
+}
 
+
+// Reads lines of Go code from standard input and evaluates the code.
+//
+// This function exits in two cases: if the application was terminated (from outside of this function),
+// or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application
+// to terminate (controlled by the 'exitAppIfEndOfInput' parameter).
+func runConsole(exitAppIfEndOfInput bool) {
 	// This should be printed before executing "go readCode(...)",
 	// in order to ensure that this message *always* gets printed before printing the prompt
 	app.PrintfMsg("Hint: Input an empty line to see available commands")

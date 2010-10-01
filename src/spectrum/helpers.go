@@ -35,22 +35,44 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
+	"container/vector"
 	"os"
 	"path"
 	"runtime"
+	"sync"
 )
 
 var defaultUserDir = path.Join(os.Getenv("HOME"), ".gospeccy")
 var distDir = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS + "_" + runtime.GOARCH, "gospeccy")
 
-func searchForValidPath(paths []string) string {
-	for _, path := range paths {
-		if _, err := os.Stat(path); err == nil {
-			return path
+var customSearchPaths vector.StringVector
+var customSearchPaths_mutex sync.RWMutex
+
+func AddCustomSearchPath(path string) {
+	customSearchPaths_mutex.Lock()
+	{
+		customSearchPaths.Push(path)
+	}
+	customSearchPaths_mutex.Unlock()
+}
+
+func searchForValidPath(paths []string, fileName string) string {
+	for _, dir := range paths {
+		fullPath := path.Join(dir, fileName)
+		if _, err := os.Stat(fullPath); err == nil {
+			return fullPath
 		}
 	}
 
-	return ""
+	return fileName
+}
+
+func appendCustomSearchPaths(paths *vector.StringVector) {
+	customSearchPaths_mutex.RLock()
+	{
+		paths.AppendVector(&customSearchPaths)
+	}
+	customSearchPaths_mutex.RUnlock()
 }
 
 // Return a valid path for the named snapshot.
@@ -60,17 +82,16 @@ func searchForValidPath(paths []string) string {
 // 2. $HOME/.gospeccy/sna/
 func SnaPath(fileName string) string {
 	var (
-		currDir = path.Join(fileName)
-		userDir = path.Join(defaultUserDir, "sna", fileName)
+		currDir = ""
+		userDir = path.Join(defaultUserDir, "sna")
 	)
 
-	path := searchForValidPath([]string{currDir, userDir})
+	var paths vector.StringVector
+	paths.Push(currDir)
+	paths.Push(userDir)
+	appendCustomSearchPaths(&paths)
 
-	if path == "" {
-		return fileName
-	}
-
-	return path
+	return searchForValidPath(paths, fileName)
 }
 
 // Return a valid path for the 48k system ROM.
@@ -81,18 +102,18 @@ func SnaPath(fileName string) string {
 // 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms/48.rom
 func SystemRomPath(fileName string) string {
 	var (
-		currDir = path.Join("roms", fileName)
-		userDir = path.Join(defaultUserDir, "roms", fileName)
-		distDir = path.Join(distDir, "roms", fileName)
+		currDir = "roms"
+		userDir = path.Join(defaultUserDir, "roms")
+		distDir = path.Join(distDir, "roms")
 	)
 
-	path := searchForValidPath([]string{currDir, userDir, distDir})
+	var paths vector.StringVector
+	paths.Push(currDir)
+	paths.Push(userDir)
+	paths.Push(distDir)
+	appendCustomSearchPaths(&paths)
 
-	if path == "" {
-		return fileName
-	}
-
-	return path
+	return searchForValidPath(paths, fileName)
 }
 
 // Return a valid path for the named script.
@@ -103,18 +124,18 @@ func SystemRomPath(fileName string) string {
 // 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/scripts/
 func ScriptPath(fileName string) string {
 	var (
-		currDir = path.Join("scripts", fileName)
-		userDir = path.Join(defaultUserDir, "scripts", fileName)
-		distDir = path.Join(distDir, "scripts", fileName)
+		currDir = "scripts"
+		userDir = path.Join(defaultUserDir, "scripts")
+		distDir = path.Join(distDir, "scripts")
 	)
 
-	path := searchForValidPath([]string{currDir, userDir, distDir})
+	var paths vector.StringVector
+	paths.Push(currDir)
+	paths.Push(userDir)
+	paths.Push(distDir)
+	appendCustomSearchPaths(&paths)
 
-	if path == "" {
-		return fileName
-	}
-
-	return path
+	return searchForValidPath(paths, fileName)
 }
 
 

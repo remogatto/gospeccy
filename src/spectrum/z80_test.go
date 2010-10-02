@@ -124,9 +124,21 @@ func (memory *testMemory) contendReadNoMreq(address uint16, time uint) {
 	memory.contendRead(address, time)
 }
 
+func (memory *testMemory) contendReadNoMreq_loop(address uint16, time uint, count uint) {
+	for i := uint(0); i < count; i++ {
+		memory.contendReadNoMreq(address, time)
+	}
+}
+
 func (memory *testMemory) contendWriteNoMreq(address uint16, time uint) {
 	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
 	memory.z80.tstates += time
+}
+
+func (memory *testMemory) contendWriteNoMreq_loop(address uint16, time uint, count uint) {
+	for i := uint(0); i < count; i++ {
+		memory.contendWriteNoMreq(address, time)
+	}
 }
 
 func (memory *testMemory) renderScreen() {

@@ -9,8 +9,10 @@ type MemoryAccessor interface {
 
 	contendRead(addr uint16, time uint)
 	contendReadNoMreq(addr uint16, time uint)
+	contendReadNoMreq_loop(addr uint16, time uint, count uint)
 
 	contendWriteNoMreq(addr uint16, time uint)
+	contendWriteNoMreq_loop(addr uint16, time uint, count uint)
 
 	Read(addr uint16) byte
 	Write(addr uint16, value byte)
@@ -67,12 +69,32 @@ func (memory *Memory) writeByte(addr uint16, b byte) {
 
 func (memory *Memory) contend(address uint16, time uint) {
 	tstates_p := &memory.speccy.Cpu.tstates
+	tstates := *tstates_p
 
-	if (address >= 0x4000) && (address <= 0x7fff) {
-		*tstates_p += uint(delay_table[*tstates_p])
+	if (address & 0xc000) == 0x4000 {
+		tstates += uint(delay_table[tstates])
 	}
 
-	*tstates_p += time
+	tstates += time
+
+	*tstates_p = tstates
+}
+
+// Equivalent to executing "contend(address, time)" count times
+func (memory *Memory) contend_loop(address uint16, time uint, count uint) {
+	tstates_p := &memory.speccy.Cpu.tstates
+	tstates := *tstates_p
+
+	if (address & 0xc000) == 0x4000 {
+		for i := uint(0); i < count; i++ {
+			tstates += uint(delay_table[tstates])
+			tstates += time
+		}
+	} else {
+		tstates += time * count
+	}
+
+	*tstates_p = tstates
 }
 
 func (memory *Memory) contendRead(address uint16, time uint) {
@@ -83,8 +105,16 @@ func (memory *Memory) contendReadNoMreq(address uint16, time uint) {
 	memory.contend(address, time)
 }
 
+func (memory *Memory) contendReadNoMreq_loop(address uint16, time uint, count uint) {
+	memory.contend_loop(address, time, count)
+}
+
 func (memory *Memory) contendWriteNoMreq(address uint16, time uint) {
 	memory.contend(address, time)
+}
+
+func (memory *Memory) contendWriteNoMreq_loop(address uint16, time uint, count uint) {
+	memory.contend_loop(address, time, count)
 }
 
 func (memory *Memory) Read(address uint16) byte {

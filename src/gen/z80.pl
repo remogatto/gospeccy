@@ -60,9 +60,8 @@ sub arithmetic_logical ($$$) {
       
 	var offset, bytetemp byte
 	offset = z80.memory.readByte( z80.pc )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++
+	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
+	z80.pc++
 	bytetemp = z80.memory.readByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))))
 	z80.$lcopcode(bytetemp)
 
@@ -83,26 +82,14 @@ CODE
 	$opcode = lc($opcode);
 	$arg1 = lc($arg1);
 	print << "CODE";
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.${opcode}16(z80.$arg1, z80.$arg2());
+      z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 7 )
+      z80.${opcode}16(z80.$arg1, z80.$arg2())
 CODE
     } elsif( $arg1 eq 'HL' and length $arg2 == 2 ) {
 	$opcode = lc($opcode);
 	print << "CODE";
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
-      z80.${opcode}16(z80.$arg2());
+      z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 7 )
+      z80.${opcode}16(z80.$arg2())
 CODE
     }
 }
@@ -144,10 +131,8 @@ sub cpi_cpd ($) {
 	bytetemp = z80.a - value
         lookup = ((z80.a & 0x08 ) >> 3 ) | (((value) & 0x08 ) >> 2 ) | ((bytetemp & 0x08 ) >> 1)
 
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.${modifier}HL(); z80.decBC();
+	z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )
+	z80.${modifier}HL(); z80.decBC()
 	z80.f = (z80.f & FLAG_C) | ternOpB(z80.BC() != 0, FLAG_V | FLAG_N, FLAG_N) | halfcarrySubTable[lookup] | ternOpB(bytetemp != 0, 0, FLAG_Z) | (bytetemp & FLAG_S )
 	if((z80.f & FLAG_H) != 0) { bytetemp-- }
 	z80.f |= (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)
@@ -168,20 +153,16 @@ sub cpir_cpdr ($) {
 	bytetemp = z80.a - value
         lookup = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)
 
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 )
+	z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )
 	z80.decBC()
-	z80.f = ( z80.f & FLAG_C ) | ( ternOpB(z80.BC() != 0, ( FLAG_V | FLAG_N ),FLAG_N)) | halfcarrySubTable[lookup] | ( ternOpB(bytetemp != 0, 0, FLAG_Z )) | ( bytetemp & FLAG_S );
+	z80.f = ( z80.f & FLAG_C ) | ( ternOpB(z80.BC() != 0, ( FLAG_V | FLAG_N ),FLAG_N)) | halfcarrySubTable[lookup] | ( ternOpB(bytetemp != 0, 0, FLAG_Z )) | ( bytetemp & FLAG_S )
 	if((z80.f & FLAG_H) != 0) {
 	    bytetemp--
         }
 	z80.f |= ( bytetemp & FLAG_3 ) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)
 	if( ( z80.f & ( FLAG_V | FLAG_Z ) ) == FLAG_V ) {
-	  z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 );
-	  z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 );
-	  z80.memory.contendReadNoMreq( z80.HL(), 1 );
-	  z80.pc-=2;
+	  z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )
+	  z80.pc -= 2
 	}
 	z80.${modifier}HL()
 CODE
@@ -197,8 +178,7 @@ sub inc_dec ($$) {
 	print "      z80.".lc($opcode)."$arg()\n";
     } elsif( length $arg == 2 or $arg eq 'REGISTER' ) {
 	print << "CODE";
-	z80.memory.contendReadNoMreq( z80.IR(), 1 )
-	z80.memory.contendReadNoMreq( z80.IR(), 1 )
+	z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 2 )
 	z80.$modifier${arg}()
 CODE
     } elsif( $arg eq '(HL)' ) {
@@ -217,9 +197,8 @@ CODE
 	var offset, bytetemp byte
 	var wordtemp uint16
 	offset = z80.memory.readByte( z80.pc )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++
+	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
+	z80.pc++
 	wordtemp = uint16(int(z80.REGISTER()) + int(signExtend(offset)))
 	bytetemp = z80.memory.readByte( wordtemp )
 	z80.memory.contendReadNoMreq( wordtemp, 1 )
@@ -271,10 +250,8 @@ sub inir_indr ($) {
                 sz53Table[z80.b];
 
 	if( z80.b != 0 ) {
-	  z80.memory.contendWriteNoMreq( z80.HL(), 1 ); z80.memory.contendWriteNoMreq( z80.HL(), 1 );
-	  z80.memory.contendWriteNoMreq( z80.HL(), 1 ); z80.memory.contendWriteNoMreq( z80.HL(), 1 );
-	  z80.memory.contendWriteNoMreq( z80.HL(), 1 );
-	  z80.pc -= 2;
+	  z80.memory.contendWriteNoMreq_loop( z80.HL(), 1, 5 )
+	  z80.pc -= 2
 	}
         z80.${modifier}HL()
 CODE
@@ -291,7 +268,7 @@ sub ldi_ldd ($) {
 	var bytetemp byte = z80.memory.readByte( z80.HL() )
 	z80.decBC()
 	z80.memory.writeByte(z80.DE(), bytetemp);
-	z80.memory.contendWriteNoMreq( z80.DE(), 1 ); z80.memory.contendWriteNoMreq( z80.DE(), 1 );
+	z80.memory.contendWriteNoMreq_loop( z80.DE(), 1, 2 )
 	z80.${modifier}DE(); z80.${modifier}HL();
 	bytetemp += z80.a;
 	z80.f = ( z80.f & ( FLAG_C | FLAG_Z | FLAG_S ) ) | ternOpB(z80.BC() != 0, FLAG_V, 0) |
@@ -308,14 +285,12 @@ sub ldir_lddr ($) {
     print << "CODE";
 	var bytetemp byte = z80.memory.readByte( z80.HL() )
 	z80.memory.writeByte(z80.DE(), bytetemp);
-	z80.memory.contendWriteNoMreq(z80.DE(), 1); z80.memory.contendWriteNoMreq(z80.DE(), 1 );
+	z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 2)
 	z80.decBC()
 	bytetemp += z80.a;
 	z80.f = (z80.f & ( FLAG_C | FLAG_Z | FLAG_S )) | ternOpB(z80.BC() != 0, FLAG_V, 0 ) | (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02 != 0), FLAG_5, 0 )
 	if(z80.BC() != 0) {
-	  z80.memory.contendWriteNoMreq( z80.DE(), 1 ); z80.memory.contendWriteNoMreq( z80.DE(), 1 );
-	  z80.memory.contendWriteNoMreq( z80.DE(), 1 ); z80.memory.contendWriteNoMreq( z80.DE(), 1 );
-	  z80.memory.contendWriteNoMreq( z80.DE(), 1 );
+	  z80.memory.contendWriteNoMreq_loop( z80.DE(), 1, 5 )
 	  z80.pc -= 2
 	}
         z80.${modifier}HL(); z80.${modifier}DE()
@@ -344,10 +319,8 @@ sub otir_otdr ($) {
             sz53Table[z80.b]
 
 	if( z80.b != 0 ) {
-	  z80.memory.contendReadNoMreq( z80.BC(), 1 ); z80.memory.contendReadNoMreq( z80.BC(), 1 );
-	  z80.memory.contendReadNoMreq( z80.BC(), 1 ); z80.memory.contendReadNoMreq( z80.BC(), 1 );
-	  z80.memory.contendReadNoMreq( z80.BC(), 1 );
-	  z80.pc -= 2;
+	  z80.memory.contendReadNoMreq_loop( z80.BC(), 1, 5 )
+	  z80.pc -= 2
 	}
 CODE
 }
@@ -361,17 +334,17 @@ sub outi_outd ($) {
     print << "CODE";
 	var outitemp, outitemp2 byte
 
-	z80.memory.contendReadNoMreq( z80.IR(), 1 );
-	outitemp = z80.memory.readByte( z80.HL() );
+	z80.memory.contendReadNoMreq( z80.IR(), 1 )
+	outitemp = z80.memory.readByte( z80.HL() )
 	z80.b--;	/* This does happen first, despite what the specs say */
-	z80.writePort(z80.BC(), outitemp);
+	z80.writePort(z80.BC(), outitemp)
 
 	z80.${modifier}HL()
-        outitemp2 = outitemp + z80.l;
+        outitemp2 = outitemp + z80.l
 	z80.f = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0) |
             ternOpB(outitemp2 < outitemp, FLAG_H | FLAG_C, 0) |
             ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |
-            sz53Table[z80.b];
+            sz53Table[z80.b]
 CODE
 }
 
@@ -422,16 +395,16 @@ sub res_set ($$$) {
     } elsif( $register eq '(HL)' ) {
 	print << "CODE";
 	var bytetemp byte = z80.memory.readByte( z80.HL() )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 );
-	z80.memory.writeByte( z80.HL(), bytetemp $operator $hex_mask );
+	z80.memory.contendReadNoMreq( z80.HL(), 1 )
+	z80.memory.writeByte( z80.HL(), bytetemp $operator $hex_mask )
 CODE
     } elsif( $register eq '(REGISTER+dd)' ) {
 	print << "CODE";
    
 	var bytetemp byte
-	bytetemp = z80.memory.readByte( z80.tempaddr );
-	z80.memory.contendReadNoMreq( z80.tempaddr, 1 );
-	z80.memory.writeByte( z80.tempaddr, bytetemp $operator $hex_mask );
+	bytetemp = z80.memory.readByte( z80.tempaddr )
+	z80.memory.contendReadNoMreq( z80.tempaddr, 1 )
+	z80.memory.writeByte( z80.tempaddr, bytetemp $operator $hex_mask )
 
 CODE
     }
@@ -448,16 +421,16 @@ sub rotate_shift ($$) {
     } elsif( $register eq '(HL)' ) {
 	print << "CODE";
 	var bytetemp byte = z80.memory.readByte(z80.HL())
-	z80.memory.contendReadNoMreq( z80.HL(), 1 );
-	z80.$lcopcode(&bytetemp);
-	z80.memory.writeByte(z80.HL(),bytetemp);
+	z80.memory.contendReadNoMreq( z80.HL(), 1 )
+	z80.$lcopcode(&bytetemp)
+	z80.memory.writeByte(z80.HL(),bytetemp)
 CODE
     } elsif( $register eq '(REGISTER+dd)' ) {
 	print << "CODE";
-	var bytetemp byte = z80.memory.readByte(z80.tempaddr);
-	z80.memory.contendReadNoMreq( z80.tempaddr, 1 );
-	z80.$lcopcode(&bytetemp);
-	z80.memory.writeByte(z80.tempaddr, bytetemp);
+	var bytetemp byte = z80.memory.readByte(z80.tempaddr)
+	z80.memory.contendReadNoMreq( z80.tempaddr, 1 )
+	z80.$lcopcode(&bytetemp)
+	z80.memory.writeByte(z80.tempaddr, bytetemp)
 CODE
     }
 }
@@ -484,8 +457,8 @@ sub opcode_BIT (@) {
 BIT
     } else {
 	print << "BIT";
-	bytetemp := z80.memory.readByte( z80.HL() );
-	z80.memory.contendReadNoMreq( z80.HL(), 1 );
+	bytetemp := z80.memory.readByte( z80.HL() )
+	z80.memory.contendReadNoMreq( z80.HL(), 1 )
 	z80.bit($bit, bytetemp)
 BIT
     }
@@ -597,8 +570,7 @@ EX
         z80.memory.contendReadNoMreq( z80.SP() + 1, 1 )
 	z80.memory.writeByte( z80.SP() + 1, z80.$lchigh )
 	z80.memory.writeByte( z80.SP(),     z80.$lclow  )
-	z80.memory.contendWriteNoMreq( z80.SP(), 1 )
-        z80.memory.contendWriteNoMreq( z80.SP(), 1 )
+	z80.memory.contendWriteNoMreq_loop( z80.SP(), 1, 2 )
 	z80.$lclow = bytetempl
         z80.$lchigh = bytetemph
 EX
@@ -720,14 +692,14 @@ sub opcode_LD (@) {
 
 	    if( $dest eq 'R' and $src eq 'A' ) {
 		print << "LD";
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
+      z80.memory.contendReadNoMreq( z80.IR(), 1 )
       /* Keep the RZX instruction counter right */
       z80.rzxInstructionsOffset += ( int(z80.r) - int(z80.a))
       z80.r, z80.r7 = uint16(z80.a), z80.a
 LD
             } elsif( $dest eq 'A' and $src eq 'R' ) {
 		print << "LD";
-      z80.memory.contendReadNoMreq( z80.IR(), 1 );
+      z80.memory.contendReadNoMreq( z80.IR(), 1 )
       z80.a = byte(z80.r&0x7f) | (z80.r7 & 0x80)
       z80.f = ( z80.f & FLAG_C ) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)
 LD
@@ -762,11 +734,10 @@ LD
         } elsif( $src eq '(REGISTER+dd)' ) {
             $dest = lc($dest);
 	    print << "LD";
-	var offset byte;
-	offset = z80.memory.readByte( z80.pc );
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 );
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 );
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++;
+	var offset byte
+	offset = z80.memory.readByte( z80.pc )
+	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
+	z80.pc++
 	z80.$dest = z80.memory.readByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))))
 LD
         }
@@ -794,8 +765,7 @@ LD
 LD
         } elsif( $src eq 'HL' or $src eq 'REGISTER' ) {
 	    print << "LD";
-      z80.memory.contendReadNoMreq( z80.IR(), 1 )
-      z80.memory.contendReadNoMreq( z80.IR(), 1 )
+      z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 2 )
       z80.sp = z80.$src()
 LD
         } elsif( $src eq '(nnnn)' ) {
@@ -854,18 +824,18 @@ LD
 	if( length $src == 1 ) {
 	print << "LD";
 	offset := z80.memory.readByte( z80.pc )
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 );
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 );
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++;
-	z80.memory.writeByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))), z80.$src );
+	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
+	z80.pc++
+	z80.memory.writeByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))), z80.$src )
 LD
         } elsif( $src eq 'nn' ) {
 	    print << "LD";
 	offset := z80.memory.readByte( z80.pc )
         z80.pc++
-	value := z80.memory.readByte( z80.pc );
-	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++;
-	z80.memory.writeByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))), value );
+	value := z80.memory.readByte( z80.pc )
+	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 2 )
+	z80.pc++
+	z80.memory.writeByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))), value )
 LD
         }
     }
@@ -990,8 +960,7 @@ RLA
 sub opcode_RLD (@) {
     print << "RLD";
 	var bytetemp byte = z80.memory.readByte( z80.HL() )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
+	z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 4 )
 	z80.memory.writeByte(z80.HL(), (bytetemp << 4 ) | ( z80.a & 0x0f ) )
 	z80.a = ( z80.a & 0xf0 ) | ( bytetemp >> 4 )
 	z80.f = ( z80.f & FLAG_C ) | sz53pTable[z80.a]
@@ -1021,8 +990,7 @@ RRCA
 sub opcode_RRD (@) {
     print << "RRD";
 	var bytetemp byte = z80.memory.readByte( z80.HL() )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.memory.contendReadNoMreq( z80.HL(), 1 ); z80.memory.contendReadNoMreq( z80.HL(), 1 )
+	z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 4 )
 	z80.memory.writeByte(z80.HL(),  ( z80.a << 4 ) | ( bytetemp >> 4 ) )
 	z80.a = ( z80.a & 0xf0 ) | ( bytetemp & 0x0f )
 	z80.f = ( z80.f & FLAG_C ) | sz53pTable[z80.a]
@@ -1079,7 +1047,8 @@ sub opcode_slttrap ($) {
 # 	z80.tempaddr = uint16(int(z80.REGISTER()) + int(signExtend(z80.memory.readByteInternal( z80.pc ))))
 # 	z80.pc++; z80.memory.contendRead( z80.pc, 3 )
 # 	opcode3 = z80.memory.readByteInternal( z80.pc )
-# 	z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.memory.contendReadNoMreq( z80.pc, 1 ); z80.pc++
+# 	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 2 )
+# 	z80.pc++
 #     }
 #         <%= opcodes_ddfdcb %>
       
@@ -1274,7 +1243,7 @@ while(<>) {
 
 	    print << "CODE";
       z80.$lcregister = z80.memory.readByte(z80.tempaddr) $operator $hexmask
-      z80.memory.contendReadNoMreq(z80.tempaddr, 1 )
+      z80.memory.contendReadNoMreq(z80.tempaddr, 1)
       z80.memory.writeByte(z80.tempaddr, z80.$lcregister)
 	}
 CODE

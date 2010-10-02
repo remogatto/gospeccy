@@ -395,11 +395,7 @@ func (z80 *Z80) inc(value *byte) {
 
 func (z80 *Z80) jr() {
 	var jrtemp int8 = signExtend(z80.memory.readByte(z80.pc))
-	z80.memory.contendReadNoMreq(z80.pc, 1)
-	z80.memory.contendReadNoMreq(z80.pc, 1)
-	z80.memory.contendReadNoMreq(z80.pc, 1)
-	z80.memory.contendReadNoMreq(z80.pc, 1)
-	z80.memory.contendReadNoMreq(z80.pc, 1)
+	z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 	z80.pc += uint16(jrtemp)
 }
 
@@ -781,8 +777,7 @@ func opcode_dd(z80 *Z80) {
 		z80.pc++
 		z80.memory.contendRead(z80.pc, 3)
 		opcode3 = z80.memory.readByteInternal(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 2)
 		z80.pc++
 		opcodesMap[SHIFT_0xDDCB+int(opcode3)](z80)
 	default:
@@ -810,8 +805,7 @@ func opcode_fd(z80 *Z80) {
 		z80.pc++
 		z80.memory.contendRead(z80.pc, 3)
 		opcode3 = z80.memory.readByteInternal(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 2)
 		z80.pc++
 
 		opcodesMap[SHIFT_0xFDCB+int(opcode3)](z80)

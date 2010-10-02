@@ -1,4 +1,4 @@
-package main
+package console
 
 import (
 	"spectrum"
@@ -16,7 +16,6 @@ import (
 	"bytes"
 	"time"
 )
-
 
 // ==============
 // Some variables
@@ -517,7 +516,7 @@ func readCode(app *spectrum.Application, code chan string, no_more_code chan<- b
 	}
 }
 
-func initConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k) {
+func Init(_app *spectrum.Application, _speccy *spectrum.Spectrum48k) {
 	if app != nil {
 		panic("running multiple consoles is unsupported")
 	}
@@ -544,7 +543,7 @@ func initConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k) {
 // This function exits in two cases: if the application was terminated (from outside of this function),
 // or if there is nothing more to read from os.Stdin. The latter can optionally cause the whole application
 // to terminate (controlled by the 'exitAppIfEndOfInput' parameter).
-func runConsole(exitAppIfEndOfInput bool) {
+func Run(exitAppIfEndOfInput bool) {
 	// This should be printed before executing "go readCode(...)",
 	// in order to ensure that this message *always* gets printed before printing the prompt
 	app.PrintfMsg("Hint: Input an empty line to see available commands")

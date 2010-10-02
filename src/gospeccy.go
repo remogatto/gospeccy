@@ -28,6 +28,7 @@ package main
 import (
 	"spectrum"
 	"spectrum/formats"
+	"spectrum/console"
 	"⚛sdl"
 	"fmt"
 	"flag"
@@ -239,7 +240,7 @@ func main() {
 
 	// Run startup scripts. The startup scripts may create a display/audio receiver.
 	{
-		initConsole(app, speccy)
+		console.Init(app, speccy)
 
 		if app.TerminationInProgress() || closed(app.HasTerminated) {
 			goto quit
@@ -305,7 +306,7 @@ func main() {
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
 
 	// Start the console goroutine.
-	go runConsole(true)
+	go console.Run(true)
 
 quit:
 	<-app.HasTerminated

@@ -11,6 +11,10 @@ FORMATS_FILES=\
 	$(GOSPECCY_ROOT)/src/formats/Z80.go\
 	$(GOSPECCY_ROOT)/src/formats/ZIP.go
 
+CONSOLE_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum/console.a
+
+CONSOLE_FILES=\
+	$(GOSPECCY_ROOT)/src/console/console.go\
 
 READLINE_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum/readline.a
 
@@ -22,5 +26,4 @@ PRETTYTEST_FILES=\
 	$(GOSPECCY_ROOT)/src/prettytest/prettytest.go
 
 FRONTEND_FILES=\
-	$(GOSPECCY_ROOT)/src/console.go\
 	$(GOSPECCY_ROOT)/src/gospeccy.go

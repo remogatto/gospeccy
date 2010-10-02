@@ -16,6 +16,22 @@ formats-uninstall:
 	make -C $(GOSPECCY_ROOT)/src/formats uninstall
 endif
 
+ifneq ($(TARG),spectrum/console)
+$(CONSOLE_PKG_LIB): $(GOSPECCY_ROOT)/src/console/_obj/spectrum/console.a $(GOSPECCY_ROOT)/_obj/spectrum.a
+	make -C $(GOSPECCY_ROOT)/src/console install
+
+$(GOSPECCY_ROOT)/src/console/_obj/spectrum/console.a: $(CONSOLE_FILES)
+	make -C $(GOSPECCY_ROOT)/src/console
+
+.PHONY: console-clean
+console-clean:
+	make -C $(GOSPECCY_ROOT)/src/console clean
+
+.PHONY: console-uninstall
+console-uninstall:
+	make -C $(GOSPECCY_ROOT)/src/console uninstall
+endif
+
 ifneq ($(TARG),spectrum/prettytest)
 $(PRETTYTEST_PKG_LIB): $(PRETTYTEST_FILES)
 	make -C $(GOSPECCY_ROOT)/src/prettytest install

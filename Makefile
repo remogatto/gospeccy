@@ -23,12 +23,10 @@ SPECTRUM_FILES=\
 	src/spectrum/z80_gen.go\
 	src/spectrum/z80_tables.go
 
-
 PERF_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛perf.a
 
 SDL_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl.a
 SDL_AUDIO_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/⚛sdl/audio.a
-
 
 PKG_LIBS=\
 	$(FORMATS_PKG_LIB)\
@@ -38,9 +36,7 @@ PKG_LIBS=\
 	$(SDL_PKG_LIB)\
 	$(SDL_AUDIO_PKG_LIB)
 
-
 GOFMT_FILES=\
-	src/console.go\
 	src/gospeccy.go\
 	src/spectrum/application.go\
 	src/spectrum/display.go\
@@ -54,6 +50,7 @@ GOFMT_FILES=\
 	src/spectrum/ula.go\
 	src/spectrum/z80*.go\
 	$(FORMATS_FILES)\
+	$(CONSOLE_FILES)\
 	$(PRETTYTEST_FILES)\
 	$(FRONTEND_FILES)\
 	$(READLINE_FILES)
@@ -62,7 +59,7 @@ gospeccy: _obj _obj/gospeccy.$(O)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)
 
 .PHONY: clean
-clean: formats-clean prettytest-clean readline-clean
+clean: formats-clean console-clean prettytest-clean readline-clean
 	rm -f gospeccy
 	rm -rf _obj
 
@@ -79,7 +76,7 @@ install: gospeccy
 	cp -a scripts/* $(SCRIPTS_PATH)
 
 .PHONY: uninstall
-uninstall: formats-uninstall prettytest-uninstall readline-uninstall
+uninstall: formats-uninstall console-uninstall prettytest-uninstall readline-uninstall
 	rm -f $(GOBIN)/gospeccy
 	rm -rf $(DIST_PATH)
 	rm -rf $(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum
@@ -87,12 +84,16 @@ uninstall: formats-uninstall prettytest-uninstall readline-uninstall
 _obj:
 	mkdir _obj
 
-_obj/gospeccy.$(O): $(FRONTEND_FILES) _obj/spectrum.a $(PKG_LIBS)
+_obj/gospeccy.$(O): $(FRONTEND_FILES) _obj/spectrum.a $(PKG_LIBS) $(CONSOLE_PKG_LIB)
 	$(GC) -I./_obj -o $@ $(FRONTEND_FILES)
 
 _obj/spectrum.a: $(SPECTRUM_FILES) $(PKG_LIBS)
 	$(GC) -I./_obj -o _obj/spectrum.$(O) $(SPECTRUM_FILES)
 	gopack grc $@ _obj/spectrum.$(O)
+
+# _obj/console.a: _obj/spectrum.a $(CONSOLE_FILES)
+# 	$(GC) -I./_obj -o _obj/console.$(O) $(CONSOLE_FILES)
+# 	gopack grc $@ _obj/console.$(O)
 
 
 #
@@ -113,6 +114,5 @@ $(SDL_PKG_LIB):
 	make -C $(GOROOT)/src/pkg/$(SDL_URL) install
 
 $(SDL_AUDIO_PKG_LIBS): $(SDL_PKG_LIB)
-
 
 include Make.inc-tail

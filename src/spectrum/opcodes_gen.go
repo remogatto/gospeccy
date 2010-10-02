@@ -50,8 +50,7 @@ func initOpcodes() {
 	}
 	/* INC BC */
 	opcodesMap[0x03] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.incBC()
 	}
 	/* INC B */
@@ -91,13 +90,7 @@ func initOpcodes() {
 	}
 	/* ADD HL,BC */
 	opcodesMap[0x09] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.hl, z80.BC())
 	}
 	/* LD A,(BC) */
@@ -106,8 +99,7 @@ func initOpcodes() {
 	}
 	/* DEC BC */
 	opcodesMap[0x0b] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.decBC()
 	}
 	/* INC C */
@@ -154,8 +146,7 @@ func initOpcodes() {
 	}
 	/* INC DE */
 	opcodesMap[0x13] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.incDE()
 	}
 	/* INC D */
@@ -184,13 +175,7 @@ func initOpcodes() {
 	}
 	/* ADD HL,DE */
 	opcodesMap[0x19] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.hl, z80.DE())
 	}
 	/* LD A,(DE) */
@@ -199,8 +184,7 @@ func initOpcodes() {
 	}
 	/* DEC DE */
 	opcodesMap[0x1b] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.decDE()
 	}
 	/* INC E */
@@ -246,8 +230,7 @@ func initOpcodes() {
 	}
 	/* INC HL */
 	opcodesMap[0x23] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.incHL()
 	}
 	/* INC H */
@@ -294,13 +277,7 @@ func initOpcodes() {
 	}
 	/* ADD HL,HL */
 	opcodesMap[0x29] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.hl, z80.HL())
 	}
 	/* LD HL,(nnnn) */
@@ -310,8 +287,7 @@ func initOpcodes() {
 	}
 	/* DEC HL */
 	opcodesMap[0x2b] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.decHL()
 	}
 	/* INC L */
@@ -360,8 +336,7 @@ func initOpcodes() {
 	}
 	/* INC SP */
 	opcodesMap[0x33] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.incSP()
 	}
 	/* INC (HL) */
@@ -404,13 +379,7 @@ func initOpcodes() {
 	}
 	/* ADD HL,SP */
 	opcodesMap[0x39] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.hl, z80.SP())
 	}
 	/* LD A,(nnnn) */
@@ -424,8 +393,7 @@ func initOpcodes() {
 	}
 	/* DEC SP */
 	opcodesMap[0x3b] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.decSP()
 	}
 	/* INC A */
@@ -1243,8 +1211,7 @@ func initOpcodes() {
 		z80.memory.contendReadNoMreq(z80.SP()+1, 1)
 		z80.memory.writeByte(z80.SP()+1, z80.h)
 		z80.memory.writeByte(z80.SP(), z80.l)
-		z80.memory.contendWriteNoMreq(z80.SP(), 1)
-		z80.memory.contendWriteNoMreq(z80.SP(), 1)
+		z80.memory.contendWriteNoMreq_loop(z80.SP(), 1, 2)
 		z80.l = bytetempl
 		z80.h = bytetemph
 	}
@@ -1391,8 +1358,7 @@ func initOpcodes() {
 	}
 	/* LD SP,HL */
 	opcodesMap[0xf9] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.sp = z80.HL()
 	}
 	/* JP M,nnnn */
@@ -2555,13 +2521,7 @@ func initOpcodes() {
 	}
 	/* SBC HL,BC */
 	opcodesMap[shift0xed(0x42)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.sbc16(z80.BC())
 	}
 	/* LD (nnnn),BC */
@@ -2619,13 +2579,7 @@ func initOpcodes() {
 	}
 	/* ADC HL,BC */
 	opcodesMap[shift0xed(0x4a)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.adc16(z80.BC())
 	}
 	/* LD BC,(nnnn) */
@@ -2650,13 +2604,7 @@ func initOpcodes() {
 	}
 	/* SBC HL,DE */
 	opcodesMap[shift0xed(0x52)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.sbc16(z80.DE())
 	}
 	/* LD (nnnn),DE */
@@ -2686,13 +2634,7 @@ func initOpcodes() {
 	}
 	/* ADC HL,DE */
 	opcodesMap[shift0xed(0x5a)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.adc16(z80.DE())
 	}
 	/* LD DE,(nnnn) */
@@ -2722,13 +2664,7 @@ func initOpcodes() {
 	}
 	/* SBC HL,HL */
 	opcodesMap[shift0xed(0x62)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.sbc16(z80.HL())
 	}
 	/* LD (nnnn),HL */
@@ -2739,10 +2675,7 @@ func initOpcodes() {
 	/* RRD */
 	opcodesMap[shift0xed(0x67)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 4)
 		z80.memory.writeByte(z80.HL(), (z80.a<<4)|(bytetemp>>4))
 		z80.a = (z80.a & 0xf0) | (bytetemp & 0x0f)
 		z80.f = (z80.f & FLAG_C) | sz53pTable[z80.a]
@@ -2757,13 +2690,7 @@ func initOpcodes() {
 	}
 	/* ADC HL,HL */
 	opcodesMap[shift0xed(0x6a)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.adc16(z80.HL())
 	}
 	/* LD HL,(nnnn) */
@@ -2774,10 +2701,7 @@ func initOpcodes() {
 	/* RLD */
 	opcodesMap[shift0xed(0x6f)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 4)
 		z80.memory.writeByte(z80.HL(), (bytetemp<<4)|(z80.a&0x0f))
 		z80.a = (z80.a & 0xf0) | (bytetemp >> 4)
 		z80.f = (z80.f & FLAG_C) | sz53pTable[z80.a]
@@ -2793,13 +2717,7 @@ func initOpcodes() {
 	}
 	/* SBC HL,SP */
 	opcodesMap[shift0xed(0x72)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.sbc16(z80.SP())
 	}
 	/* LD (nnnn),SP */
@@ -2818,13 +2736,7 @@ func initOpcodes() {
 	}
 	/* ADC HL,SP */
 	opcodesMap[shift0xed(0x7a)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.adc16(z80.SP())
 	}
 	/* LD SP,(nnnn) */
@@ -2839,8 +2751,7 @@ func initOpcodes() {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.decBC()
 		z80.memory.writeByte(z80.DE(), bytetemp)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
+		z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 2)
 		z80.incDE()
 		z80.incHL()
 		bytetemp += z80.a
@@ -2856,11 +2767,7 @@ func initOpcodes() {
 		bytetemp = z80.a - value
 		lookup = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)
 
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 5)
 		z80.incHL()
 		z80.decBC()
 		z80.f = (z80.f & FLAG_C) | ternOpB(z80.BC() != 0, FLAG_V|FLAG_N, FLAG_N) | halfcarrySubTable[lookup] | ternOpB(bytetemp != 0, 0, FLAG_Z) | (bytetemp & FLAG_S)
@@ -2904,8 +2811,7 @@ func initOpcodes() {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.decBC()
 		z80.memory.writeByte(z80.DE(), bytetemp)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
+		z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 2)
 		z80.decDE()
 		z80.decHL()
 		bytetemp += z80.a
@@ -2921,11 +2827,7 @@ func initOpcodes() {
 		bytetemp = z80.a - value
 		lookup = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)
 
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 5)
 		z80.decHL()
 		z80.decBC()
 		z80.f = (z80.f & FLAG_C) | ternOpB(z80.BC() != 0, FLAG_V|FLAG_N, FLAG_N) | halfcarrySubTable[lookup] | ternOpB(bytetemp != 0, 0, FLAG_Z) | (bytetemp & FLAG_S)
@@ -2968,17 +2870,12 @@ func initOpcodes() {
 	opcodesMap[shift0xed(0xb0)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.writeByte(z80.DE(), bytetemp)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
+		z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 2)
 		z80.decBC()
 		bytetemp += z80.a
 		z80.f = (z80.f & (FLAG_C | FLAG_Z | FLAG_S)) | ternOpB(z80.BC() != 0, FLAG_V, 0) | (bytetemp & FLAG_3) | ternOpB((bytetemp&0x02 != 0), FLAG_5, 0)
 		if z80.BC() != 0 {
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
+			z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 5)
 			z80.pc -= 2
 		}
 		z80.incHL()
@@ -2992,11 +2889,7 @@ func initOpcodes() {
 		bytetemp = z80.a - value
 		lookup = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)
 
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 5)
 		z80.decBC()
 		z80.f = (z80.f & FLAG_C) | (ternOpB(z80.BC() != 0, (FLAG_V | FLAG_N), FLAG_N)) | halfcarrySubTable[lookup] | (ternOpB(bytetemp != 0, 0, FLAG_Z)) | (bytetemp & FLAG_S)
 		if (z80.f & FLAG_H) != 0 {
@@ -3004,11 +2897,7 @@ func initOpcodes() {
 		}
 		z80.f |= (bytetemp & FLAG_3) | ternOpB((bytetemp&0x02) != 0, FLAG_5, 0)
 		if (z80.f & (FLAG_V | FLAG_Z)) == FLAG_V {
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
+			z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 5)
 			z80.pc -= 2
 		}
 		z80.incHL()
@@ -3029,11 +2918,7 @@ func initOpcodes() {
 			sz53Table[z80.b]
 
 		if z80.b != 0 {
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
+			z80.memory.contendWriteNoMreq_loop(z80.HL(), 1, 5)
 			z80.pc -= 2
 		}
 		z80.incHL()
@@ -3055,11 +2940,7 @@ func initOpcodes() {
 			sz53Table[z80.b]
 
 		if z80.b != 0 {
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
+			z80.memory.contendReadNoMreq_loop(z80.BC(), 1, 5)
 			z80.pc -= 2
 		}
 	}
@@ -3067,17 +2948,12 @@ func initOpcodes() {
 	opcodesMap[shift0xed(0xb8)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.writeByte(z80.DE(), bytetemp)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
-		z80.memory.contendWriteNoMreq(z80.DE(), 1)
+		z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 2)
 		z80.decBC()
 		bytetemp += z80.a
 		z80.f = (z80.f & (FLAG_C | FLAG_Z | FLAG_S)) | ternOpB(z80.BC() != 0, FLAG_V, 0) | (bytetemp & FLAG_3) | ternOpB((bytetemp&0x02 != 0), FLAG_5, 0)
 		if z80.BC() != 0 {
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
-			z80.memory.contendWriteNoMreq(z80.DE(), 1)
+			z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 5)
 			z80.pc -= 2
 		}
 		z80.decHL()
@@ -3091,11 +2967,7 @@ func initOpcodes() {
 		bytetemp = z80.a - value
 		lookup = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)
 
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.memory.contendReadNoMreq(z80.HL(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 5)
 		z80.decBC()
 		z80.f = (z80.f & FLAG_C) | (ternOpB(z80.BC() != 0, (FLAG_V | FLAG_N), FLAG_N)) | halfcarrySubTable[lookup] | (ternOpB(bytetemp != 0, 0, FLAG_Z)) | (bytetemp & FLAG_S)
 		if (z80.f & FLAG_H) != 0 {
@@ -3103,11 +2975,7 @@ func initOpcodes() {
 		}
 		z80.f |= (bytetemp & FLAG_3) | ternOpB((bytetemp&0x02) != 0, FLAG_5, 0)
 		if (z80.f & (FLAG_V | FLAG_Z)) == FLAG_V {
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
-			z80.memory.contendReadNoMreq(z80.HL(), 1)
+			z80.memory.contendReadNoMreq_loop(z80.HL(), 1, 5)
 			z80.pc -= 2
 		}
 		z80.decHL()
@@ -3128,11 +2996,7 @@ func initOpcodes() {
 			sz53Table[z80.b]
 
 		if z80.b != 0 {
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
-			z80.memory.contendWriteNoMreq(z80.HL(), 1)
+			z80.memory.contendWriteNoMreq_loop(z80.HL(), 1, 5)
 			z80.pc -= 2
 		}
 		z80.decHL()
@@ -3154,11 +3018,7 @@ func initOpcodes() {
 			sz53Table[z80.b]
 
 		if z80.b != 0 {
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
-			z80.memory.contendReadNoMreq(z80.BC(), 1)
+			z80.memory.contendReadNoMreq_loop(z80.BC(), 1, 5)
 			z80.pc -= 2
 		}
 	}
@@ -3173,24 +3033,12 @@ func initOpcodes() {
 
 	/* ADD ix,BC */
 	opcodesMap[shift0xdd(0x09)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.ix, z80.BC())
 	}
 	/* ADD ix,DE */
 	opcodesMap[shift0xdd(0x19)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.ix, z80.DE())
 	}
 	/* LD ix,nnnn */
@@ -3208,8 +3056,7 @@ func initOpcodes() {
 	}
 	/* INC ix */
 	opcodesMap[shift0xdd(0x23)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.incIX()
 	}
 	/* INC z80.IXH() */
@@ -3227,13 +3074,7 @@ func initOpcodes() {
 	}
 	/* ADD ix,ix */
 	opcodesMap[shift0xdd(0x29)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.ix, z80.IX())
 	}
 	/* LD ix,(nnnn) */
@@ -3243,8 +3084,7 @@ func initOpcodes() {
 	}
 	/* DEC ix */
 	opcodesMap[shift0xdd(0x2b)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.decIX()
 	}
 	/* INC z80.IXL() */
@@ -3265,11 +3105,7 @@ func initOpcodes() {
 		var offset, bytetemp byte
 		var wordtemp uint16
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		wordtemp = uint16(int(z80.IX()) + int(signExtend(offset)))
 		bytetemp = z80.memory.readByte(wordtemp)
@@ -3282,11 +3118,7 @@ func initOpcodes() {
 		var offset, bytetemp byte
 		var wordtemp uint16
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		wordtemp = uint16(int(z80.IX()) + int(signExtend(offset)))
 		bytetemp = z80.memory.readByte(wordtemp)
@@ -3299,20 +3131,13 @@ func initOpcodes() {
 		offset := z80.memory.readByte(z80.pc)
 		z80.pc++
 		value := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 2)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), value)
 	}
 	/* ADD ix,SP */
 	opcodesMap[shift0xdd(0x39)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.ix, z80.SP())
 	}
 	/* LD B,z80.IXH() */
@@ -3327,11 +3152,7 @@ func initOpcodes() {
 	opcodesMap[shift0xdd(0x46)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.b = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 	}
@@ -3347,11 +3168,7 @@ func initOpcodes() {
 	opcodesMap[shift0xdd(0x4e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.c = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 	}
@@ -3367,11 +3184,7 @@ func initOpcodes() {
 	opcodesMap[shift0xdd(0x56)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.d = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 	}
@@ -3387,11 +3200,7 @@ func initOpcodes() {
 	opcodesMap[shift0xdd(0x5e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.e = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 	}
@@ -3422,11 +3231,7 @@ func initOpcodes() {
 	opcodesMap[shift0xdd(0x66)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.h = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 	}
@@ -3461,11 +3266,7 @@ func initOpcodes() {
 	opcodesMap[shift0xdd(0x6e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.l = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 	}
@@ -3476,77 +3277,49 @@ func initOpcodes() {
 	/* LD (ix+dd),B */
 	opcodesMap[shift0xdd(0x70)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), z80.b)
 	}
 	/* LD (ix+dd),C */
 	opcodesMap[shift0xdd(0x71)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), z80.c)
 	}
 	/* LD (ix+dd),D */
 	opcodesMap[shift0xdd(0x72)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), z80.d)
 	}
 	/* LD (ix+dd),E */
 	opcodesMap[shift0xdd(0x73)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), z80.e)
 	}
 	/* LD (ix+dd),H */
 	opcodesMap[shift0xdd(0x74)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), z80.h)
 	}
 	/* LD (ix+dd),L */
 	opcodesMap[shift0xdd(0x75)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), z80.l)
 	}
 	/* LD (ix+dd),A */
 	opcodesMap[shift0xdd(0x77)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IX())+int(signExtend(offset))), z80.a)
 	}
@@ -3562,11 +3335,7 @@ func initOpcodes() {
 	opcodesMap[shift0xdd(0x7e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.a = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 	}
@@ -3583,11 +3352,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.add(bytetemp)
@@ -3606,11 +3371,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.adc(bytetemp)
@@ -3629,11 +3390,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.sub(bytetemp)
@@ -3652,11 +3409,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.sbc(bytetemp)
@@ -3675,11 +3428,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.and(bytetemp)
@@ -3698,11 +3447,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.xor(bytetemp)
@@ -3721,11 +3466,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.or(bytetemp)
@@ -3744,11 +3485,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IX()) + int(signExtend(offset))))
 		z80.cp(bytetemp)
@@ -3769,8 +3506,7 @@ func initOpcodes() {
 		z80.memory.contendReadNoMreq(z80.SP()+1, 1)
 		z80.memory.writeByte(z80.SP()+1, z80.ixh)
 		z80.memory.writeByte(z80.SP(), z80.ixl)
-		z80.memory.contendWriteNoMreq(z80.SP(), 1)
-		z80.memory.contendWriteNoMreq(z80.SP(), 1)
+		z80.memory.contendWriteNoMreq_loop(z80.SP(), 1, 2)
 		z80.ixl = bytetempl
 		z80.ixh = bytetemph
 	}
@@ -3785,8 +3521,7 @@ func initOpcodes() {
 	}
 	/* LD SP,ix */
 	opcodesMap[shift0xdd(0xf9)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.sp = z80.IX()
 	}
 
@@ -3796,24 +3531,12 @@ func initOpcodes() {
 
 	/* ADD iy,BC */
 	opcodesMap[shift0xfd(0x09)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.iy, z80.BC())
 	}
 	/* ADD iy,DE */
 	opcodesMap[shift0xfd(0x19)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.iy, z80.DE())
 	}
 	/* LD iy,nnnn */
@@ -3831,8 +3554,7 @@ func initOpcodes() {
 	}
 	/* INC iy */
 	opcodesMap[shift0xfd(0x23)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.incIY()
 	}
 	/* INC z80.IYH() */
@@ -3850,13 +3572,7 @@ func initOpcodes() {
 	}
 	/* ADD iy,iy */
 	opcodesMap[shift0xfd(0x29)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.iy, z80.IY())
 	}
 	/* LD iy,(nnnn) */
@@ -3866,8 +3582,7 @@ func initOpcodes() {
 	}
 	/* DEC iy */
 	opcodesMap[shift0xfd(0x2b)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.decIY()
 	}
 	/* INC z80.IYL() */
@@ -3888,11 +3603,7 @@ func initOpcodes() {
 		var offset, bytetemp byte
 		var wordtemp uint16
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		wordtemp = uint16(int(z80.IY()) + int(signExtend(offset)))
 		bytetemp = z80.memory.readByte(wordtemp)
@@ -3905,11 +3616,7 @@ func initOpcodes() {
 		var offset, bytetemp byte
 		var wordtemp uint16
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		wordtemp = uint16(int(z80.IY()) + int(signExtend(offset)))
 		bytetemp = z80.memory.readByte(wordtemp)
@@ -3922,20 +3629,13 @@ func initOpcodes() {
 		offset := z80.memory.readByte(z80.pc)
 		z80.pc++
 		value := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 2)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), value)
 	}
 	/* ADD iy,SP */
 	opcodesMap[shift0xfd(0x39)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 7)
 		z80.add16(z80.iy, z80.SP())
 	}
 	/* LD B,z80.IYH() */
@@ -3950,11 +3650,7 @@ func initOpcodes() {
 	opcodesMap[shift0xfd(0x46)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.b = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 	}
@@ -3970,11 +3666,7 @@ func initOpcodes() {
 	opcodesMap[shift0xfd(0x4e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.c = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 	}
@@ -3990,11 +3682,7 @@ func initOpcodes() {
 	opcodesMap[shift0xfd(0x56)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.d = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 	}
@@ -4010,11 +3698,7 @@ func initOpcodes() {
 	opcodesMap[shift0xfd(0x5e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.e = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 	}
@@ -4045,11 +3729,7 @@ func initOpcodes() {
 	opcodesMap[shift0xfd(0x66)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.h = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 	}
@@ -4084,11 +3764,7 @@ func initOpcodes() {
 	opcodesMap[shift0xfd(0x6e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.l = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 	}
@@ -4099,77 +3775,49 @@ func initOpcodes() {
 	/* LD (iy+dd),B */
 	opcodesMap[shift0xfd(0x70)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), z80.b)
 	}
 	/* LD (iy+dd),C */
 	opcodesMap[shift0xfd(0x71)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), z80.c)
 	}
 	/* LD (iy+dd),D */
 	opcodesMap[shift0xfd(0x72)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), z80.d)
 	}
 	/* LD (iy+dd),E */
 	opcodesMap[shift0xfd(0x73)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), z80.e)
 	}
 	/* LD (iy+dd),H */
 	opcodesMap[shift0xfd(0x74)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), z80.h)
 	}
 	/* LD (iy+dd),L */
 	opcodesMap[shift0xfd(0x75)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), z80.l)
 	}
 	/* LD (iy+dd),A */
 	opcodesMap[shift0xfd(0x77)] = func(z80 *Z80) {
 		offset := z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.memory.writeByte(uint16(int(z80.IY())+int(signExtend(offset))), z80.a)
 	}
@@ -4185,11 +3833,7 @@ func initOpcodes() {
 	opcodesMap[shift0xfd(0x7e)] = func(z80 *Z80) {
 		var offset byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		z80.a = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 	}
@@ -4206,11 +3850,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.add(bytetemp)
@@ -4229,11 +3869,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.adc(bytetemp)
@@ -4252,11 +3888,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.sub(bytetemp)
@@ -4275,11 +3907,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.sbc(bytetemp)
@@ -4298,11 +3926,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.and(bytetemp)
@@ -4321,11 +3945,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.xor(bytetemp)
@@ -4344,11 +3964,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.or(bytetemp)
@@ -4367,11 +3983,7 @@ func initOpcodes() {
 
 		var offset, bytetemp byte
 		offset = z80.memory.readByte(z80.pc)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
-		z80.memory.contendReadNoMreq(z80.pc, 1)
+		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 		z80.pc++
 		bytetemp = z80.memory.readByte(uint16(int(z80.IY()) + int(signExtend(offset))))
 		z80.cp(bytetemp)
@@ -4392,8 +4004,7 @@ func initOpcodes() {
 		z80.memory.contendReadNoMreq(z80.SP()+1, 1)
 		z80.memory.writeByte(z80.SP()+1, z80.iyh)
 		z80.memory.writeByte(z80.SP(), z80.iyl)
-		z80.memory.contendWriteNoMreq(z80.SP(), 1)
-		z80.memory.contendWriteNoMreq(z80.SP(), 1)
+		z80.memory.contendWriteNoMreq_loop(z80.SP(), 1, 2)
 		z80.iyl = bytetempl
 		z80.iyh = bytetemph
 	}
@@ -4408,8 +4019,7 @@ func initOpcodes() {
 	}
 	/* LD SP,iy */
 	opcodesMap[shift0xfd(0xf9)] = func(z80 *Z80) {
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
-		z80.memory.contendReadNoMreq(z80.IR(), 1)
+		z80.memory.contendReadNoMreq_loop(z80.IR(), 1, 2)
 		z80.sp = z80.IY()
 	}
 

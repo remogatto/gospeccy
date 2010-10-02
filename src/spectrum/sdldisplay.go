@@ -76,18 +76,12 @@ func (s SDLSurface) addrXY(x, y uint) uintptr {
 	return uintptr(unsafe.Pointer(pixels + offset))
 }
 
-func (s SDLSurface) setPixel(addr uintptr, color uint32) {
-	*(*uint32)(unsafe.Pointer(addr)) = color
-}
-
 
 // ==============================
 // Screen render loop (goroutine)
 // ==============================
 
 func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, renderer screen_renderer_t) {
-	var screen *DisplayData = nil
-	var oldScreen *DisplayData = nil
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -101,11 +95,9 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, ren
 			evtLoop.Terminate <- 0
 			return
 
-		case screen = <-screenChannel:
+		case screen := <-screenChannel:
 			if screen != nil {
-				renderer.render(screen, oldScreen)
-				oldScreen = screen
-				screen = nil
+				renderer.render(screen)
 			} else {
 				evtLoop.Delete()
 			}
@@ -132,7 +124,7 @@ type SDLScreen struct {
 }
 
 type screen_renderer_t interface {
-	render(screen, oldScreen_orNil *DisplayData)
+	render(screen *DisplayData)
 }
 
 func NewSDLScreen(app *Application) *SDLScreen {
@@ -157,10 +149,10 @@ func (display *SDLScreen) close() {
 }
 
 // Implement screen_renderer_t
-func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
+func (display *SDLScreen) render(screen *DisplayData) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
-	unscaledDisplay.render(screen, oldScreen_orNil)
+	unscaledDisplay.render(screen)
 
 	if display.screenSurface.surface == nil {
 		var sdlMode uint32 = 0
@@ -187,7 +179,7 @@ func (display *SDLScreen) render(screen, oldScreen_orNil *DisplayData) {
 			wy := TotalScreenWidth * y
 			addr := surface.addrXY(uint(r.X), y)
 			for x := uint(r.X); x < end_x; x++ {
-				surface.setPixel(addr, palette[pixels[wy+x]])
+				*(*uint32)(unsafe.Pointer(addr)) = palette[pixels[wy+x]]
 				addr += uintptr(bpp)
 			}
 		}
@@ -246,10 +238,10 @@ func (display *SDLScreen2x) close() {
 }
 
 // Implement screen_renderer_t
-func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
+func (display *SDLScreen2x) render(screen *DisplayData) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
-	unscaledDisplay.render(screen, oldScreen_orNil)
+	unscaledDisplay.render(screen)
 
 	if display.screenSurface.surface == nil {
 		var sdlMode uint32
@@ -290,10 +282,11 @@ func (display *SDLScreen2x) render(screen, oldScreen_orNil *DisplayData) {
 			for x := uint(r.X); x < end_x; x++ {
 				color := palette[pixels[wy+x]]
 
-				surface.setPixel(addr+0, color)
-				surface.setPixel(addr+bpp, color)
-				surface.setPixel(addr+pitch+0, color)
-				surface.setPixel(addr+pitch+bpp, color)
+				// Fill a 2x2 rectangle
+				*(*uint32)(unsafe.Pointer(addr)) = color
+				*(*uint32)(unsafe.Pointer(addr+bpp)) = color
+				*(*uint32)(unsafe.Pointer(addr+pitch)) = color
+				*(*uint32)(unsafe.Pointer(addr+pitch+bpp)) = color
 
 				addr += bpp2
 			}
@@ -559,7 +552,7 @@ func init() {
 	}
 }
 
-func (disp *UnscaledDisplay) render(screen, oldScreen_orNil *DisplayData) {
+func (disp *UnscaledDisplay) render(screen *DisplayData) {
 	const X0 = ScreenBorderX
 	const Y0 = ScreenBorderY
 

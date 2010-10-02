@@ -123,7 +123,7 @@ func (r *RenderTest) renderScreen(speccy *Spectrum48k) bool {
 
 	displayData := inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
 
-	renderedSDLScreen.render(displayData, nil)
+	renderedSDLScreen.render(displayData)
 
 	if diffImage := imagesAreNotEqual(renderedSDLScreen, expectedImage); diffImage != nil {
 		r.diffImage = diffImage
@@ -187,10 +187,7 @@ func BenchmarkRender(b *testing.B) {
 
 	const numFrames = 1000
 
-	var (
-		frames    [numFrames]*DisplayData
-		prevFrame *DisplayData = nil
-	)
+	var frames [numFrames]*DisplayData
 
 	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}, newUnscaledDisplay(), app}
 
@@ -225,8 +222,7 @@ func BenchmarkRender(b *testing.B) {
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		j %= numFrames
-		sdlScreen.render(frames[j], prevFrame)
-		prevFrame = frames[j]
+		sdlScreen.render(frames[j])
 		j++
 	}
 

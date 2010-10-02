@@ -324,7 +324,7 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 		start := events[i]
 
 		if start.level > 0 {
-			level := float(start.level)
+			level := Audio16_Table[start.level]
 			end := events[i+1]
 
 			var position0 float = float(start.tstate) * k
@@ -346,7 +346,7 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 	}
 
 	for i := uint(0); i < numSamples; i++ {
-		s := uint(samples[i] * (0x7fff / MAX_AUDIO_LEVEL))
+		s := uint(samples[i])
 		if s > 0x7fff {
 			s = 0x7fff
 		}

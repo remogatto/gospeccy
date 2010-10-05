@@ -138,8 +138,7 @@ type Cmd_MakeSnapshot struct {
 	Chan chan<- *formats.FullSnapshot
 }
 type Cmd_MakeVideoMemoryDump struct {
-	Filename string
-	ErrChan          chan<- os.Error
+	Chan chan<- []byte
 }
 
 func commandLoop(speccy *Spectrum48k) {
@@ -215,7 +214,7 @@ func commandLoop(speccy *Spectrum48k) {
 				cmd.Chan <- speccy.Cpu.makeSnapshot()
 
 			case Cmd_MakeVideoMemoryDump:
-				cmd.ErrChan <- speccy.makeVideoMemoryDump(cmd.Filename)
+				cmd.Chan <- speccy.makeVideoMemoryDump()
 
 			}
 		}
@@ -374,7 +373,7 @@ func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
 	return nil
 }
 
-func (speccy *Spectrum48k) makeVideoMemoryDump(filename string) os.Error {
-	return ioutil.WriteFile(filename, speccy.Memory.Data()[0x4000:0x4000+6912], 0600)
+func (speccy *Spectrum48k) makeVideoMemoryDump() []byte {
+	return speccy.Memory.Data()[0x4000:0x4000+6912]
 }
 

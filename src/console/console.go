@@ -34,6 +34,8 @@ const PROMPT_EMPTY = "          "
 var havePrompt = false
 var havePrompt_mutex sync.Mutex
 
+var ignoreStartupScript = false
+
 const SCRIPT_DIRECTORY = "scripts"
 const STARTUP_SCRIPT = "startup"
 
@@ -254,6 +256,29 @@ func wrapper_optionalScript(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 }
 
+// Signature: func screenshot(screenshotName string)
+func wrapper_screenshot(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
+	path := in[0].(eval.StringValue).Get(t)
+
+	ch := make(chan []byte)
+	speccy.CommandChannel <- spectrum.Cmd_MakeVideoMemoryDump{ ch }
+
+	data := <-ch
+
+	err := ioutil.WriteFile(path, data, 0600)
+
+	if err != nil {
+		app.PrintfMsg("%s", err)
+	}
+
+	if app.Verbose {
+		app.PrintfMsg("wrote screenshot \"%s\"", path)
+	}
+}
 
 // ==============
 // Initialization
@@ -363,28 +388,39 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("optionalScript(scriptName string)")
 		help_vals.Push("Load (if found) and evaluate the specified Go script")
 	}
+
+	{
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_screenshot, functionSignature)
+		w.DefineVar("screenshot", funcType, funcValue)
+		help_keys.Push("screenshot(screenshotName string)")
+		help_vals.Push("Take a screenshot of the current display")
+	}
+
 }
 
 
 // Runs the specified Go source code in the context of 'w'
-func run(w *eval.World, sourceCode string) {
+func run(w *eval.World, sourceCode string) os.Error {
 	// Avoids the need to put ";" at the end of the code
 	sourceCode = sourceCode + "\n"
 
 	var err os.Error
-
 	var code eval.Code
+
 	code, err = w.Compile(sourceCode)
 	if err != nil {
 		app.PrintfMsg("%s", err)
-		return
+		return err
 	}
 
 	_, err = code.Run()
 	if err != nil {
 		app.PrintfMsg("%s", err)
-		return
+		return err
 	}
+
+	return err
 }
 
 // Loads and evaluates the specified Go script
@@ -529,7 +565,8 @@ func Init(_app *spectrum.Application, _speccy *spectrum.Spectrum48k) {
 
 	// Run the startup script
 	var err os.Error
-	err = runScript(w, STARTUP_SCRIPT, /*optional*/ false)
+
+	err = runScript(w, STARTUP_SCRIPT, /*optional*/ ignoreStartupScript)
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()

@@ -42,6 +42,7 @@ import (
 	"runtime"
 	"reflect"
 	"regexp"
+	"os"
 	"fmt"
 )
 
@@ -86,7 +87,15 @@ func (assertion *T) fail(exp, act interface{}, info *callerInfo) {
 	assertion.Status = STATUS_FAIL
 }
 
+func (assertion *T) failWithCustomMsg(msg string, info *callerInfo) {
+	if !assertion.Dry {
+		assertion.T.Errorf("%s -- %s:%d\n", msg, info.fn, info.line)
+	}
+	assertion.Status = STATUS_FAIL
+}
+
 func (assertion *T) setup() {
+	assertion.Status = STATUS_PASS
 	assertion.callerInfo = newCallerInfo(3)
 }
 
@@ -115,6 +124,14 @@ func (assertion *T) False(value bool) {
 	}
 }
 
+// Assert that the given path exists.
+func (assertion *T) Path(path string) {
+	assertion.setup()
+	if _, err := os.Stat(path); err != nil {
+		assertion.failWithCustomMsg(fmt.Sprintf("Path %s doesn't exist", path), assertion.callerInfo)
+	}
+}
+
 // Mark the test function as pending.
 func (assertion *T) Pending() {
 	assertion.setup()
@@ -122,7 +139,7 @@ func (assertion *T) Pending() {
 }
 
 // Check if the test function has failed.
-func (assertion *T) IsFailed() bool {
+func (assertion *T) Failed() bool {
 	return assertion.Status == STATUS_FAIL
 }
 
@@ -151,11 +168,11 @@ func Run(t *testing.T, tests ...func(*T)) {
 	callerName := runtime.FuncForPC(pc).Name()
 	fmt.Printf("\n%s:\n", callerName)
 
-	setupFuncId := getFuncId(".*\\.before$", tests...)
-	teardownFuncId := getFuncId(".*\\.after$", tests...)
+	setupFuncId := getFuncId(".*\\.before.*$", tests...)
+	teardownFuncId := getFuncId(".*\\.after.*$", tests...)
 
-	beforeAllFuncId := getFuncId(".*\\.beforeAll$", tests...)
-	afterAllFuncId := getFuncId(".*\\.afterAll$", tests...)
+	beforeAllFuncId := getFuncId(".*\\.beforeAll.*$", tests...)
+	afterAllFuncId := getFuncId(".*\\.afterAll.*$", tests...)
 
 	for i, test := range tests {
 

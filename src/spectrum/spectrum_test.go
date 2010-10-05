@@ -20,27 +20,19 @@ func before(t *prettytest.T) {
 
 func after(t *prettytest.T) {
 	speccy = nil
-	os.Remove("testdata/screen.scr")
 }
 
 func testMakeVideoMemoryDump(t *prettytest.T) {
-	speccy.makeVideoMemoryDump(scrFilename)
-	fileInfo, err := os.Stat(scrFilename)
-
-	t.True(err == nil)
-	t.Equal(int64(6912), fileInfo.Size)
+	t.Equal(6912, len(speccy.makeVideoMemoryDump()))
 }
 
 func testMakeVideoMemoryDumpCmd(t *prettytest.T) {
-	errChan := make(chan os.Error)
-	speccy.CommandChannel <- Cmd_MakeVideoMemoryDump{ scrFilename, errChan }
+	ch := make(chan []byte)
+	speccy.CommandChannel <- Cmd_MakeVideoMemoryDump{ ch }
 
-	<-errChan
+	data := <-ch
 
-	fileInfo, err := os.Stat(scrFilename)
-	
-	t.True(err == nil)
-	t.Equal(int64(6912), fileInfo.Size)
+	t.Equal(6912, len(data))
 }
 
 func TestSaveScreen(t *testing.T) {

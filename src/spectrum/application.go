@@ -144,6 +144,11 @@ func (app *Application) TerminationInProgress() bool {
 	return a
 }
 
+// Get the current MessageOutput
+func (app *Application) GetMessageOutput() MessageOutput {
+	return app.messageOutput
+}
+
 // Replaces the MessageOutput, and returns the previous MessageOutput
 func (app *Application) SetMessageOutput(out MessageOutput) MessageOutput {
 	var prev MessageOutput

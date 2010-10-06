@@ -81,11 +81,15 @@ func testCommandHelp(t *pt.T) {
 	t.True(matched)
 }
 
-func testScreenshotCommand(t *pt.T) {
+func testCommandScreenshot(t *pt.T) {
 	err := run(w, fmt.Sprintf("screenshot(\"%s\")", screenshotFn))
 
 	t.True(err == nil)
 	t.Path(screenshotFn)
+}
+
+func testCommandScript(t *pt.T) {
+	t.Pending()
 }
 
 func TestCommands(t *testing.T) {
@@ -95,6 +99,7 @@ func TestCommands(t *testing.T) {
 		before,
 		after,
 		testCommandHelp,
-		testScreenshotCommand,
+		testCommandScreenshot,
+		testCommandScript,
 	)
 }

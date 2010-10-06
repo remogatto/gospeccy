@@ -94,10 +94,6 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func addSearchPath(path string)
 func wrapper_addSearchPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
-		return
-	}
-
 	path := in[0].(eval.StringValue).Get(t)
 	spectrum.AddCustomSearchPath(path)
 }
@@ -282,10 +278,6 @@ func wrapper_screenshot(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func puts(str string)
 func wrapper_puts(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
-		return
-	}
-
 	str := in[0].(eval.StringValue).Get(t)
 	app.PrintfMsg("%s", str)
 }

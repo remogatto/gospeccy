@@ -420,9 +420,6 @@ func defineFunctions(w *eval.World) {
 
 // Runs the specified Go source code in the context of 'w'
 func run(w *eval.World, sourceCode string) os.Error {
-	// Avoids the need to put ";" at the end of the code
-	sourceCode = sourceCode + "\n"
-
 	var err os.Error
 	var code eval.Code
 

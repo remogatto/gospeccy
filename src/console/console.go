@@ -280,6 +280,16 @@ func wrapper_screenshot(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 }
 
+// Signature: func puts(str string)
+func wrapper_puts(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+
+	str := in[0].(eval.StringValue).Get(t)
+	app.PrintfMsg("%s", str)
+}
+
 // ==============
 // Initialization
 // ==============
@@ -396,6 +406,14 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("screenshot(screenshotName string)")
 		help_vals.Push("Take a screenshot of the current display")
 	}
+	{
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_puts, functionSignature)
+		w.DefineVar("puts", funcType, funcValue)
+		help_keys.Push("puts(str string)")
+		help_vals.Push("Print the given string")
+	}
+
 
 }
 

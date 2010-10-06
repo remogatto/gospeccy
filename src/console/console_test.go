@@ -12,7 +12,11 @@ import(
 )
 
 const testdataDir = "testdata"
-var screenshotFn = path.Join(testdataDir, "screenshot.scr")
+
+var (
+	screenshotFn = path.Join(testdataDir, "screenshot.scr")
+	scriptFn = path.Join(testdataDir, "test")
+)
 
 type testMessageOutput struct {
 	strings *vector.StringVector
@@ -88,8 +92,18 @@ func testCommandScreenshot(t *pt.T) {
 	t.Path(screenshotFn)
 }
 
+func testCommandPuts(t *pt.T) {
+	err := run(w, fmt.Sprintf("puts(\"%s\")", "Hello World!"))
+	
+	t.True(err == nil)
+	t.Equal("Hello World!\n", messageOutput.String())
+}
+
 func testCommandScript(t *pt.T) {
-	t.Pending()
+	err := run(w, fmt.Sprintf("script(\"%s\")", scriptFn))
+	
+	t.True(err == nil)
+	t.Equal("Hello World!\n", messageOutput.String())
 }
 
 func TestCommands(t *testing.T) {
@@ -99,6 +113,7 @@ func TestCommands(t *testing.T) {
 		before,
 		after,
 		testCommandHelp,
+		testCommandPuts,
 		testCommandScreenshot,
 		testCommandScript,
 	)

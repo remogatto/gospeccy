@@ -76,6 +76,16 @@ func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func exit()
 func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	// Implementation note:
+	//   The following test has to be there only in cases in which something can go wrong.
+	//   For example if the user would try to execute "exit(); sound(false)" then GoSpeccy would panic.
+	//   An alternative way would be to actually terminate the whole program at the 1st statement - so that
+	//   "sound(false)" or whatever is not executed - alas this is somewhat problematic,
+	//   since once the script "exit(); sound(false)" runs, it cannot be stopped halfway
+	//   through its execution. Using "runtime.Goexit()" would solve this issue, but only partially,
+	//   since it is potentially possible for the statement "sound(false)" to be hidden in a defer statement.
+	//   So, the best option (until somebody implements a better one) is to convert the problematic commands
+	//   into statements that are doing nothing while the application is in the process of being exited.
 	if app.TerminationInProgress() {
 		return
 	}

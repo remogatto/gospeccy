@@ -72,8 +72,13 @@ func testLastAssertionStatus(assert *T) {
 	assert.Equal("foo", "foo")
 
 	if assert.Failed() {
-		assert.T.Errorf("Assertion status should not be STATUS_FAIL")
+		assert.T.Errorf("Assertion last status should not be STATUS_FAIL")
 	}
+
+	if !assert.TestFailed() {
+		assert.T.Errorf("Test status should be STATUS_FAIL")
+	}
+
 }
 
 func TestBaseAssertions(t *testing.T) {

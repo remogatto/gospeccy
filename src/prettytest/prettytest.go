@@ -49,6 +49,7 @@ import (
 const LABEL_FAIL = "\033[31;1mFAIL\033[0m"
 const LABEL_PASS = "\033[32;1mOK\033[0m"
 const LABEL_PENDING = "\033[33;1mPENDING\033[0m"
+const LABEL_DRY = "\033[33;1mDRY\033[0m"
 
 const (
 	STATUS_PASS = iota
@@ -65,7 +66,7 @@ type callerInfo struct {
 
 type T struct {
 	T   *testing.T
-	Status byte
+	Status, LastStatus byte
 	Dry    bool
 
 	callerInfo *callerInfo
@@ -84,18 +85,18 @@ func (assertion *T) fail(exp, act interface{}, info *callerInfo) {
 	if !assertion.Dry {
 		assertion.T.Errorf("Expected %s but got %s -- %s:%d\n", exp, act, info.fn, info.line)
 	}
-	assertion.Status = STATUS_FAIL
+	assertion.Status, assertion.LastStatus = STATUS_FAIL, STATUS_FAIL
 }
 
 func (assertion *T) failWithCustomMsg(msg string, info *callerInfo) {
 	if !assertion.Dry {
 		assertion.T.Errorf("%s -- %s:%d\n", msg, info.fn, info.line)
 	}
-	assertion.Status = STATUS_FAIL
+	assertion.Status, assertion.LastStatus = STATUS_FAIL, STATUS_FAIL
 }
 
 func (assertion *T) setup() {
-	assertion.Status = STATUS_PASS
+	assertion.LastStatus = STATUS_PASS
 	assertion.callerInfo = newCallerInfo(3)
 }
 
@@ -138,8 +139,13 @@ func (assertion *T) Pending() {
 	assertion.Status = STATUS_PENDING
 }
 
-// Check if the test function has failed.
+// Check if the last assertion has failed.
 func (assertion *T) Failed() bool {
+	return assertion.LastStatus == STATUS_FAIL
+}
+
+// Check if the test function has failed.
+func (assertion *T) TestFailed() bool {
 	return assertion.Status == STATUS_FAIL
 }
 
@@ -176,7 +182,7 @@ func Run(t *testing.T, tests ...func(*T)) {
 
 	for i, test := range tests {
 
-		assertions := &T{t, STATUS_PASS, false, &callerInfo{"", "", 0}}
+		assertions := &T{t, STATUS_PASS, STATUS_PASS, false, &callerInfo{"", "", 0}}
 
 		if i == beforeAllFuncId {
 			tests[beforeAllFuncId](assertions)
@@ -190,7 +196,7 @@ func Run(t *testing.T, tests ...func(*T)) {
 		if i == setupFuncId || i == teardownFuncId {
 			continue
 		}
- 
+		
 		if setupFuncId >= 0 {
 			tests[setupFuncId](assertions)
 		}
@@ -201,19 +207,23 @@ func Run(t *testing.T, tests ...func(*T)) {
 			tests[teardownFuncId](assertions)
 		}
 
-		switch assertions.Status {
-		case STATUS_FAIL:
-			fmt.Printf(formatTag + "%s\n", LABEL_FAIL, assertions.callerInfo.name)
-		case STATUS_PASS:
-			fmt.Printf(formatTag+"%s\n", LABEL_PASS, assertions.callerInfo.name)
-		case STATUS_PENDING:
-			fmt.Printf(formatTag+"%s\n", LABEL_PENDING, assertions.callerInfo.name)
+		if !assertions.Dry {
+			switch assertions.Status {
+			case STATUS_FAIL:
+				fmt.Printf(formatTag + "%s\n", LABEL_FAIL, assertions.callerInfo.name)
+			case STATUS_PASS:
+				fmt.Printf(formatTag+"%s\n", LABEL_PASS, assertions.callerInfo.name)
+			case STATUS_PENDING:
+				fmt.Printf(formatTag+"%s\n", LABEL_PENDING, assertions.callerInfo.name)
 
+			}
+		} else {
+			fmt.Printf(formatTag + "%s\n", LABEL_DRY, assertions.callerInfo.name)
 		}
 	}
 
 	if afterAllFuncId >= 0 {
-		assertions := &T{t, STATUS_PASS, false, &callerInfo{"", "", 0}}
+		assertions := &T{t, STATUS_PASS, STATUS_PASS, false, &callerInfo{"", "", 0}}
 		tests[afterAllFuncId](assertions)
 	}
 }
@@ -222,6 +232,6 @@ func Run(t *testing.T, tests ...func(*T)) {
 // assertions.
 func DryRun(t *testing.T, tests ...func(*T)) {
 	for _, test := range tests {
-		test(&T{t, STATUS_PASS, true, nil})
+		test(&T{t, STATUS_PASS, STATUS_PASS, true, nil})
 	}
 }

@@ -5,14 +5,13 @@ import (
 	"spectrum/prettytest"
 )
 
-func testDecodeZ80(assert *prettytest.Assertions) {
-	assert.Pending("testDecodeZ80")
+func testDecodeZ80(assert *prettytest.T) {
+	assert.Pending()
 }
 
 func TestZ80Snapshot(t *testing.T) {
 	prettytest.Run(
 		t,
-		"TestZ80Snapshot",
 		testDecodeZ80,
 	)
 }

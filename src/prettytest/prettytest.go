@@ -133,6 +133,14 @@ func (assertion *T) Path(path string) {
 	}
 }
 
+// Assert that the value is nil.
+func (assertion *T) Nil(value interface{}) {
+	assertion.setup()
+	if value != nil {
+		assertion.failWithCustomMsg(fmt.Sprintf("Expected nil but got %s", value), assertion.callerInfo)
+	}
+}
+
 // Mark the test function as pending.
 func (assertion *T) Pending() {
 	assertion.setup()

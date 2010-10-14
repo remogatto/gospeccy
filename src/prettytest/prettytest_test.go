@@ -190,3 +190,12 @@ func TestPath(t *testing.T) {
 		testPath,
 	)
 }
+
+func testNil(assert *T) { assert.Nil(nil) }
+
+func TestNil(t *testing.T) {
+	Run(
+		t,
+		testNil,
+	)
+}

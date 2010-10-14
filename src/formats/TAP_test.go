@@ -26,7 +26,7 @@ func testReadTAP(assert *prettytest.T) {
 	assert.Nil(err)
 	assert.Equal(27, n)
 
-	assert.True(headerBlock != nil)
+	assert.NotNil(headerBlock)
 	assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
 	assert.Equal("ROM       ", headerBlock.filename)
 	assert.Equal(uint16(2), headerBlock.length)
@@ -36,7 +36,7 @@ func testReadTAP(assert *prettytest.T) {
 func testReadTAPError(assert *prettytest.T) {
 	tap := NewTAP()
 	_, err := tap.Read(nil)
-	assert.False(err == nil)
+	assert.NotNil(err)
 }
 
 // SAVE "ROM" CODE 0,2

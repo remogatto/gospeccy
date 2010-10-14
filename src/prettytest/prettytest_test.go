@@ -192,10 +192,12 @@ func TestPath(t *testing.T) {
 }
 
 func testNil(assert *T) { assert.Nil(nil) }
+func testNotNil(assert *T) { assert.NotNil([]byte{1,2,3}) }
 
-func TestNil(t *testing.T) {
+func TestNilNotNil(t *testing.T) {
 	Run(
 		t,
 		testNil,
+		testNotNil,
 	)
 }

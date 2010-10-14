@@ -141,6 +141,14 @@ func (assertion *T) Nil(value interface{}) {
 	}
 }
 
+// Assert that the value is not nil.
+func (assertion *T) NotNil(value interface{}) {
+	assertion.setup()
+	if value == nil {
+		assertion.failWithCustomMsg(fmt.Sprintf("Expected not nil value but got %s", value), assertion.callerInfo)
+	}
+}
+
 // Mark the test function as pending.
 func (assertion *T) Pending() {
 	assertion.setup()

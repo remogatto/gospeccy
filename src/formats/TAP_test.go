@@ -3,10 +3,8 @@ package formats
 import (
 	"testing"
 	"spectrum/prettytest"
-	"os"
 	"path"
 	"io/ioutil"
-	"container/vector"
 	"bytes"
 )
 
@@ -17,116 +15,6 @@ var (
 	tapProgramFn = path.Join(testdataDir, "hello.tap")
 )
 
-const (
-	TAP_FILE_PROGRAM = iota
-	TAP_FILE_NUMBER
-	TAP_FILE_CHARACTER_ARRAY
-	TAP_FILE_CODE
-	TAP_BLOCK_HEADER = 0x00
-	TAP_BLOCK_DATA = 0xff
-)
-
-func joinBytes(h, l byte) uint16 {
-	return uint16(l) | (uint16(h) << 8)
-}
-
-func checksum(exp byte, data []byte) bool {
-	sum := data[0]
-	for _, v := range data { sum ^= v }
-	return exp == sum
-}
-
-type tapBlock interface {
-	blockType() byte
-	data() []byte
-}
-
-type tapBlockHeader struct {
-	data []byte
-	tapType byte
-	filename string
-	length uint16
-	par1, par2 uint16
-}
-
-func (header *tapBlockHeader) blockType() byte {
-	return header.data[0]
-}
-
-type tapBlockData []byte
-
-func (data tapBlockData) blockType() byte {
-	return data[0]
-}
-
-type TAP struct {
-	blocks *vector.Vector
-}
-
-func NewTAP() *TAP {
-	return &TAP{}
-}
-
-func (tap *TAP) readBlockHeader(data []byte) {
-	tap.blocks.Push(new(tapBlockHeader))
-	header := tap.blocks.Last().(*tapBlockHeader)
-
-	header.data = data
-	header.tapType = data[1]
-	header.filename = string(data[2:12])
-	header.length = joinBytes(data[13], data[12])
-	header.par1 = joinBytes(data[15], data[14])
-	header.par2 = joinBytes(data[17], data[16])
-}
-
-func (tap *TAP) readBlockData(data []byte) {
-	tap.blocks.Push(tapBlockData(data))
-}
-
-func (tap *TAP) Read(data []byte) (n int, err os.Error) {
-	var (
-		length, blockLength uint
-		pos, nextPos uint
-	)
-
-	if len(data) == 0 {
-		err = os.NewError("No TAP data to read!")
-		return
-	}
-
-	tap.blocks = new(vector.Vector)
-	length = uint(len(data))
-
-	for pos = 0; pos < length; pos+=nextPos {
-		blockLength = uint(joinBytes(data[pos+1], data[pos]))
-
-		if blockLength == 0 {
-			err = os.NewError("Block size can't be 0")
-			n = int(pos)
-			return
-		}
-
-		pos += 2
-		blockData := data[pos:pos + blockLength]
-		blockType := data[pos]
-
-		switch blockType {
-		case 0x00:
-			tap.readBlockHeader(blockData)
-			checksum(data[blockLength - 1], blockData)
-			nextPos += blockLength
-			n += int(blockLength) + 2
-		case 0xff:
-			tap.readBlockData(blockData)
-			nextPos += blockLength
-			n += int(blockLength) + 2
-		}
-
-	}
-
-	return
-}
-
 func testReadTAP(assert *prettytest.T) {
 	data, _ := ioutil.ReadFile(tapCodeFn)
 	tap := NewTAP()
@@ -135,7 +23,7 @@ func testReadTAP(assert *prettytest.T) {
 	headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 	dataBlock := tap.blocks.At(1).(tapBlockData)
 
-	assert.True(err == nil)
+	assert.Nil(err)
 	assert.Equal(27, n)
 
 	assert.True(headerBlock != nil)
@@ -157,7 +45,7 @@ func testReadTAPCodeFile(assert *prettytest.T) {
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	assert.True(err == nil)
+	assert.Nil(err)
 
 	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
@@ -181,7 +69,7 @@ func testReadTAPProgramFile(assert *prettytest.T) {
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	assert.True(err == nil)
+	assert.Nil(err)
 	
 	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)

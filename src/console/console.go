@@ -416,9 +416,7 @@ func defineFunctions(w *eval.World) {
 		help_vals.Push("Print the given string")
 	}
 
-
 }
-
 
 // Runs the specified Go source code in the context of 'w'
 func run(w *eval.World, sourceCode string) os.Error {
@@ -689,3 +687,65 @@ func (out *consoleMessageOutput) PrintfMsg(format string, a ...interface{}) {
 	}
 	out.mutex.Unlock()
 }
+
+
+// Lines below will be uncommented when/if the keypress console
+// command will be implemented.
+
+// type uintV uint
+
+// func newUint(v uint) *uintV { 
+// 	vp := uintV(v)
+// 	return &vp
+// }
+
+
+// func (v *uintV) String() string { return fmt.Sprint(*v) }
+// func (v *uintV) Assign(t *eval.Thread, o eval.Value) { *v = uintV(o.(eval.UintValue).Get(t)) }
+// func (v *uintV) Get(*eval.Thread) uint64 { return uint64(*v) }
+// func (v *uintV) Set(t *eval.Thread, x uint64) { *v = uintV(x) }
+
+// func defineConstants(w *eval.World) {
+// 	w.DefineConst("KEY_1", eval.UintType, newUint(0))
+// 	w.DefineConst("KEY_2", eval.UintType, newUint(1))
+// 	w.DefineConst("KEY_3", eval.UintType, newUint(2))
+// 	w.DefineConst("KEY_4", eval.UintType, newUint(3))
+// 	w.DefineConst("KEY_5", eval.UintType, newUint(4))
+// 	w.DefineConst("KEY_6", eval.UintType, newUint(5))
+// 	w.DefineConst("KEY_7", eval.UintType, newUint(6))
+// 	w.DefineConst("KEY_8", eval.UintType, newUint(7))
+// 	w.DefineConst("KEY_9", eval.UintType, newUint(8))
+// 	w.DefineConst("KEY_0", eval.UintType, newUint(9))
+// 	w.DefineConst("KEY_Q", eval.UintType, newUint(10))
+// 	w.DefineConst("KEY_W", eval.UintType, newUint(11))
+// 	w.DefineConst("KEY_E", eval.UintType, newUint(12))
+// 	w.DefineConst("KEY_R", eval.UintType, newUint(13))
+// 	w.DefineConst("KEY_T", eval.UintType, newUint(14))
+// 	w.DefineConst("KEY_Y", eval.UintType, newUint(15))
+// 	w.DefineConst("KEY_U", eval.UintType, newUint(16))
+// 	w.DefineConst("KEY_I", eval.UintType, newUint(17))
+// 	w.DefineConst("KEY_O", eval.UintType, newUint(18))
+// 	w.DefineConst("KEY_P", eval.UintType, newUint(19))
+
+// 	w.DefineConst("KEY_A", eval.UintType, newUint(20))
+// 	w.DefineConst("KEY_S", eval.UintType, newUint(21))
+// 	w.DefineConst("KEY_D", eval.UintType, newUint(22))
+// 	w.DefineConst("KEY_F", eval.UintType, newUint(23))
+// 	w.DefineConst("KEY_G", eval.UintType, newUint(24))
+// 	w.DefineConst("KEY_H", eval.UintType, newUint(25))
+// 	w.DefineConst("KEY_J", eval.UintType, newUint(26))
+// 	w.DefineConst("KEY_K", eval.UintType, newUint(27))
+// 	w.DefineConst("KEY_L", eval.UintType, newUint(28))
+// 	w.DefineConst("KEY_Enter", eval.UintType, newUint(29))
+
+// 	w.DefineConst("KEY_CapsShift", eval.UintType, newUint(30))
+// 	w.DefineConst("KEY_Z", eval.UintType, newUint(31))
+// 	w.DefineConst("KEY_X", eval.UintType, newUint(32))
+// 	w.DefineConst("KEY_C", eval.UintType, newUint(33))
+// 	w.DefineConst("KEY_V", eval.UintType, newUint(34))
+// 	w.DefineConst("KEY_B", eval.UintType, newUint(35))
+// 	w.DefineConst("KEY_N", eval.UintType, newUint(36))
+// 	w.DefineConst("KEY_M", eval.UintType, newUint(37))
+// 	w.DefineConst("KEY_SymbolShift", eval.UintType, newUint(38))
+// 	w.DefineConst("KEY_Space", eval.UintType, newUint(39))
+// }

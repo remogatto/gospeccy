@@ -30,6 +30,9 @@ type Spectrum48k struct {
 	Memory   MemoryAccessor
 	ula      *ULA
 	Keyboard *Keyboard
+
+	TapeDrive *TapeDrive
+
 	Ports    PortAccessor
 
 	romPath string
@@ -64,6 +67,8 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	z80 := NewZ80(memory, ports)
 	ula := NewULA()
 
+	tapeDrive := NewTapeDrive()
+
 	speccy := &Spectrum48k{
 		Cpu:            z80,
 		Memory:         memory,
@@ -74,13 +79,15 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 		displays:       vector.Vector{},
 		audioReceivers: vector.Vector{},
 		app:            app,
+   	        TapeDrive: tapeDrive,
 	}
 
 	memory.init(speccy)
 	z80.init(speccy)
 	ula.init(speccy)
 	ports.init(speccy)
-
+	tapeDrive.init(speccy)
+	
 	err := speccy.reset()
 	if err != nil {
 		return nil, err
@@ -316,6 +323,8 @@ func (speccy *Spectrum48k) closeAllAudioReceivers() {
 	}
 }
 
+var frames uint64
+
 func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Ports.frame_begin()
 	speccy.ula.frame_begin()
@@ -376,4 +385,9 @@ func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
 func (speccy *Spectrum48k) makeVideoMemoryDump() []byte {
 	return speccy.Memory.Data()[0x4000:0x4000+6912]
 }
+
+func (speccy *Spectrum48k) GetCurrentFPS() float {
+	return speccy.currentFPS
+}
+
 

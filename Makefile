@@ -19,6 +19,7 @@ SPECTRUM_FILES=\
 	src/spectrum/sound.go\
 	src/spectrum/spectrum.go\
 	src/spectrum/ula.go\
+	src/spectrum/tape.go\
 	src/spectrum/z80.go\
 	src/spectrum/z80_gen.go\
 	src/spectrum/z80_tables.go
@@ -47,6 +48,7 @@ GOFMT_FILES=\
 	src/spectrum/sdlsound.go\
 	src/spectrum/sound.go\
 	src/spectrum/spectrum.go\
+	src/spectrum/tape.go\
 	src/spectrum/ula.go\
 	src/spectrum/z80*.go\
 	$(FORMATS_FILES)\

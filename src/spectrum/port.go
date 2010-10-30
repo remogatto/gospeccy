@@ -304,6 +304,10 @@ func (p *Ports) readPortInternal(address uint16, contend bool) byte {
 				result &= p.speccy.Keyboard.GetKeyState(row)
 			}
 		}
+		if p.speccy.Cpu.readFromTape {
+			earBit := p.speccy.TapeDrive.getEarBit()
+			return result & earBit
+		}
 	} else if (address & 0x00e0) == 0x0000 {
 		// Kempston joystick: treat this as attached but
 		// unused (for the benefit of Manic Miner)
@@ -340,6 +344,13 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 
 		// EAR(bit 4) and MIC(bit 3) output
 		newBeeperLevel := (b & 0x18) >> 3
+		if p.speccy.Cpu.readFromTape {
+			if p.speccy.TapeDrive.earBit == 0xff {
+				newBeeperLevel = 3
+			} else {
+				newBeeperLevel = 1
+			}
+		}
 		if p.beeperLevel != newBeeperLevel {
 			p.beeperLevel = newBeeperLevel
 			if p.beeperEvents.tstate == p.speccy.Cpu.tstates {

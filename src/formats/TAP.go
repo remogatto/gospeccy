@@ -28,6 +28,8 @@ func checksum(data []byte) bool {
 type tapBlock interface {
 	blockType() byte
 	checksum() bool
+	Len() int
+	Data() []byte
 }
 
 type tapBlockHeader struct {
@@ -36,6 +38,14 @@ type tapBlockHeader struct {
 	filename string
 	length uint16
 	par1, par2 uint16
+}
+
+func (header *tapBlockHeader) Len() int {
+	return len(header.data)
+}
+
+func (header *tapBlockHeader) Data() []byte {
+	return header.data
 }
 
 func (header *tapBlockHeader) blockType() byte {
@@ -48,6 +58,14 @@ func (header *tapBlockHeader) checksum() bool {
 
 type tapBlockData []byte
 
+func (data tapBlockData) Len() int {
+	return len(data)
+}
+
+func (data tapBlockData) Data() []byte {
+	return data
+}
+
 func (data tapBlockData) blockType() byte {
 	return data[0]
 }
@@ -57,11 +75,24 @@ func (data tapBlockData) checksum() bool {
 }
 
 type TAP struct {
+	data []byte
 	blocks *vector.Vector
 }
 
 func NewTAP() *TAP {
 	return &TAP{}
+}
+
+func (tap *TAP) Len() uint {
+	return uint(len(tap.data))
+}
+
+func (tap *TAP) At(pos uint) byte {
+	return tap.data[pos]
+}
+
+func (tap *TAP) GetBlock(pos int) tapBlock {
+	return tap.blocks.At(pos).(tapBlock)
 }
 
 func (tap *TAP) readBlockHeader(data []byte) tapBlock {
@@ -110,9 +141,8 @@ func (tap *TAP) Read(data []byte) (n int, err os.Error) {
 	tap.blocks = new(vector.Vector)
 	length = uint(len(data))
 
-	for pos = 0; pos < length; pos+=nextPos {
+	for pos = 0; pos < length; pos += nextPos {
 		blockLength = uint(joinBytes(data[pos+1], data[pos]))
-
 		if blockLength == 0 {
 			err = os.NewError("Block size can't be 0")
 			n = int(pos)
@@ -120,11 +150,19 @@ func (tap *TAP) Read(data []byte) (n int, err os.Error) {
 		}
 
 		pos += 2
-
 		_, err = tap.readBlock(data[pos:pos + blockLength])
-
-		nextPos += blockLength
+		nextPos = blockLength
 		n += int(blockLength) + 2
+	}
+
+	tap.data = make([]byte, len(data) - (tap.blocks.Len() * 2))
+	var c = 0
+	
+	for _, blk := range *tap.blocks {
+		for _, v := range blk.(tapBlock).Data() {
+			tap.data[c] = v
+			c++
+		}
 	}
 
 	return

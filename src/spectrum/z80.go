@@ -148,6 +148,8 @@ type Z80 struct {
 	z80_instructionsMeasured   uint64 // Number of Z80 instrs that can be related to 'hostCpu_instructionCounter'
 	hostCpu_instructionCounter uint64
 	perfCounter_hostCpuInstr   *perf.PerfCounter // Can be nil (if creating the counter fails)
+
+	readFromTape bool
 }
 
 func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
@@ -679,6 +681,10 @@ func (z80 *Z80) doOpcodes() {
 		z80_localInstructionCounter++
 
 		opcodesMap[opcode](z80)
+
+		if z80.speccy.Cpu.readFromTape {
+			z80.speccy.TapeDrive.doPlay()
+		}
 	}
 
 	if z80.halted {

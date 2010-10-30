@@ -96,6 +96,25 @@ func testReadTAPProgramFile(assert *prettytest.T) {
 	}
 }
 
+func testReadTAPWithCustomLoader(assert *prettytest.T) {
+	data, _ := ioutil.ReadFile("testdata/fire.tap")
+	tap := NewTAP()
+	_, err := tap.Read(data)
+
+	assert.Nil(err)
+	
+	if !assert.Failed() {
+		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
+		dataBlock := tap.blocks.At(1).(tapBlockData)
+
+		assert.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
+		assert.Equal(uint16(0x8000), headerBlock.par1)
+		assert.Equal(uint16(0x14), headerBlock.par2)
+
+		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+	}
+}
+
 func TestLoadTAP(t *testing.T) {
 	prettytest.Run(
 		t,
@@ -103,5 +122,42 @@ func TestLoadTAP(t *testing.T) {
 		testReadTAPError,
 		testReadTAPCodeFile,
 		testReadTAPProgramFile,
+		testReadTAPWithCustomLoader,
 	)
 }
+
+var tap *TAP
+
+func before(assert *prettytest.T) {
+	data, _ := ioutil.ReadFile(tapProgramFn)
+	tap = NewTAP()
+	tap.Read(data)
+}
+
+func testTAPAt(assert *prettytest.T) {
+	assert.Equal(byte(0x00), tap.At(0))
+	assert.Equal(byte(0xff), tap.At(0x13))
+}
+
+func testTAPGetBlock(assert *prettytest.T) {
+	_, ok := tap.GetBlock(0).(*tapBlockHeader)
+	assert.True(ok)
+	_, ok = tap.GetBlock(1).(tapBlockData)
+	assert.True(ok)
+}
+
+func testTAPBlockLen(assert *prettytest.T) {
+	assert.Equal(19, tap.GetBlock(0).Len())
+}
+
+func TestTAPAccessors(t *testing.T) {
+	prettytest.Run(
+		t,
+		before,
+		testTAPAt,
+		testTAPBlockLen,
+		testTAPGetBlock,
+	)
+		
+}
+

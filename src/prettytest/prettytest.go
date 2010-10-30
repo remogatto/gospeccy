@@ -165,7 +165,7 @@ func (assertion *T) TestFailed() bool {
 	return assertion.Status == STATUS_FAIL
 }
 
-func getFuncId(pattern string, tests ...func(*T)) (id int) {
+func getFuncId(pattern string, excludeId int, tests ...func(*T)) (id int) {
 	id = -1
 
 	for i, test := range tests {
@@ -175,7 +175,7 @@ func getFuncId(pattern string, tests ...func(*T)) (id int) {
 		case *reflect.FuncValue:
 			funcName := runtime.FuncForPC(f.Get()).Name()
 			matched, err := regexp.MatchString(pattern, funcName)
-			if err == nil && matched {
+			if err == nil && matched && i != excludeId {
 				id = i
 			}
 		}
@@ -190,11 +190,10 @@ func Run(t *testing.T, tests ...func(*T)) {
 	callerName := runtime.FuncForPC(pc).Name()
 	fmt.Printf("\n%s:\n", callerName)
 
-	setupFuncId := getFuncId(".*\\.before.*$", tests...)
-	teardownFuncId := getFuncId(".*\\.after.*$", tests...)
-
-	beforeAllFuncId := getFuncId(".*\\.beforeAll.*$", tests...)
-	afterAllFuncId := getFuncId(".*\\.afterAll.*$", tests...)
+	beforeAllFuncId := getFuncId(".*\\.beforeAll.*$", -1, tests...)
+	afterAllFuncId := getFuncId(".*\\.afterAll.*$", -1, tests...)
+	setupFuncId := getFuncId(".*\\.before.*$", beforeAllFuncId, tests...)
+	teardownFuncId := getFuncId(".*\\.after.*$", afterAllFuncId, tests...)
 
 	for i, test := range tests {
 

@@ -106,6 +106,13 @@ func testCommandScript(t *pt.T) {
 	t.Equal("Hello World!\n", messageOutput.String())
 }
 
+func testCommandKeyPress(t *pt.T) {
+	// err := run(w, fmt.Sprintf("keypress(%s)", "KEY_1"))
+	// t.True(err == nil)
+
+	t.Pending()
+}
+
 func TestCommands(t *testing.T) {
 	pt.Run(
 		t,
@@ -116,5 +123,6 @@ func TestCommands(t *testing.T) {
 		testCommandPuts,
 		testCommandScreenshot,
 		testCommandScript,
+		testCommandKeyPress,
 	)
 }

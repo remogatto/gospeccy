@@ -118,7 +118,6 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
 	{
 		completionTime := make(chan int64)
-		//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
 		speccy.CommandChannel <- spectrum.Cmd_RenderFrame{completionTime}
 
 		go func() {

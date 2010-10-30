@@ -18,11 +18,10 @@ GOFILES=\
 	spectrum.go\
 	helpers.go\
 	application.go\
+	tape.go\
 	event.go
+
+DEPS+="../prettytest" "../formats"
 
 include $(GOROOT)/src/Make.pkg
 include $(GOSPECCY_ROOT)/Make.inc-tail
-
-sdldisplay_test.go: $(FORMATS_PKG_LIB)
-z80_test.go: $(FORMATS_PKG_LIB)
-spectrum_test.go: $(PRETTYTEST_PKG_LIB)

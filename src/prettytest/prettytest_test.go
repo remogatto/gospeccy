@@ -99,22 +99,32 @@ func testPass(assert *T) {
 	assert.True(true)
 }
 
-var state int = 0
+var (
+	state int = 0
+	beforeState = 0
+	afterState = 0
+	beforeAllState int = 0
+	afterAllState int = 0
+)
 
 func before(assert *T) {
 	state += 2
+	beforeState++
 }
 
 func after(assert *T) {
 	state--
+	afterState--
 }
 
 func beforeAll(assert *T) {
 	state = 0
+	beforeAllState++
 }
 
 func afterAll(assert *T) {
 	state = 0
+	afterAllState--
 }
 
 func testSetup_1(assert *T) {
@@ -123,6 +133,36 @@ func testSetup_1(assert *T) {
 
 func testSetup_2(assert *T) {
 	assert.Equal(3, state)
+}
+
+func testBeforeAfterAll_1(assert *T) {
+	assert.False(-1 == afterAllState)
+	assert.Equal(1, beforeAllState)
+}
+
+func testBeforeAfterAll_2(assert *T) {
+	assert.False(-1 == afterAllState)
+	assert.Equal(1, beforeAllState)
+}
+
+func beforeCustom(assert *T) {
+	state += 2
+	beforeState++
+}
+
+func afterCustom(assert *T) {
+	state--
+	afterState--
+}
+
+func beforeAllCustom(assert *T) {
+	state = 0
+	beforeAllState++
+}
+
+func afterAllCustom(assert *T) {
+	state = 0
+	afterAllState--
 }
 
 func TestRunner(t *testing.T) {
@@ -155,18 +195,52 @@ func TestMisplacedSetupTeardown(t *testing.T) {
 }
 
 func TestSetupAllTeardownAll(t *testing.T) {
-	state = 10
+	beforeAllState = 0
+	afterAllState = 0
 	Run(
 		t,
 		beforeAll,
 		afterAll,
-		before,
-		after,
+		testBeforeAfterAll_1,
+		testBeforeAfterAll_2,		
+	)
+	if beforeAllState != 1 {
+		t.Errorf("beforeAllState should be 1 after all tests but was %d\n", beforeAllState)
+	}
+	if afterAllState != -1 {
+		t.Errorf("afterAllState should be -1 after all tests but was %d\n", afterAllState)
+	}
+}
+
+func TestBeforeAfterWithCustomNames(t *testing.T) {
+	state = 10
+	beforeAllState = 0
+	afterAllState = 0
+	beforeState = 0
+	afterState = 0
+	Run(
+		t,
+		beforeAllCustom,
+		afterAllCustom,
+		beforeCustom,
+		afterCustom,
 		testSetup_1,
 		testSetup_2,
 	)
 	if state != 0 {
-		t.Errorf("state should be 0 afterAll tests\n")
+		t.Errorf("state should be 0 after all tests\n")
+	}
+	if beforeState != 2 {
+		t.Errorf("beforeState should be 2 after all tests but was %d\n", beforeState)
+	}
+	if afterState != -2 {
+		t.Errorf("afterState should be -2 after all tests but was %d\n", afterState)
+	}
+	if beforeAllState != 1 {
+		t.Errorf("beforeAllState should be 1 after all tests but was %d\n", beforeAllState)
+	}
+	if afterAllState != -1 {
+		t.Errorf("afterAllState should be -1 after all tests but was\n", afterAllState)
 	}
 }
 

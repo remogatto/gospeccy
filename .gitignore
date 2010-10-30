@@ -3,5 +3,7 @@
 gospeccy
 *.out
 scripts/startup_local.go
-*_test*
+_testmain.go
+
+
 

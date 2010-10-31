@@ -137,12 +137,11 @@ resort to using other ZX Spectrum emulators.
 
 For more info about keybindings see <tt>spectrum/keyboard.go</tt>
 
-# Proprietary ROMs
+# Proprietary games and system ROM
 
-Generally, proprietary roms are protected by copyright so none of them
-is included in GoSpeccy (with the exception of the 48k rom that can be
-freely distributed). BTW, you can find tons of roms for the ZX
-Spectrum on the Internet.
+Generally, games/programs are protected by copyright so none of them
+is included in GoSpeccy. BTW, you can find tons of games for the ZX
+Spectrum on the Internet. The 48k system ROM can be freely distributed so it's included in the GoSpeccy distribution.
 
 # Convention over Configuration
 

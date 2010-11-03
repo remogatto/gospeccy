@@ -3,7 +3,10 @@ package spectrum
 import (
 	"time"
 	"os"
+	"io/ioutil"
 	"⚛sdl"
+	"spectrum/formats"
+	"spectrum/prettytest"
 )
 
 var (
@@ -51,7 +54,6 @@ func emulatorLoop(evtLoop *EventLoop, speccy *Spectrum48k) {
 
 		case <-ticker.C:
 			speccy.CommandChannel <- Cmd_RenderFrame{}
-			
 			if speccy.Cpu.PC() == 0x10ac && !romLoaded {
 				romLoadedCh <- true
 				romLoaded = true
@@ -103,4 +105,77 @@ func StartFullEmulation() {
 	go emulatorLoop(app.NewEventLoop(), speccy)
 
 	<-romLoadedCh
+}
+
+func beforeAll(t *prettytest.T) {
+	StartFullEmulation()
+}
+
+func afterAll(t *prettytest.T) {
+	app.RequestExit()
+	<-app.HasTerminated
+}
+
+func before(t *prettytest.T) {
+	StartFullEmulation()
+}
+
+func after(t *prettytest.T) {
+	app.RequestExit()
+	<-app.HasTerminated
+}
+
+func loadSnapshot(filename string) formats.Snapshot {
+	snapshot, err := formats.ReadSnapshot(filename)
+
+	if err != nil { panic(err) }
+
+	return snapshot
+}
+
+func assertScreenEqual(expected, actual formats.Snapshot) bool {
+	// Doesn't compare screen attributes
+	for address, actualValue := range actual.Memory()[:0x4000] {
+		if expected.Memory()[address] != actualValue {
+			return false
+		}
+	}
+	return true
+}
+
+func assertStateEqual(expected, actual formats.Snapshot) bool {
+	// Compare memory ignoring PC value
+	for address, actualValue := range actual.Memory()[0:0x4000] {
+		if expected.Memory()[address] != actualValue /*&& address != 0xbf4a && address != 0xbf4b*/ { 
+			return false
+		}
+	}
+
+	// FIXME: Should compare also CPU and ULA states
+
+	return true
+}
+
+func stateEqualTo(filename string) bool {
+	return assertStateEqual(loadSnapshot(filename), speccy.Cpu.makeSnapshot())
+}
+
+func screenEqualTo(filename string) bool {
+	return assertScreenEqual(loadSnapshot(filename), speccy.Cpu.makeSnapshot())
+}
+
+func saveSnapshot(filename string) {
+	fullSnapshot := speccy.Cpu.makeSnapshot()
+
+	data, err := fullSnapshot.EncodeSNA()
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = ioutil.WriteFile(filename, data, 0600)
+
+	if err != nil {
+		panic(err)
+	}
 }

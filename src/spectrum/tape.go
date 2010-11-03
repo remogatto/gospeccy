@@ -4,7 +4,6 @@ import (
 	"os"
 	"io/ioutil"
 	"spectrum/formats"
-//	"fmt"
 )
 
 const (
@@ -34,7 +33,11 @@ type Tape struct {
 	tap *formats.TAP
 }
 
-func NewTape(filename string) (*Tape, os.Error) {
+func NewTape(tap *formats.TAP) *Tape {
+	return &Tape{ tap }
+}
+
+func NewTapeFromFile(filename string) (*Tape, os.Error) {
 	data, err := ioutil.ReadFile(filename)
 	tap := formats.NewTAP()
 	_, err = tap.Read(data)
@@ -196,7 +199,7 @@ func (tapeDrive *TapeDrive) doPlay() {
 			tapeDrive.state = TAPE_DRIVE_STOP
 			tapeDrive.timeout = 1
 			tapeDrive.speccy.Cpu.readFromTape = false
-			tapeDrive.loadComplete <- true
+			// tapeDrive.loadComplete <- true
                 } else {
 			tapeDrive.currBlockId++
 			tapeDrive.state = TAPE_DRIVE_START

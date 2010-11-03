@@ -25,18 +25,92 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
+type rowState struct {
+	row, state byte
+}
+
+type Cmd_KeyPress struct {
+	logicalKeyCode uint
+	done chan bool
+}
+
+type Cmd_SendLoad struct {}
 
 type Keyboard struct {
+	speccy *Spectrum48k
 	keyStates [8]byte
 	mutex     sync.RWMutex
+
+	CommandChannel chan interface{}
 }
 
 func NewKeyboard() *Keyboard {
 	k := &Keyboard{}
 	k.reset()
+
+	k.CommandChannel = make(chan interface{})
+
+	go k.commandLoop()
+
 	return k
+}
+
+func (keyboard *Keyboard) init(speccy *Spectrum48k) {
+	keyboard.speccy = speccy
+}
+
+func (keyboard *Keyboard) delayBetweenKeypress() {
+	time.Sleep(1e9/int64(keyboard.speccy.GetCurrentFPS()))
+}
+
+func (keyboard *Keyboard) commandLoop() {
+	for {
+		select {
+		case untyped_cmd := <-keyboard.CommandChannel:
+			switch cmd := untyped_cmd.(type) {
+			case Cmd_KeyPress:
+				keyboard.delayBetweenKeypress()
+				keyboard.delayBetweenKeypress()
+				keyboard.KeyDown(cmd.logicalKeyCode)
+				keyboard.delayBetweenKeypress()
+				keyboard.KeyUp(cmd.logicalKeyCode)
+				keyboard.delayBetweenKeypress()
+				keyboard.delayBetweenKeypress()
+				cmd.done <- true
+
+			case Cmd_SendLoad:
+				keyboard.KeyDown(KEY_J)
+				keyboard.delayBetweenKeypress()
+				keyboard.KeyUp(KEY_J)
+
+				keyboard.KeyDown(KEY_SymbolShift)
+
+				keyboard.KeyDown(KEY_P)
+				keyboard.delayBetweenKeypress()
+				keyboard.KeyUp(KEY_P)
+
+				time.Sleep(1e9)
+
+				keyboard.KeyDown(KEY_P)
+				keyboard.delayBetweenKeypress()
+				keyboard.KeyUp(KEY_P)
+
+				keyboard.delayBetweenKeypress()
+
+				keyboard.KeyUp(KEY_SymbolShift)
+
+				keyboard.KeyDown(KEY_Enter)
+				keyboard.delayBetweenKeypress()
+				keyboard.KeyUp(KEY_Enter)
+			}
+		}
+	}
+
 }
 
 func (k *Keyboard) reset() {
@@ -79,6 +153,19 @@ func (keyboard *Keyboard) KeyUp(logicalKeyCode uint) {
 	}
 }
 
+func (keyboard *Keyboard) KeyPress(logicalKeyCode uint) chan bool {
+	done := make(chan bool)
+	keyboard.CommandChannel <- Cmd_KeyPress{logicalKeyCode, done}
+	return done
+}
+
+func (keyboard *Keyboard) KeyPressSequence(logicalKeyCodes ...uint) chan bool {
+	done := make(chan bool, len(logicalKeyCodes))
+	for _, keyCode := range logicalKeyCodes {
+		keyboard.CommandChannel <- Cmd_KeyPress{keyCode, done}
+	}
+	return done
+}
 
 // Logical key codes
 const (
@@ -177,7 +264,6 @@ var keyCodes = map[uint]keyCell{
 	KEY_Space:       keyCell{row: 7, mask: 0x01},
 }
 
-
 var SDL_KeyMap = map[string][]uint{
 	"0": []uint{KEY_0},
 	"1": []uint{KEY_1},
@@ -265,7 +351,6 @@ var SDL_KeyMap = map[string][]uint{
 	"[+]": []uint{KEY_SymbolShift, KEY_K},
 	"[/]": []uint{KEY_SymbolShift, KEY_V},
 }
-
 
 func init() {
 	if len(keyCodes) != 40 {

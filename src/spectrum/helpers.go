@@ -94,6 +94,25 @@ func SnaPath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
+// Return a valid path for the named tape file.
+//
+// The search is performed in this order:
+// 1. ./
+// 2. $HOME/.gospeccy/tape/
+func TapePath(fileName string) string {
+	var (
+		currDir = ""
+		userDir = path.Join(defaultUserDir, "tape")
+	)
+
+	var paths vector.StringVector
+	paths.Push(currDir)
+	paths.Push(userDir)
+	appendCustomSearchPaths(&paths)
+
+	return searchForValidPath(paths, fileName)
+}
+
 // Return a valid path for the 48k system ROM.
 //
 // The search is performed in this order:

@@ -115,9 +115,28 @@ func testReadTAPWithCustomLoader(assert *prettytest.T) {
 	}
 }
 
+func testNewTAPFromFile(assert *prettytest.T) {
+	tap, err := NewTAPFromFile(tapCodeFn)
+	assert.Nil(err)
+	if !assert.Failed() {
+		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
+		dataBlock := tap.blocks.At(1).(tapBlockData)
+
+		assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
+		assert.Equal(uint16(0), headerBlock.par1)
+		assert.Equal(uint16(0x8000), headerBlock.par2)
+
+		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		assert.Equal(byte(0xf3), dataBlock[1])
+		assert.Equal(byte(0xaf), dataBlock[2])
+		assert.Equal(byte(0xa3), dataBlock[3])
+	}
+}
+
 func TestLoadTAP(t *testing.T) {
 	prettytest.Run(
 		t,
+		testNewTAPFromFile,
 		testReadTAP,
 		testReadTAPError,
 		testReadTAPCodeFile,

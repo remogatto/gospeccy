@@ -110,20 +110,41 @@ func wrapper_addSearchPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func load(path string)
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	var (
+		completePath string
+		program interface{}
+	)
+
 	if app.TerminationInProgress() {
 		return
 	}
 
 	path := in[0].(eval.StringValue).Get(t)
+	
+	format, err := formats.TypeFromSuffix(path)
 
-	snapshot, err := formats.ReadSnapshot(spectrum.SnaPath(path))
+	if err != nil {
+		app.PrintfMsg("%s", err)
+		return
+	}
+
+	switch format {
+	case formats.FORMAT_TAP:
+		completePath = spectrum.TapePath(path)
+	default:
+		completePath = spectrum.SnaPath(path)
+	}
+
+	program, err = formats.ReadProgram(completePath)
+
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		return
 	}
 
 	errChan := make(chan os.Error)
-	speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{path, snapshot, errChan}
+	speccy.CommandChannel <- spectrum.Cmd_Load{path, program, errChan}
+
 	err = <-errChan
 	if err != nil {
 		app.PrintfMsg("%s", err)

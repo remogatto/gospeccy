@@ -2,6 +2,7 @@ package formats
 
 import (
 	"os"
+	"io/ioutil"
 	"container/vector"
 )
 
@@ -81,6 +82,23 @@ type TAP struct {
 
 func NewTAP() *TAP {
 	return &TAP{}
+}
+
+func NewTAPFromFile(filename string) (*TAP, os.Error) {
+	data, err := ioutil.ReadFile(filename)
+
+	if err != nil {
+		return nil, err
+	}
+
+	tap := NewTAP()
+	_, err = tap.Read(data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tap, err
 }
 
 func (tap *TAP) Len() uint {

@@ -10,7 +10,6 @@ type SNA struct {
 	mem [48 * 1024]byte
 }
 
-
 // Decode SNA from binary data
 func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
 	if len(data) != 49179 {
@@ -123,7 +122,7 @@ func (s *FullSnapshot) EncodeSNA() ([]byte, os.Error) {
 
 	// Memory
 	for i := 0; i < 0xc000; i++ {
-		data[i+27] = s.Memory[i]
+		data[i+27] = s.Mem[i]
 	}
 
 	// Push PC

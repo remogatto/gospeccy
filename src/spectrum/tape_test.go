@@ -24,14 +24,6 @@ func SendLoadBASICCommand() {
 	keyPress(KEY_Enter)
 }
 
-func beforeAll(t *pt.T) {
-	StartFullEmulation()
-}
-
-func afterAll(t *pt.T) {
-	app.RequestExit()
-}
-
 // Test Tape
 
 var (
@@ -40,7 +32,7 @@ var (
 )
 
 func beforeTape(assert *pt.T) {
-	tape, err = NewTape("testdata/hello.tap")
+	tape, err = NewTapeFromFile("testdata/hello.tap")
 }
 
 func testNewTape(assert *pt.T) {
@@ -65,7 +57,7 @@ func TestTape(t *testing.T) {
 // Test TapeDrive
 
 func beforeTapeDrive(assert *pt.T) {
-	tape, _ = NewTape("testdata/hello.tap")
+	tape, _ = NewTapeFromFile("testdata/hello.tap")
 }
 
 func testNewTapeDrive(assert *pt.T) {
@@ -104,7 +96,7 @@ func testTapeDriveLoadWithCustomLoader(assert *pt.T) {
 	speccy.reset()
 	<-romLoadedCh
 
-	tape, _ = NewTape("testdata/Syntax09nF.tap")
+	tape, _ = NewTapeFromFile("testdata/Syntax09nF.tap")
 	speccy.TapeDrive.Insert(tape)
 	speccy.TapeDrive.Play()
 

@@ -298,7 +298,7 @@ func (z80 *Z80) makeSnapshot() *formats.FullSnapshot {
 
 	// Memory
 	for i := 0; i < 0xc000; i++ {
-		s.Memory[i] = z80.memory.Data()[i+0x4000]
+		s.Mem[i] = z80.memory.Data()[i+0x4000]
 	}
 
 	return &s

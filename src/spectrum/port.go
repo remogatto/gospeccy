@@ -138,6 +138,7 @@ func NewPorts() *Ports {
 	p := &Ports{}
 	p.beeperLevel = 0
 	p.beeperEvents = &BeeperEvent{tstate: 0, level: p.beeperLevel, previous_orNil: nil}
+
 	return p
 }
 

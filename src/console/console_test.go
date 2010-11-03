@@ -16,6 +16,7 @@ const testdataDir = "testdata"
 var (
 	screenshotFn = path.Join(testdataDir, "screenshot.scr")
 	scriptFn = path.Join(testdataDir, "test")
+	snaFn = path.Join(testdataDir, "hello.sna")
 )
 
 type testMessageOutput struct {
@@ -113,6 +114,11 @@ func testCommandKeyPress(t *pt.T) {
 	t.Pending()
 }
 
+func testLoadSNA(t *pt.T) {
+	err := run(w, fmt.Sprintf("load(\"%s\")", snaFn))
+	t.True(err == nil)
+}
+
 func TestCommands(t *testing.T) {
 	pt.Run(
 		t,
@@ -123,6 +129,7 @@ func TestCommands(t *testing.T) {
 		testCommandPuts,
 		testCommandScreenshot,
 		testCommandScript,
+		testLoadSNA,
 		testCommandKeyPress,
 	)
 }

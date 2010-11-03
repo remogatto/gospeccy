@@ -83,6 +83,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	}
 
 	memory.init(speccy)
+	keyboard.init(speccy)
 	z80.init(speccy)
 	ula.init(speccy)
 	ports.init(speccy)
@@ -141,11 +142,19 @@ type Cmd_LoadSnapshot struct {
 	Snapshot         formats.Snapshot
 	ErrChan          chan<- os.Error
 }
+type Cmd_Load struct {
+	InformalFilename string // This is only used for logging purposes
+	Program         interface{}
+	ErrChan          chan<- os.Error
+}
 type Cmd_MakeSnapshot struct {
 	Chan chan<- *formats.FullSnapshot
 }
 type Cmd_MakeVideoMemoryDump struct {
 	Chan chan<- []byte
+}
+type Cmd_KeyboardReadState struct {
+	Chan chan rowState
 }
 
 func commandLoop(speccy *Spectrum48k) {
@@ -163,7 +172,6 @@ func commandLoop(speccy *Spectrum48k) {
 			}
 			evtLoop.Terminate <- 0
 			return
-
 		case untyped_cmd := <-speccy.commandChannel:
 			switch cmd := untyped_cmd.(type) {
 			case Cmd_Reset:
@@ -216,6 +224,22 @@ func commandLoop(speccy *Spectrum48k) {
 				if cmd.ErrChan != nil {
 					cmd.ErrChan <- err
 				}
+
+			case Cmd_Load:
+				if speccy.app.Verbose {
+					if len(cmd.InformalFilename) > 0 {
+						speccy.app.PrintfMsg("loading program \"%s\"", cmd.InformalFilename)
+					} else {
+						speccy.app.PrintfMsg("loading a program")
+					}
+				}
+
+				err := speccy.Load(cmd.Program)
+
+				if cmd.ErrChan != nil {
+					cmd.ErrChan <- err
+				}
+
 
 			case Cmd_MakeSnapshot:
 				cmd.Chan <- speccy.Cpu.makeSnapshot()
@@ -382,12 +406,42 @@ func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
 	return nil
 }
 
+// Load the given tape. Returns nil on success.
+func (speccy *Spectrum48k) loadTape(tap *formats.TAP) {
+	speccy.TapeDrive.Insert(NewTape(tap))
+	speccy.TapeDrive.Stop()
+	speccy.sendLOADCommand()
+	speccy.TapeDrive.Play()	
+}
+
+// Send LOAD ""
+func (speccy *Spectrum48k) sendLOADCommand() {
+	speccy.Keyboard.CommandChannel <- Cmd_SendLoad{}
+}
+
 func (speccy *Spectrum48k) makeVideoMemoryDump() []byte {
 	return speccy.Memory.Data()[0x4000:0x4000+6912]
 }
 
 func (speccy *Spectrum48k) GetCurrentFPS() float {
 	return speccy.currentFPS
+}
+
+func (speccy *Spectrum48k) Load(program interface{}) os.Error {
+	var err os.Error
+
+	switch program := program.(type) {
+
+	case formats.Snapshot:
+		speccy.loadSnapshot(program.(formats.Snapshot))
+	case *formats.TAP:
+		speccy.loadTape(program)
+	default:
+		err = os.NewError("Invalid program type.")
+		return err
+	}
+
+	return err
 }
 
 

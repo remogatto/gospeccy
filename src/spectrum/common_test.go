@@ -78,6 +78,7 @@ func StartFullEmulation() {
 
 	app = NewApplication()
 	speccy, err = NewSpectrum48k(app, "testdata/48.rom")
+	speccy.TapeDrive.notifyLoadComplete = true
 
 	if err != nil {
 		panic(err)

@@ -12,12 +12,9 @@ import (
 var (
 	speccy *Spectrum48k
 	app *Application
-	romLoaded bool
-	romLoadedCh chan bool = make(chan bool)
 )
 
 func emulatorLoop(evtLoop *EventLoop, speccy *Spectrum48k) {
-	romLoaded = false
 	app := evtLoop.App()
 
 	fps := <-speccy.FPS
@@ -54,10 +51,7 @@ func emulatorLoop(evtLoop *EventLoop, speccy *Spectrum48k) {
 
 		case <-ticker.C:
 			speccy.CommandChannel <- Cmd_RenderFrame{}
-			if speccy.Cpu.PC() == 0x10ac && !romLoaded {
-				romLoadedCh <- true
-				romLoaded = true
-			}
+			speccy.CommandChannel <- Cmd_CheckSystemROMLoaded{}
 
 		case FPS_new := <-speccy.FPS:
 			if (FPS_new != fps) && (FPS_new > 0) {
@@ -105,7 +99,7 @@ func StartFullEmulation() {
 
 	go emulatorLoop(app.NewEventLoop(), speccy)
 
-	<-romLoadedCh
+	<-speccy.systemROMLoaded
 }
 
 func beforeAll(t *prettytest.T) {
@@ -127,11 +121,11 @@ func after(t *prettytest.T) {
 }
 
 func loadSnapshot(filename string) formats.Snapshot {
-	snapshot, err := formats.ReadSnapshot(filename)
+	snapshot, err := formats.ReadProgram(filename)
 
 	if err != nil { panic(err) }
 
-	return snapshot
+	return snapshot.(formats.Snapshot)
 }
 
 func assertScreenEqual(expected, actual formats.Snapshot) bool {
@@ -146,8 +140,8 @@ func assertScreenEqual(expected, actual formats.Snapshot) bool {
 
 func assertStateEqual(expected, actual formats.Snapshot) bool {
 	// Compare memory ignoring PC value
-	for address, actualValue := range actual.Memory()[0:0x4000] {
-		if expected.Memory()[address] != actualValue /*&& address != 0xbf4a && address != 0xbf4b*/ { 
+	for address, actualValue := range actual.Memory(){
+		if expected.Memory()[address] != actualValue && address != 0xbf4a && address != 0xbf4b { 
 			return false
 		}
 	}

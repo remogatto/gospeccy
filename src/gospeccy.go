@@ -148,6 +148,10 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
 			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
 
+			// Send a message to SystemROMLoaded channel
+			// when the ROM is loaded
+			speccy.CommandChannel <- spectrum.Cmd_CheckSystemROMLoaded{}
+
 		case FPS_new := <-speccy.FPS:
 			if (FPS_new != fps) && (FPS_new > 0) {
 				if app.Verbose {
@@ -181,8 +185,9 @@ func (h *handler_SIGTERM) HandleSignal(s signal.Signal) {
 }
 
 func main() {
-	// Use at least two OS threads. This helps to prevent sound buffer underflows
-	// in case SDL rendering is consuming too much CPU.
+	// Use at least two OS threads. This helps to prevent sound
+	// buffer underflows in case SDL rendering is consuming too
+	// much CPU.
 	if runtime.GOMAXPROCS(-1) < 2 {
 		runtime.GOMAXPROCS(2)
 	}
@@ -246,27 +251,6 @@ func main() {
 		}
 	}
 
-	// Load snapshot (if any)
-	if flag.Arg(0) != "" {
-		file := flag.Arg(0)
-		path := spectrum.SnaPath(file)
-
-		snapshot, err := formats.ReadSnapshot(path)
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
-		}
-
-		errChan := make(chan os.Error)
-		speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{file, snapshot, errChan}
-		err = <-errChan
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
-		}
-	}
 
 	{
 		n := make(chan uint)
@@ -306,6 +290,54 @@ func main() {
 
 	// Start the console goroutine.
 	go console.Run(true)
+
+	// Process command line argument. Load the given program (if
+	// any)
+	if flag.Arg(0) != "" {
+		file := flag.Arg(0)
+		
+		var path string
+		
+		format, err := formats.TypeFromSuffix(file)
+		
+		if err != nil { app.PrintfMsg("%s", err) }
+
+		switch format {
+
+		case formats.FORMAT_SNA, formats.FORMAT_Z80:
+			path = spectrum.SnaPath(file)
+
+		case formats.FORMAT_TAP:
+			path = spectrum.TapePath(file)
+
+		default:
+			os.NewError("Unknown file format!")
+		}
+
+		program, err := formats.ReadProgram(path)
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			app.RequestExit()
+			goto quit
+		}
+
+		errChan := make(chan os.Error)
+
+		romLoaded := make(chan bool, 1)
+		speccy.CommandChannel <- spectrum.Cmd_Reset{ romLoaded }
+		<-romLoaded
+
+		speccy.CommandChannel <- spectrum.Cmd_Load{file, program, errChan}
+		err = <-errChan
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			app.RequestExit()
+			goto quit
+		}
+	}
+
+	// Drain systemROMLoaded channel
+	<-speccy.SystemROMLoaded()
 
 quit:
 	<-app.HasTerminated

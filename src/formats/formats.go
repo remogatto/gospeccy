@@ -98,50 +98,54 @@ func (data SnapshotData) Decode(format int) (Snapshot, os.Error) {
 	return nil, os.NewError("unknown snapshot format")
 }
 
-// Read a program from the specified file.  The file can be
-// compressed.
+func readZIP(filePath string) (interface{}, os.Error) {
+	archive, err := ReadZipFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var archive_fileIndex int
+	var archive_programFormat int
+	{
+		n := 0
+		for i, name := range archive.Filenames() {
+			format, err := TypeFromSuffix(name)
+			if err == nil {
+				archive_fileIndex = i
+				archive_programFormat = format
+				n++
+			}
+		}
+
+		if n == 0 {
+			return nil, os.NewError("the archive does not contain any supported program files")
+		}
+		if n >= 2 {
+			return nil, os.NewError("the archive contains multiple program files")
+		}
+	}
+
+	var data []byte
+	data, err = archive.Read(archive_fileIndex)
+	if err != nil {
+		return nil, err
+	}
+	if archive_programFormat == FORMAT_TAP {
+		tap := NewTAP()
+		_, err = tap.Read(data)
+		return tap, err
+	} 
+	return SnapshotData(data).Decode(archive_programFormat)
+}
+
+// Read a program from the specified file. Return the program and
+// errors if any. The file can be compressed.
 func ReadProgram(filePath string) (interface{}, os.Error) {
 	fName := strings.ToLower(filePath)
 
 	// ZIP archive
 	if strings.HasSuffix(fName, ".zip") {
-		archive, err := ReadZipFile(filePath)
-		if err != nil {
-			return nil, err
-		}
-
-		var archive_fileIndex int
-		var archive_programFormat int
-		{
-			n := 0
-			for i, name := range archive.Filenames() {
-				format, err := TypeFromSuffix(name)
-				if err == nil {
-					archive_fileIndex = i
-					archive_programFormat = format
-					n++
-				}
-			}
-
-			if n == 0 {
-				return nil, os.NewError("the archive does not contain any supported program files")
-			}
-			if n >= 2 {
-				return nil, os.NewError("the archive contains multiple program files")
-			}
-		}
-
-		var data []byte
-		data, err = archive.Read(archive_fileIndex)
-		if err != nil {
-			return nil, err
-		}
-		if archive_programFormat == FORMAT_TAP {
-			tap := NewTAP()
-			_, err = tap.Read(data)
-			return tap, err
-		} 
-		return SnapshotData(data).Decode(archive_programFormat)
+		return readZIP(filePath)
 	}
 
 	data, err := ioutil.ReadFile(filePath)
@@ -162,47 +166,9 @@ func ReadProgram(filePath string) (interface{}, os.Error) {
 	return SnapshotData(data).Decode(format)
 }
 
-// Read a snapshot from the specified file.  The file can be
-// compressed.
+// Read a snapshot from the specified file. Return the snapshot and
+// errors if any. The file can be compressed.
 func ReadSnapshot(filePath string) (Snapshot, os.Error) {
-	fName := strings.ToLower(filePath)
-
-	// ZIP archive
-	if strings.HasSuffix(fName, ".zip") {
-		archive, err := ReadZipFile(filePath)
-		if err != nil {
-			return nil, err
-		}
-
-		var archive_fileIndex int
-		var archive_programFormat int
-		{
-			n := 0
-			for i, name := range archive.Filenames() {
-				format, err := TypeFromSuffix(name)
-				if err == nil {
-					archive_fileIndex = i
-					archive_programFormat = format
-					n++
-				}
-			}
-
-			if n == 0 {
-				return nil, os.NewError("the archive does not contain any supported snapshot files")
-			}
-			if n >= 2 {
-				return nil, os.NewError("the archive contains multiple snapshot files")
-			}
-		}
-
-		var data []byte
-		data, err = archive.Read(archive_fileIndex)
-		if err != nil {
-			return nil, err
-		}
-		return SnapshotData(data).Decode(archive_programFormat)
-	}
-
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err

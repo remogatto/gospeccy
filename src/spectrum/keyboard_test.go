@@ -36,7 +36,6 @@ func testKeyPressSequence(t *prettytest.T) {
 	k.KeyUp(KEY_SymbolShift)
 
 	<-speccy.Keyboard.KeyPress(KEY_Enter)
-
 	t.True(screenEqualTo("testdata/key_press_sequence_1_ok.sna"))
 }
 

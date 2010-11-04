@@ -142,6 +142,10 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		return
 	}
 
+	romLoaded := make(chan bool, 1)
+	speccy.CommandChannel <- spectrum.Cmd_Reset{ romLoaded }
+	<-romLoaded
+
 	errChan := make(chan os.Error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{path, program, errChan}
 

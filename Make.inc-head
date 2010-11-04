@@ -6,7 +6,7 @@ include $(GOROOT)/src/Make.inc
 FORMATS_PKG_LIB=$(GOROOT)/pkg/$(GOOS)_$(GOARCH)/spectrum/formats.a
 
 FORMATS_FILES=\
-	$(GOSPECCY_ROOT)/src/formats/common.go\
+	$(GOSPECCY_ROOT)/src/formats/formats.go\
 	$(GOSPECCY_ROOT)/src/formats/SNA.go\
 	$(GOSPECCY_ROOT)/src/formats/Z80.go\
 	$(GOSPECCY_ROOT)/src/formats/TAP.go\

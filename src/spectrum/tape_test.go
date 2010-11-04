@@ -92,10 +92,6 @@ func testTapeDriveLoad(assert *pt.T) {
 }
 
 func testTapeDriveLoadWithCustomLoader(assert *pt.T) {
-	romLoaded = false
-	speccy.reset()
-	<-romLoadedCh
-
 	tape, _ = NewTapeFromFile("testdata/Syntax09nF.tap")
 	speccy.TapeDrive.Insert(tape)
 	speccy.TapeDrive.Play()
@@ -115,7 +111,6 @@ func TestTapeDrive(t *testing.T) {
 		beforeAll,
 		afterAll,
 		beforeTapeDrive,
-
 		testNewTapeDrive,
 		testInsertTape,
 		testTapeDrivePlayStop,

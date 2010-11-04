@@ -30,7 +30,6 @@ type Spectrum48k struct {
 	Memory   MemoryAccessor
 	ula      *ULA
 	Keyboard *Keyboard
-
 	TapeDrive *TapeDrive
 
 	Ports    PortAccessor
@@ -47,8 +46,16 @@ type Spectrum48k struct {
 	FPS <-chan float
 	fps chan float
 
+	// A value received from this channel indicates that the
+	// system ROM has been loaded. This applies to the standard
+	// 48k ROM but probably doesn't work with custom ROMs.
+	systemROMLoaded chan bool
+
 	CommandChannel chan<- interface{}
 	commandChannel <-chan interface{}
+
+	// True if the system ROM has been loaded
+	romNotYetLoaded bool
 
 	// A vector of '*DisplayInfo', initially empty
 	displays vector.Vector
@@ -88,8 +95,9 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	ula.init(speccy)
 	ports.init(speccy)
 	tapeDrive.init(speccy)
-	
-	err := speccy.reset()
+
+	err := speccy.reset(make(chan bool))
+
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +115,11 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	return speccy, nil
 }
 
-type Cmd_Reset struct{}
+type Cmd_Reset struct { 
+	// This channel will receive true when the system ROM has been
+	// loaded
+	SystemROMLoaded chan bool
+}
 type Cmd_RenderFrame struct {
 	// This channel (if not nil) will receive the time when the WHOLE rendering finished.
 	// The time is obtained via a call to time.Nanoseconds().
@@ -156,6 +168,7 @@ type Cmd_MakeVideoMemoryDump struct {
 type Cmd_KeyboardReadState struct {
 	Chan chan rowState
 }
+type Cmd_CheckSystemROMLoaded struct {}
 
 func commandLoop(speccy *Spectrum48k) {
 	evtLoop := speccy.app.NewEventLoop()
@@ -175,10 +188,20 @@ func commandLoop(speccy *Spectrum48k) {
 		case untyped_cmd := <-speccy.commandChannel:
 			switch cmd := untyped_cmd.(type) {
 			case Cmd_Reset:
-				speccy.reset()
+				speccy.reset(cmd.SystemROMLoaded)
 
 			case Cmd_RenderFrame:
 				speccy.renderFrame(cmd.CompletionTime_orNil)
+				
+			case Cmd_CheckSystemROMLoaded:
+				// Ugly hack to check whenever the
+				// system ROM has been loaded after a
+				// reset. I bet this won't work with
+				// custom ROMs.
+				if speccy.Cpu.PC() == 0x10ac && speccy.romNotYetLoaded {
+					speccy.systemROMLoaded <- true
+					speccy.romNotYetLoaded = false
+				}
 
 			case Cmd_GetNumDisplayReceivers:
 				cmd.N <- uint(speccy.displays.Len())
@@ -252,12 +275,16 @@ func commandLoop(speccy *Spectrum48k) {
 	}
 }
 
-func (speccy *Spectrum48k) reset() os.Error {
+func (speccy *Spectrum48k) reset(systemROMLoaded chan bool) os.Error {
 	speccy.Cpu.reset()
 	speccy.Memory.reset()
 	speccy.ula.reset()
 	speccy.Keyboard.reset()
 	speccy.Ports.reset()
+
+	speccy.romNotYetLoaded = true
+
+	speccy.systemROMLoaded = systemROMLoaded
 
 	// Load the first 16k of memory with the ROM image
 	{
@@ -275,6 +302,10 @@ func (speccy *Spectrum48k) reset() os.Error {
 	}
 
 	return nil
+}
+
+func (speccy *Spectrum48k) SystemROMLoaded() chan bool {
+	return speccy.systemROMLoaded
 }
 
 func (speccy *Spectrum48k) Close() {
@@ -393,7 +424,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 // Initializes state from the specified snapshot.
 // Returns nil on success.
 func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
-	err := speccy.reset()
+	err := speccy.reset(make(chan bool))
 	if err != nil {
 		return err
 	}

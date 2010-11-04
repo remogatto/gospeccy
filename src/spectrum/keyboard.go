@@ -50,18 +50,17 @@ type Keyboard struct {
 }
 
 func NewKeyboard() *Keyboard {
-	k := &Keyboard{}
-	k.reset()
+	keyboard := &Keyboard{}
+	keyboard.reset()
 
-	k.CommandChannel = make(chan interface{})
+	keyboard.CommandChannel = make(chan interface{})
 
-	go k.commandLoop()
-
-	return k
+	return keyboard
 }
 
 func (keyboard *Keyboard) init(speccy *Spectrum48k) {
 	keyboard.speccy = speccy
+	go keyboard.commandLoop()
 }
 
 func (keyboard *Keyboard) delayBetweenKeypress() {
@@ -69,8 +68,22 @@ func (keyboard *Keyboard) delayBetweenKeypress() {
 }
 
 func (keyboard *Keyboard) commandLoop() {
+	evtLoop := keyboard.speccy.app.NewEventLoop()
 	for {
 		select {
+
+		case <-evtLoop.Pause:
+			keyboard.speccy.Close()
+			evtLoop.Pause <- 0
+
+		case <-evtLoop.Terminate:
+			// Terminate this Go routine
+			if evtLoop.App().Verbose {
+				evtLoop.App().PrintfMsg("command loop: exit")
+			}
+			evtLoop.Terminate <- 0
+			return
+
 		case untyped_cmd := <-keyboard.CommandChannel:
 			switch cmd := untyped_cmd.(type) {
 			case Cmd_KeyPress:

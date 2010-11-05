@@ -133,14 +133,13 @@ func (tap *TAP) readBlockData(data []byte) tapBlock {
 }
 
 func (tap *TAP) readBlock(data []byte) (block tapBlock, err os.Error) {
-	switch data[0] {
-	case 0x00:
+	if data[0] == 0x00 {
 		block = tap.readBlockHeader(data)
-	case 0xff:
+	} else {
 		block = tap.readBlockData(data)
 	}
 	if !block.checksum() {
-		err = os.NewError("Checksum failed ")
+		err = os.NewError("Checksum failed")
 	}
 	return
 }
@@ -161,6 +160,7 @@ func (tap *TAP) Read(data []byte) (n int, err os.Error) {
 
 	for pos = 0; pos < length; pos += nextPos {
 		blockLength = uint(joinBytes(data[pos+1], data[pos]))
+
 		if blockLength == 0 {
 			err = os.NewError("Block size can't be 0")
 			n = int(pos)

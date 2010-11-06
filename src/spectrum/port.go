@@ -306,7 +306,7 @@ func (p *Ports) readPortInternal(address uint16, contend bool) byte {
 			}
 		}
 		if p.speccy.Cpu.readFromTape {
-			earBit := p.speccy.TapeDrive.getEarBit()
+			earBit := p.speccy.tapeDrive.getEarBit()
 			return result & earBit
 		}
 	} else if (address & 0x00e0) == 0x0000 {
@@ -346,7 +346,7 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 		// EAR(bit 4) and MIC(bit 3) output
 		newBeeperLevel := (b & 0x18) >> 3
 		if p.speccy.Cpu.readFromTape {
-			if p.speccy.TapeDrive.earBit == 0xff {
+			if p.speccy.tapeDrive.earBit == 0xff {
 				newBeeperLevel = 3
 			} else {
 				newBeeperLevel = 1

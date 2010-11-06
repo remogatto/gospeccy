@@ -148,8 +148,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
 			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
 
-			// Send a message to SystemROMLoaded channel
-			// when the ROM is loaded
+			// Check if the system ROM is loaded
 			speccy.CommandChannel <- spectrum.Cmd_CheckSystemROMLoaded{}
 
 		case FPS_new := <-speccy.FPS:
@@ -309,6 +308,9 @@ func main() {
 
 		case formats.FORMAT_TAP:
 			path = spectrum.TapePath(file)
+
+		case formats.FORMAT_ZIP:
+			path = spectrum.ZipPath(file)
 
 		default:
 			os.NewError("Unknown file format!")

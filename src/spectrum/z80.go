@@ -260,7 +260,7 @@ func (z80 *Z80) loadSnapshot(s formats.Snapshot) os.Error {
 	return nil
 }
 
-func (z80 *Z80) makeSnapshot() *formats.FullSnapshot {
+func (z80 *Z80) MakeSnapshot() *formats.FullSnapshot {
 	var s formats.FullSnapshot
 
 	// Save registers
@@ -683,7 +683,7 @@ func (z80 *Z80) doOpcodes() {
 		opcodesMap[opcode](z80)
 
 		if z80.speccy.Cpu.readFromTape {
-			z80.speccy.TapeDrive.doPlay()
+			z80.speccy.tapeDrive.doPlay()
 		}
 	}
 

@@ -62,6 +62,7 @@ const (
 	FORMAT_SNA = iota
 	FORMAT_Z80
 	FORMAT_TAP
+	FORMAT_ZIP
 )
 
 // Derives the program format from the filename, or returns -1 if the
@@ -79,6 +80,8 @@ func TypeFromSuffix(filename string) (int, os.Error) {
 	case strings.HasSuffix(fName, ".tap"):
 		return FORMAT_TAP, nil
 
+	case strings.HasSuffix(fName, ".zip"):
+		return FORMAT_ZIP, nil
 	}
 
 	return -1, os.NewError("unable to detect the program format (missing or unknown filename extension)")

@@ -60,7 +60,7 @@ type TapeDrive struct {
 	leaderPulses, bitTime uint16
 	state, mask byte
 	speccy *Spectrum48k
-	notifyLoadComplete bool
+	NotifyLoadComplete bool
 	loadComplete chan bool
 }
 
@@ -200,7 +200,7 @@ func (tapeDrive *TapeDrive) doPlay() {
 			tapeDrive.state = TAPE_DRIVE_STOP
 			tapeDrive.timeout = 1
 			tapeDrive.speccy.Cpu.readFromTape = false
-			if tapeDrive.notifyLoadComplete {
+			if tapeDrive.NotifyLoadComplete {
 				tapeDrive.loadComplete <- true
 			}
                 } else {
@@ -213,4 +213,8 @@ func (tapeDrive *TapeDrive) doPlay() {
 
 func (tapeDrive *TapeDrive) getEarBit() uint8 {
 	return tapeDrive.earBit
+}
+
+func (tapeDrive *TapeDrive) LoadComplete() <-chan bool {
+	return tapeDrive.loadComplete
 }

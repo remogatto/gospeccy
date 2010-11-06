@@ -42,7 +42,7 @@ import (
 	"sync"
 )
 
-var defaultUserDir = path.Join(os.Getenv("HOME"), ".gospeccy")
+var DefaultUserDir = path.Join(os.Getenv("HOME"), ".gospeccy")
 var distDir = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS + "_" + runtime.GOARCH, "gospeccy")
 
 var customSearchPaths vector.StringVector
@@ -83,7 +83,7 @@ func appendCustomSearchPaths(paths *vector.StringVector) {
 func SnaPath(fileName string) string {
 	var (
 		currDir = ""
-		userDir = path.Join(defaultUserDir, "sna")
+		userDir = path.Join(DefaultUserDir, "sna")
 	)
 
 	var paths vector.StringVector
@@ -102,7 +102,26 @@ func SnaPath(fileName string) string {
 func TapePath(fileName string) string {
 	var (
 		currDir = ""
-		userDir = path.Join(defaultUserDir, "tape")
+		userDir = path.Join(DefaultUserDir, "tape")
+	)
+
+	var paths vector.StringVector
+	paths.Push(currDir)
+	paths.Push(userDir)
+	appendCustomSearchPaths(&paths)
+
+	return searchForValidPath(paths, fileName)
+}
+
+// Return a valid path for the named zip file.
+//
+// The search is performed in this order:
+// 1. ./
+// 2. $HOME/.gospeccy/zip/
+func ZipPath(fileName string) string {
+	var (
+		currDir = ""
+		userDir = path.Join(DefaultUserDir, "zip")
 	)
 
 	var paths vector.StringVector
@@ -122,7 +141,7 @@ func TapePath(fileName string) string {
 func SystemRomPath(fileName string) string {
 	var (
 		currDir = "roms"
-		userDir = path.Join(defaultUserDir, "roms")
+		userDir = path.Join(DefaultUserDir, "roms")
 		distDir = path.Join(distDir, "roms")
 	)
 
@@ -144,7 +163,7 @@ func SystemRomPath(fileName string) string {
 func ScriptPath(fileName string) string {
 	var (
 		currDir = "scripts"
-		userDir = path.Join(defaultUserDir, "scripts")
+		userDir = path.Join(DefaultUserDir, "scripts")
 		distDir = path.Join(distDir, "scripts")
 	)
 

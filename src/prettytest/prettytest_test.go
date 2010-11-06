@@ -275,3 +275,20 @@ func TestNilNotNil(t *testing.T) {
 		testNotNil,
 	)
 }
+
+func should_use_green_on_passing_examples(assert *T) {
+	assert.True(true)
+}
+
+func should_use_yellow_on_pending_examples(assert *T) {
+	assert.Pending()
+}
+
+func TestBDDStyleSpecs(t *testing.T) {
+	Describe(
+		t,
+		"PrettyTest",
+		should_use_green_on_passing_examples,
+		should_use_yellow_on_pending_examples,
+	)
+}

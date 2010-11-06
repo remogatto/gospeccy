@@ -99,7 +99,7 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		return
 	}
 
-	speccy.CommandChannel <- spectrum.Cmd_Reset{}
+	speccy.CommandChannel <- spectrum.Cmd_Reset{make(chan bool, 1)}
 }
 
 // Signature: func addSearchPath(path string)
@@ -129,10 +129,15 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	switch format {
+
+	case formats.FORMAT_SNA, formats.FORMAT_Z80:
+		completePath = spectrum.SnaPath(path)
+
 	case formats.FORMAT_TAP:
 		completePath = spectrum.TapePath(path)
-	default:
-		completePath = spectrum.SnaPath(path)
+
+	case formats.FORMAT_ZIP:
+		completePath = spectrum.ZipPath(path)
 	}
 
 	program, err = formats.ReadProgram(completePath)
@@ -665,6 +670,9 @@ func Run(exitAppIfEndOfInput bool) {
 	}
 }
 
+func RunString(code string) os.Error {
+	return run(w, code)
+}
 
 type consoleMessageOutput struct {
 	// This mutex is used to serialize the multiple calls to fmt.Printf

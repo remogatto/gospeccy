@@ -30,7 +30,7 @@ type Spectrum48k struct {
 	Memory   MemoryAccessor
 	ula      *ULA
 	Keyboard *Keyboard
-	TapeDrive *TapeDrive
+	tapeDrive *TapeDrive
 
 	Ports    PortAccessor
 
@@ -86,7 +86,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 		displays:       vector.Vector{},
 		audioReceivers: vector.Vector{},
 		app:            app,
-   	        TapeDrive: tapeDrive,
+   	        tapeDrive: tapeDrive,
 	}
 
 	memory.init(speccy)
@@ -265,7 +265,7 @@ func commandLoop(speccy *Spectrum48k) {
 
 
 			case Cmd_MakeSnapshot:
-				cmd.Chan <- speccy.Cpu.makeSnapshot()
+				cmd.Chan <- speccy.Cpu.MakeSnapshot()
 
 			case Cmd_MakeVideoMemoryDump:
 				cmd.Chan <- speccy.makeVideoMemoryDump()
@@ -304,7 +304,7 @@ func (speccy *Spectrum48k) reset(systemROMLoaded chan bool) os.Error {
 	return nil
 }
 
-func (speccy *Spectrum48k) SystemROMLoaded() chan bool {
+func (speccy *Spectrum48k) ROMLoaded() chan bool {
 	return speccy.systemROMLoaded
 }
 
@@ -439,10 +439,10 @@ func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
 
 // Load the given tape. Returns nil on success.
 func (speccy *Spectrum48k) loadTape(tap *formats.TAP) {
-	speccy.TapeDrive.Insert(NewTape(tap))
-	speccy.TapeDrive.Stop()
+	speccy.tapeDrive.Insert(NewTape(tap))
+	speccy.tapeDrive.Stop()
 	speccy.sendLOADCommand()
-	speccy.TapeDrive.Play()	
+	speccy.tapeDrive.Play()	
 }
 
 // Send LOAD ""
@@ -471,6 +471,23 @@ func (speccy *Spectrum48k) Load(program interface{}) os.Error {
 		err = os.NewError("Invalid program type.")
 		return err
 	}
+
+	return err
+}
+
+// Return the TapeDrive instance
+func (speccy *Spectrum48k) TapeDrive() *TapeDrive { return speccy.tapeDrive }
+
+// Load the given tape file
+func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
+	tape, err := NewTapeFromFile(filename)
+	
+	if err != nil { return err }
+
+	speccy.tapeDrive.Insert(tape)
+	speccy.tapeDrive.Stop()
+	speccy.sendLOADCommand()
+	speccy.tapeDrive.Play()
 
 	return err
 }

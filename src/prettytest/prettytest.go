@@ -42,14 +42,10 @@ import (
 	"runtime"
 	"reflect"
 	"regexp"
+	"strings"
 	"os"
 	"fmt"
 )
-
-const LABEL_FAIL = "\033[31;1mFAIL\033[0m"
-const LABEL_PASS = "\033[32;1mOK\033[0m"
-const LABEL_PENDING = "\033[33;1mPENDING\033[0m"
-const LABEL_DRY = "\033[33;1mDRY\033[0m"
 
 const (
 	STATUS_PASS = iota
@@ -58,6 +54,25 @@ const (
 )
 
 const formatTag = "\t%s\t"
+
+func green(text string) string {
+	return fmt.Sprintf("\033[32m%s\033[0m", text)
+}
+
+func red(text string) string {
+	return fmt.Sprintf("\033[31m%s\033[0m", text)
+}
+
+func yellow(text string) string {
+	return fmt.Sprintf("\033[33m%s\033[0m", text)
+}
+
+var (
+	labelFAIL = red("FAIL")
+	labelPASS = green("OK")
+	labelPENDING = yellow("PENDING")
+	labelDRY = yellow("DRY")
+)
 
 type callerInfo struct {
 	name, fn string
@@ -79,6 +94,59 @@ func newCallerInfo(skip int) *callerInfo {
 	}
 	callerName := runtime.FuncForPC(pc).Name()
 	return &callerInfo{callerName, fn, line}
+}
+
+// Formatters
+type Formatter interface {
+	PrintStatus(status byte, callerInfo *callerInfo)
+	PrintDry(callerInfo *callerInfo)
+}
+
+type TDDFormatter struct {}
+
+func (formatter *TDDFormatter) PrintStatus(status byte, callerInfo *callerInfo) {
+	switch status {
+	case STATUS_FAIL:
+		fmt.Printf(formatTag+"%s\n", labelFAIL, callerInfo.name)
+	case STATUS_PASS:
+		fmt.Printf(formatTag+"%s\n", labelPASS, callerInfo.name)
+	case STATUS_PENDING:
+		fmt.Printf(formatTag+"%s\n", labelPENDING, callerInfo.name)
+
+	}
+}
+
+func (formatter *TDDFormatter) PrintDry(callerInfo *callerInfo) {
+	fmt.Printf(formatTag + "%s\n", labelDRY, callerInfo.name)
+}
+
+type BDDFormatter struct {}
+
+func (formatter *BDDFormatter) PrintStatus(status byte, callerInfo *callerInfo) {
+	var shouldText string
+
+	s := strings.Split(callerInfo.name, ".", -1)
+	callerName := s[1]
+	splittedByUnderscores := strings.Split(callerName, "_", -1)
+
+	for _, v := range splittedByUnderscores {
+		shouldText += v + " "
+	}
+
+	shouldText = strings.TrimSpace(shouldText)
+
+	switch status {
+	case STATUS_FAIL:
+		fmt.Printf("- %s\n", red(shouldText))
+	case STATUS_PASS:
+		fmt.Printf("- %s\n", green(shouldText))
+	case STATUS_PENDING:
+		fmt.Printf("- %s\t(Not Yet Implemented)\n", yellow(shouldText))
+	}
+}
+
+func (formatter *BDDFormatter) PrintDry(callerInfo *callerInfo) {
+	fmt.Printf(formatTag + "%s\n", labelDRY, callerInfo.name)
 }
 
 func (assertion *T) fail(exp, act interface{}, info *callerInfo) {
@@ -184,23 +252,29 @@ func getFuncId(pattern string, excludeId int, tests ...func(*T)) (id int) {
 	return
 }
 
-// Run tests.
-func Run(t *testing.T, tests ...func(*T)) {
-	pc, _, _, _ := runtime.Caller(1)
+func printCallerName() {
+	pc, _, _, _ := runtime.Caller(2)
 	callerName := runtime.FuncForPC(pc).Name()
 	fmt.Printf("\n%s:\n", callerName)
+}
 
+func run(t *testing.T, format Formatter, tests ...func(*T)) {	
 	beforeAllFuncId := getFuncId(".*\\.beforeAll.*$", -1, tests...)
 	afterAllFuncId := getFuncId(".*\\.afterAll.*$", -1, tests...)
 	setupFuncId := getFuncId(".*\\.before.*$", beforeAllFuncId, tests...)
 	teardownFuncId := getFuncId(".*\\.after.*$", afterAllFuncId, tests...)
 
+	if beforeAllFuncId >= 0 {
+		assertions := &T{t, STATUS_PASS, STATUS_PASS, false, &callerInfo{"", "", 0}}
+		tests[beforeAllFuncId](assertions)
+	}
+
+	
 	for i, test := range tests {
 
 		assertions := &T{t, STATUS_PASS, STATUS_PASS, false, &callerInfo{"", "", 0}}
 
 		if i == beforeAllFuncId {
-			tests[beforeAllFuncId](assertions)
 			continue
 		}
 
@@ -223,17 +297,9 @@ func Run(t *testing.T, tests ...func(*T)) {
 		}
 
 		if !assertions.Dry {
-			switch assertions.Status {
-			case STATUS_FAIL:
-				fmt.Printf(formatTag + "%s\n", LABEL_FAIL, assertions.callerInfo.name)
-			case STATUS_PASS:
-				fmt.Printf(formatTag+"%s\n", LABEL_PASS, assertions.callerInfo.name)
-			case STATUS_PENDING:
-				fmt.Printf(formatTag+"%s\n", LABEL_PENDING, assertions.callerInfo.name)
-
-			}
+			format.PrintStatus(assertions.Status, assertions.callerInfo)
 		} else {
-			fmt.Printf(formatTag + "%s\n", LABEL_DRY, assertions.callerInfo.name)
+			format.PrintDry(assertions.callerInfo)
 		}
 	}
 
@@ -243,10 +309,22 @@ func Run(t *testing.T, tests ...func(*T)) {
 	}
 }
 
+// Run tests.
+func Run(t *testing.T, tests ...func(*T)) {
+	printCallerName()
+	run(t, &TDDFormatter{}, tests...)
+}
+
 // Run tests but don't emit output and don't fail on failing
 // assertions.
 func DryRun(t *testing.T, tests ...func(*T)) {
 	for _, test := range tests {
 		test(&T{t, STATUS_PASS, STATUS_PASS, true, nil})
 	}
+}
+
+// Run tests in BDD style
+func Describe(t *testing.T, description string, tests ...func(*T)) {
+	fmt.Printf("\n%s\n", description)
+	run(t, &BDDFormatter{}, tests...)
 }

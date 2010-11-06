@@ -339,7 +339,7 @@ func main() {
 	}
 
 	// Drain systemROMLoaded channel
-	<-speccy.SystemROMLoaded()
+	<-speccy.ROMLoaded()
 
 quit:
 	<-app.HasTerminated

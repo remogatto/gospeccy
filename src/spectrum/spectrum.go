@@ -26,13 +26,13 @@ type DisplayInfo struct {
 }
 
 type Spectrum48k struct {
-	Cpu      *Z80
-	Memory   MemoryAccessor
-	ula      *ULA
-	Keyboard *Keyboard
+	Cpu       *Z80
+	Memory    MemoryAccessor
+	ula       *ULA
+	Keyboard  *Keyboard
 	tapeDrive *TapeDrive
 
-	Ports    PortAccessor
+	Ports PortAccessor
 
 	romPath string
 
@@ -86,7 +86,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 		displays:       vector.Vector{},
 		audioReceivers: vector.Vector{},
 		app:            app,
-   	        tapeDrive: tapeDrive,
+		tapeDrive:      tapeDrive,
 	}
 
 	memory.init(speccy)
@@ -115,7 +115,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	return speccy, nil
 }
 
-type Cmd_Reset struct { 
+type Cmd_Reset struct {
 	// This channel will receive true when the system ROM has been
 	// loaded
 	SystemROMLoaded chan bool
@@ -156,7 +156,7 @@ type Cmd_LoadSnapshot struct {
 }
 type Cmd_Load struct {
 	InformalFilename string // This is only used for logging purposes
-	Program         interface{}
+	Program          interface{}
 	ErrChan          chan<- os.Error
 }
 type Cmd_MakeSnapshot struct {
@@ -168,7 +168,7 @@ type Cmd_MakeVideoMemoryDump struct {
 type Cmd_KeyboardReadState struct {
 	Chan chan rowState
 }
-type Cmd_CheckSystemROMLoaded struct {}
+type Cmd_CheckSystemROMLoaded struct{}
 
 func commandLoop(speccy *Spectrum48k) {
 	evtLoop := speccy.app.NewEventLoop()
@@ -192,7 +192,7 @@ func commandLoop(speccy *Spectrum48k) {
 
 			case Cmd_RenderFrame:
 				speccy.renderFrame(cmd.CompletionTime_orNil)
-				
+
 			case Cmd_CheckSystemROMLoaded:
 				// Ugly hack to check whenever the
 				// system ROM has been loaded after a
@@ -262,7 +262,6 @@ func commandLoop(speccy *Spectrum48k) {
 				if cmd.ErrChan != nil {
 					cmd.ErrChan <- err
 				}
-
 
 			case Cmd_MakeSnapshot:
 				cmd.Chan <- speccy.Cpu.MakeSnapshot()
@@ -442,7 +441,7 @@ func (speccy *Spectrum48k) loadTape(tap *formats.TAP) {
 	speccy.tapeDrive.Insert(NewTape(tap))
 	speccy.tapeDrive.Stop()
 	speccy.sendLOADCommand()
-	speccy.tapeDrive.Play()	
+	speccy.tapeDrive.Play()
 }
 
 // Send LOAD ""
@@ -451,7 +450,7 @@ func (speccy *Spectrum48k) sendLOADCommand() {
 }
 
 func (speccy *Spectrum48k) makeVideoMemoryDump() []byte {
-	return speccy.Memory.Data()[0x4000:0x4000+6912]
+	return speccy.Memory.Data()[0x4000 : 0x4000+6912]
 }
 
 func (speccy *Spectrum48k) GetCurrentFPS() float {
@@ -481,8 +480,10 @@ func (speccy *Spectrum48k) TapeDrive() *TapeDrive { return speccy.tapeDrive }
 // Load the given tape file
 func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
 	tape, err := NewTapeFromFile(filename)
-	
-	if err != nil { return err }
+
+	if err != nil {
+		return err
+	}
 
 	speccy.tapeDrive.Insert(tape)
 	speccy.tapeDrive.Stop()
@@ -491,5 +492,3 @@ func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
 
 	return err
 }
-
-

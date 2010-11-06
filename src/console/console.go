@@ -112,7 +112,7 @@ func wrapper_addSearchPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	var (
 		completePath string
-		program interface{}
+		program      interface{}
 	)
 
 	if app.TerminationInProgress() {
@@ -120,7 +120,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	path := in[0].(eval.StringValue).Get(t)
-	
+
 	format, err := formats.TypeFromSuffix(path)
 
 	if err != nil {
@@ -148,7 +148,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	romLoaded := make(chan bool, 1)
-	speccy.CommandChannel <- spectrum.Cmd_Reset{ romLoaded }
+	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
 	<-romLoaded
 
 	errChan := make(chan os.Error)
@@ -301,7 +301,7 @@ func wrapper_screenshot(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	path := in[0].(eval.StringValue).Get(t)
 
 	ch := make(chan []byte)
-	speccy.CommandChannel <- spectrum.Cmd_MakeVideoMemoryDump{ ch }
+	speccy.CommandChannel <- spectrum.Cmd_MakeVideoMemoryDump{ch}
 
 	data := <-ch
 

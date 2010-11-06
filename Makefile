@@ -55,7 +55,8 @@ GOFMT_FILES=\
 	$(CONSOLE_FILES)\
 	$(PRETTYTEST_FILES)\
 	$(FRONTEND_FILES)\
-	$(READLINE_FILES)
+	$(READLINE_FILES)\
+	$(TEST_FILES)\
 
 gospeccy: _obj _obj/gospeccy.$(O)
 	$(LD) -L./_obj -o $@ _obj/gospeccy.$(O)

@@ -33,8 +33,8 @@ type Snapshot interface {
 }
 
 type FullSnapshot struct {
-	Cpu    CpuState
-	Ula    UlaState
+	Cpu CpuState
+	Ula UlaState
 	Mem [48 * 1024]byte
 }
 
@@ -137,7 +137,7 @@ func readZIP(filePath string) (interface{}, os.Error) {
 		tap := NewTAP()
 		_, err = tap.Read(data)
 		return tap, err
-	} 
+	}
 	return SnapshotData(data).Decode(archive_programFormat)
 }
 
@@ -165,7 +165,7 @@ func ReadProgram(filePath string) (interface{}, os.Error) {
 		tap := NewTAP()
 		_, err = tap.Read(data)
 		return tap, err
-	} 
+	}
 	return SnapshotData(data).Decode(format)
 }
 

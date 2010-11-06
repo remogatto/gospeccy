@@ -68,10 +68,10 @@ func yellow(text string) string {
 }
 
 var (
-	labelFAIL = red("FAIL")
-	labelPASS = green("OK")
+	labelFAIL    = red("FAIL")
+	labelPASS    = green("OK")
 	labelPENDING = yellow("PENDING")
-	labelDRY = yellow("DRY")
+	labelDRY     = yellow("DRY")
 )
 
 type callerInfo struct {
@@ -80,9 +80,9 @@ type callerInfo struct {
 }
 
 type T struct {
-	T   *testing.T
+	T                  *testing.T
 	Status, LastStatus byte
-	Dry    bool
+	Dry                bool
 
 	callerInfo *callerInfo
 }
@@ -102,7 +102,7 @@ type Formatter interface {
 	PrintDry(callerInfo *callerInfo)
 }
 
-type TDDFormatter struct {}
+type TDDFormatter struct{}
 
 func (formatter *TDDFormatter) PrintStatus(status byte, callerInfo *callerInfo) {
 	switch status {
@@ -117,10 +117,10 @@ func (formatter *TDDFormatter) PrintStatus(status byte, callerInfo *callerInfo) 
 }
 
 func (formatter *TDDFormatter) PrintDry(callerInfo *callerInfo) {
-	fmt.Printf(formatTag + "%s\n", labelDRY, callerInfo.name)
+	fmt.Printf(formatTag+"%s\n", labelDRY, callerInfo.name)
 }
 
-type BDDFormatter struct {}
+type BDDFormatter struct{}
 
 func (formatter *BDDFormatter) PrintStatus(status byte, callerInfo *callerInfo) {
 	var shouldText string
@@ -146,7 +146,7 @@ func (formatter *BDDFormatter) PrintStatus(status byte, callerInfo *callerInfo) 
 }
 
 func (formatter *BDDFormatter) PrintDry(callerInfo *callerInfo) {
-	fmt.Printf(formatTag + "%s\n", labelDRY, callerInfo.name)
+	fmt.Printf(formatTag+"%s\n", labelDRY, callerInfo.name)
 }
 
 func (assertion *T) fail(exp, act interface{}, info *callerInfo) {
@@ -258,7 +258,7 @@ func printCallerName() {
 	fmt.Printf("\n%s:\n", callerName)
 }
 
-func run(t *testing.T, format Formatter, tests ...func(*T)) {	
+func run(t *testing.T, format Formatter, tests ...func(*T)) {
 	beforeAllFuncId := getFuncId(".*\\.beforeAll.*$", -1, tests...)
 	afterAllFuncId := getFuncId(".*\\.afterAll.*$", -1, tests...)
 	setupFuncId := getFuncId(".*\\.before.*$", beforeAllFuncId, tests...)
@@ -269,7 +269,6 @@ func run(t *testing.T, format Formatter, tests ...func(*T)) {
 		tests[beforeAllFuncId](assertions)
 	}
 
-	
 	for i, test := range tests {
 
 		assertions := &T{t, STATUS_PASS, STATUS_PASS, false, &callerInfo{"", "", 0}}
@@ -285,11 +284,11 @@ func run(t *testing.T, format Formatter, tests ...func(*T)) {
 		if i == setupFuncId || i == teardownFuncId {
 			continue
 		}
-		
+
 		if setupFuncId >= 0 {
 			tests[setupFuncId](assertions)
 		}
-		
+
 		test(assertions)
 
 		if teardownFuncId >= 0 {

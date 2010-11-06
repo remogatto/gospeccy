@@ -28,3 +28,7 @@ PRETTYTEST_FILES=\
 
 FRONTEND_FILES=\
 	$(GOSPECCY_ROOT)/src/gospeccy.go
+
+TEST_FILES=\
+	$(GOSPECCY_ROOT)/src/test/*_test.go
+

@@ -250,7 +250,6 @@ func main() {
 		}
 	}
 
-
 	{
 		n := make(chan uint)
 
@@ -294,12 +293,14 @@ func main() {
 	// any)
 	if flag.Arg(0) != "" {
 		file := flag.Arg(0)
-		
+
 		var path string
-		
+
 		format, err := formats.TypeFromSuffix(file)
-		
-		if err != nil { app.PrintfMsg("%s", err) }
+
+		if err != nil {
+			app.PrintfMsg("%s", err)
+		}
 
 		switch format {
 
@@ -326,7 +327,7 @@ func main() {
 		errChan := make(chan os.Error)
 
 		romLoaded := make(chan bool, 1)
-		speccy.CommandChannel <- spectrum.Cmd_Reset{ romLoaded }
+		speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
 		<-romLoaded
 
 		speccy.CommandChannel <- spectrum.Cmd_Load{file, program, errChan}

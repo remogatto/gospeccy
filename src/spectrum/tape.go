@@ -18,15 +18,15 @@ const (
 	TAPE_DRIVE_NEWBYTE
 )
 
-const ( 
-	TAPE_LEADER = 2168
-	TAPE_FIRST_SYNC = 667
-	TAPE_SECOND_SYNC = 735
-	TAPE_SET_BIT = 1710
-	TAPE_UNSET_BIT = 855
+const (
+	TAPE_LEADER               = 2168
+	TAPE_FIRST_SYNC           = 667
+	TAPE_SECOND_SYNC          = 735
+	TAPE_SET_BIT              = 1710
+	TAPE_UNSET_BIT            = 855
 	TAPE_HEADER_LEADER_PULSES = 8063
-	TAPE_DATA_LEADER_PULSES = 3223
-	TAPE_PAUSE = 3500000
+	TAPE_DATA_LEADER_PULSES   = 3223
+	TAPE_PAUSE                = 3500000
 )
 
 type Tape struct {
@@ -34,14 +34,14 @@ type Tape struct {
 }
 
 func NewTape(tap *formats.TAP) *Tape {
-	return &Tape{ tap }
+	return &Tape{tap}
 }
 
 func NewTapeFromFile(filename string) (*Tape, os.Error) {
 	data, err := ioutil.ReadFile(filename)
 	tap := formats.NewTAP()
 	_, err = tap.Read(data)
-	tape := &Tape{ tap }
+	tape := &Tape{tap}
 	return tape, err
 }
 
@@ -50,28 +50,27 @@ func (tape *Tape) At(pos uint) byte {
 }
 
 type TapeDrive struct {
-	Status byte
-	tape *Tape
-	pos int
-	tstate, lastIn uint64
-	earBit byte
-	timeout int
+	Status                                byte
+	tape                                  *Tape
+	pos                                   int
+	tstate, lastIn                        uint64
+	earBit                                byte
+	timeout                               int
 	timeLastIn, currBlockLen, currBlockId int
-	leaderPulses, bitTime uint16
-	state, mask byte
-	speccy *Spectrum48k
-	NotifyLoadComplete bool
-	loadComplete chan bool
+	leaderPulses, bitTime                 uint16
+	state, mask                           byte
+	speccy                                *Spectrum48k
+	NotifyLoadComplete                    bool
+	loadComplete                          chan bool
 }
 
 func NewTapeDrive() *TapeDrive {
 	return &TapeDrive{
 
-	Status: TAPE_DRIVE_STOP, 
-	pos: 0,
-	earBit: 0xbf,
-	loadComplete: make(chan bool),
-
+		Status:       TAPE_DRIVE_STOP,
+		pos:          0,
+		earBit:       0xbf,
+		loadComplete: make(chan bool),
 	}
 }
 
@@ -101,20 +100,20 @@ func (tapeDrive *TapeDrive) Stop() {
 }
 
 func (tapeDrive *TapeDrive) doPlay() {
-        now := tapeDrive.speccy.ula.frame * TStatesPerFrame + tapeDrive.speccy.Cpu.tstates
+	now := tapeDrive.speccy.ula.frame*TStatesPerFrame + tapeDrive.speccy.Cpu.tstates
 
-        tapeDrive.timeout -= (int(now) - tapeDrive.timeLastIn)
-        tapeDrive.timeLastIn = int(now)
+	tapeDrive.timeout -= (int(now) - tapeDrive.timeLastIn)
+	tapeDrive.timeLastIn = int(now)
 
-        if tapeDrive.timeout > 0 {
+	if tapeDrive.timeout > 0 {
 		return
-        }
+	}
 
-        tapeDrive.timeout = 0
+	tapeDrive.timeout = 0
 
-        switch tapeDrive.state {
-        case TAPE_DRIVE_START:
-                tapeDrive.currBlockLen = tapeDrive.tape.tap.GetBlock(tapeDrive.currBlockId).Len()
+	switch tapeDrive.state {
+	case TAPE_DRIVE_START:
+		tapeDrive.currBlockLen = tapeDrive.tape.tap.GetBlock(tapeDrive.currBlockId).Len()
 
 		if tapeDrive.currBlockId == 0 {
 			tapeDrive.leaderPulses = TAPE_HEADER_LEADER_PULSES
@@ -122,59 +121,59 @@ func (tapeDrive *TapeDrive) doPlay() {
 			tapeDrive.leaderPulses = TAPE_DATA_LEADER_PULSES
 		}
 
-                tapeDrive.earBit = 0xbf
-                tapeDrive.timeout = TAPE_LEADER
-                tapeDrive.state = TAPE_DRIVE_LEADER
-        case TAPE_DRIVE_LEADER:
+		tapeDrive.earBit = 0xbf
+		tapeDrive.timeout = TAPE_LEADER
+		tapeDrive.state = TAPE_DRIVE_LEADER
+	case TAPE_DRIVE_LEADER:
 		if tapeDrive.earBit == 0xbf {
 			tapeDrive.earBit = 0xff
 		} else {
 			tapeDrive.earBit = 0xbf
 		}
 		tapeDrive.leaderPulses--
-                if tapeDrive.leaderPulses > 0 {
+		if tapeDrive.leaderPulses > 0 {
 			tapeDrive.timeout = TAPE_LEADER
 			break
-                }
-                tapeDrive.timeout = TAPE_FIRST_SYNC
-                tapeDrive.state = TAPE_DRIVE_SYNC
+		}
+		tapeDrive.timeout = TAPE_FIRST_SYNC
+		tapeDrive.state = TAPE_DRIVE_SYNC
 
-        case TAPE_DRIVE_SYNC:
+	case TAPE_DRIVE_SYNC:
 		if tapeDrive.earBit == 0xbf {
 			tapeDrive.earBit = 0xff
 		} else {
 			tapeDrive.earBit = 0xbf
 		}
-                tapeDrive.timeout = TAPE_SECOND_SYNC
-                tapeDrive.state = TAPE_DRIVE_NEWBYTE
+		tapeDrive.timeout = TAPE_SECOND_SYNC
+		tapeDrive.state = TAPE_DRIVE_NEWBYTE
 
-        case TAPE_DRIVE_NEWBYTE:
-                tapeDrive.mask = 0x80
+	case TAPE_DRIVE_NEWBYTE:
+		tapeDrive.mask = 0x80
 		fallthrough
 
-        case TAPE_DRIVE_NEWBIT:
+	case TAPE_DRIVE_NEWBIT:
 		if tapeDrive.earBit == 0xbf {
 			tapeDrive.earBit = 0xff
 		} else {
 			tapeDrive.earBit = 0xbf
 		}
-                if ((tapeDrive.tape.At(uint(tapeDrive.pos)) & tapeDrive.mask) == 0) {
+		if (tapeDrive.tape.At(uint(tapeDrive.pos)) & tapeDrive.mask) == 0 {
 			tapeDrive.bitTime = TAPE_UNSET_BIT
-                } else {
+		} else {
 			tapeDrive.bitTime = TAPE_SET_BIT
-                }
-                tapeDrive.timeout = int(tapeDrive.bitTime)
-                tapeDrive.state = TAPE_DRIVE_HALF2
-                break
-        case TAPE_DRIVE_HALF2:
+		}
+		tapeDrive.timeout = int(tapeDrive.bitTime)
+		tapeDrive.state = TAPE_DRIVE_HALF2
+		break
+	case TAPE_DRIVE_HALF2:
 		if tapeDrive.earBit == 0xbf {
 			tapeDrive.earBit = 0xff
 		} else {
 			tapeDrive.earBit = 0xbf
 		}
-                tapeDrive.timeout = int(tapeDrive.bitTime)
-                tapeDrive.mask >>= 1
-                if tapeDrive.mask == 0 { 
+		tapeDrive.timeout = int(tapeDrive.bitTime)
+		tapeDrive.mask >>= 1
+		if tapeDrive.mask == 0 {
 			tapeDrive.pos++
 			tapeDrive.currBlockLen--
 			if tapeDrive.currBlockLen > 0 {
@@ -182,32 +181,32 @@ func (tapeDrive *TapeDrive) doPlay() {
 			} else {
 				tapeDrive.state = TAPE_DRIVE_PAUSE
 			}
-                } else {
+		} else {
 			tapeDrive.state = TAPE_DRIVE_NEWBIT
-                }
-                break;
-        case TAPE_DRIVE_PAUSE:
+		}
+		break
+	case TAPE_DRIVE_PAUSE:
 		if tapeDrive.earBit == 0xbf {
 			tapeDrive.earBit = 0xff
 		} else {
 			tapeDrive.earBit = 0xbf
 		}
-                tapeDrive.timeout = TAPE_PAUSE
-                tapeDrive.state = TAPE_DRIVE_PAUSE_STOP
-                break
-        case TAPE_DRIVE_PAUSE_STOP:
-                if tapeDrive.pos == int(tapeDrive.tape.tap.Len()) {
+		tapeDrive.timeout = TAPE_PAUSE
+		tapeDrive.state = TAPE_DRIVE_PAUSE_STOP
+		break
+	case TAPE_DRIVE_PAUSE_STOP:
+		if tapeDrive.pos == int(tapeDrive.tape.tap.Len()) {
 			tapeDrive.state = TAPE_DRIVE_STOP
 			tapeDrive.timeout = 1
 			tapeDrive.speccy.Cpu.readFromTape = false
 			if tapeDrive.NotifyLoadComplete {
 				tapeDrive.loadComplete <- true
 			}
-                } else {
+		} else {
 			tapeDrive.currBlockId++
 			tapeDrive.state = TAPE_DRIVE_START
-                }
-        }
+		}
+	}
 
 }
 

@@ -49,7 +49,7 @@ func beforeAllConsole(t *pt.T) {
 }
 
 func beforeConsole(t *pt.T) {
-	app.SetMessageOutput(&testMessageOutput{ new(vector.StringVector) })
+	app.SetMessageOutput(&testMessageOutput{new(vector.StringVector)})
 	messageOutput = app.GetMessageOutput().(*testMessageOutput)
 }
 
@@ -86,7 +86,7 @@ func should_honor_convention_over_configuration_when_loading_files(t *pt.T) {
 func should_allow_reset(t *pt.T) {
 	err := console.RunString("reset()")
 	t.Nil(err)
-	
+
 	<-speccy.ROMLoaded()
 
 	t.True(screenEqualTo("testdata/system_rom_loaded.sna"))
@@ -102,7 +102,7 @@ func should_print_help(t *pt.T) {
 
 func should_allow_printing_strings(t *pt.T) {
 	err := console.RunString(fmt.Sprintf("puts(\"%s\")", "Hello World!"))
-	
+
 	t.Nil(err)
 	t.Equal("Hello World!\n", messageOutput.String())
 }
@@ -119,7 +119,7 @@ func should_allow_taking_screenshots(t *pt.T) {
 
 func should_allow_loading_scripts(t *pt.T) {
 	err := console.RunString(fmt.Sprintf("script(\"%s\")", "testdata/script"))
-	
+
 	t.True(err == nil)
 	t.Equal(2, messageOutput.strings.Len())
 	t.Equal("Hello World!\n", messageOutput.String())

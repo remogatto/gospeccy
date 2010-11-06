@@ -22,13 +22,15 @@ func should_respond_to_keypress_sequence(t *prettytest.T) {
 	k.KeyUp(spectrum.KEY_SymbolShift)
 
 	done := k.KeyPressSequence(
-		spectrum.KEY_H, 
+		spectrum.KEY_H,
 		spectrum.KEY_E,
 		spectrum.KEY_L,
 		spectrum.KEY_L,
 		spectrum.KEY_O,
 	)
-	for i := 0; i < 5; i++ { <-done }
+	for i := 0; i < 5; i++ {
+		<-done
+	}
 
 	k.KeyDown(spectrum.KEY_SymbolShift)
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_P)
@@ -47,6 +49,5 @@ func TestKeyboard(t *testing.T) {
 
 		before,
 		after,
-
 	)
 }

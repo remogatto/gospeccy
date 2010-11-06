@@ -36,13 +36,13 @@ type rowState struct {
 
 type Cmd_KeyPress struct {
 	logicalKeyCode uint
-	done chan bool
+	done           chan bool
 }
 
-type Cmd_SendLoad struct {}
+type Cmd_SendLoad struct{}
 
 type Keyboard struct {
-	speccy *Spectrum48k
+	speccy    *Spectrum48k
 	keyStates [8]byte
 	mutex     sync.RWMutex
 
@@ -64,7 +64,7 @@ func (keyboard *Keyboard) init(speccy *Spectrum48k) {
 }
 
 func (keyboard *Keyboard) delayBetweenKeypress() {
-	time.Sleep(1e9/int64(keyboard.speccy.GetCurrentFPS()))
+	time.Sleep(1e9 / int64(keyboard.speccy.GetCurrentFPS()))
 }
 
 func (keyboard *Keyboard) commandLoop() {

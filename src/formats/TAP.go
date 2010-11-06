@@ -12,7 +12,7 @@ const (
 	TAP_FILE_CHARACTER_ARRAY
 	TAP_FILE_CODE
 	TAP_BLOCK_HEADER = 0x00
-	TAP_BLOCK_DATA = 0xff
+	TAP_BLOCK_DATA   = 0xff
 )
 
 func joinBytes(h, l byte) uint16 {
@@ -20,9 +20,11 @@ func joinBytes(h, l byte) uint16 {
 }
 
 func checksum(data []byte) bool {
-	exp := data[len(data) - 1]
+	exp := data[len(data)-1]
 	sum := byte(0)
-	for _, v := range data[0:len(data) - 1] { sum ^= v }
+	for _, v := range data[0 : len(data)-1] {
+		sum ^= v
+	}
 	return exp == sum
 }
 
@@ -34,10 +36,10 @@ type tapBlock interface {
 }
 
 type tapBlockHeader struct {
-	data []byte
-	tapType byte
-	filename string
-	length uint16
+	data       []byte
+	tapType    byte
+	filename   string
+	length     uint16
 	par1, par2 uint16
 }
 
@@ -76,7 +78,7 @@ func (data tapBlockData) checksum() bool {
 }
 
 type TAP struct {
-	data []byte
+	data   []byte
 	blocks *vector.Vector
 }
 
@@ -147,7 +149,7 @@ func (tap *TAP) readBlock(data []byte) (block tapBlock, err os.Error) {
 func (tap *TAP) Read(data []byte) (n int, err os.Error) {
 	var (
 		length, blockLength uint
-		pos, nextPos uint
+		pos, nextPos        uint
 	)
 
 	if len(data) == 0 {
@@ -168,14 +170,14 @@ func (tap *TAP) Read(data []byte) (n int, err os.Error) {
 		}
 
 		pos += 2
-		_, err = tap.readBlock(data[pos:pos + blockLength])
+		_, err = tap.readBlock(data[pos : pos+blockLength])
 		nextPos = blockLength
 		n += int(blockLength) + 2
 	}
 
-	tap.data = make([]byte, len(data) - (tap.blocks.Len() * 2))
+	tap.data = make([]byte, len(data)-(tap.blocks.Len()*2))
 	var c = 0
-	
+
 	for _, blk := range *tap.blocks {
 		for _, v := range blk.(tapBlock).Data() {
 			tap.data[c] = v
@@ -185,6 +187,3 @@ func (tap *TAP) Read(data []byte) (n int, err os.Error) {
 
 	return
 }
-
-
-

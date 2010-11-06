@@ -134,8 +134,9 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 		case <-evtLoop.Pause:
 			ticker.Stop()
 			spectrum.Drain(ticker)
+			close(speccy.ROMLoaded())
 			evtLoop.Pause <- 0
-
+			
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if app.Verbose {
@@ -147,7 +148,6 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 		case <-ticker.C:
 			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
 			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
-
 			// Check if the system ROM is loaded
 			speccy.CommandChannel <- spectrum.Cmd_CheckSystemROMLoaded{}
 
@@ -338,6 +338,7 @@ func main() {
 			goto quit
 		}
 	}
+
 
 	// Drain systemROMLoaded channel
 	<-speccy.ROMLoaded()

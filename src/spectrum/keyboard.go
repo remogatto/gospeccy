@@ -79,7 +79,7 @@ func (keyboard *Keyboard) commandLoop() {
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if evtLoop.App().Verbose {
-				evtLoop.App().PrintfMsg("command loop: exit")
+				evtLoop.App().PrintfMsg("keyboard command loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return

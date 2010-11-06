@@ -40,6 +40,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 		case <-evtLoop.Pause:
 			ticker.Stop()
 			spectrum.Drain(ticker)
+			close(speccy.ROMLoaded())
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:

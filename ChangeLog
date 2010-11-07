@@ -1,3 +1,55 @@
+0.6.0 / 2010-11-xx
+==================
+
+	* Add support for loading tapes in TAP format through the system
+	ROM loading routine
+
+	* Add support for Z80 48k snapshots (all Z80 versions)
+
+	* Enable loading of a program (tape or snapshot) from a ZIP
+	archive
+
+	* Add system/blackbox tests (see src/test)
+
+	* No need to put a new-line character at the end of a Go
+	script (obsoleted by the last Go release)
+
+	* Add puts() function to the console Test script() console
+	function
+
+	* Create a separate package for the console
+
+	* Faster emulation of memory contention
+
+	* Enable a script or the console to add a new search path (handful
+	if used in the "startup_local.go" script), a snapshot specified as
+	an argument to GoSpeccy now superseeds any snapshots loaded from
+	the startup script
+
+	* Inline code that is used to set individual pixels (for up to 2x
+	rendering performance improvement)
+
+	* Improve conversion of 2-bit beeper levels to 16-bit audio (fixes
+	the music loudness in Manic Miner)
+
+	* Fix emulation of HALT instruction
+
+	* Fix many memory and I/O contention issues (checked against
+	JSpeccy 0.87, and against a couple of timing tests)
+
+	* Accurate emulation of the border (Overscan Demo by Busy Soft
+	works perfectly)
+
+	* Border height is now 32 pixels instead of 24
+
+	* Improve simulation of RETN when loading a SNA snapshot
+
+	* Reduce visual artifacting caused by non-atomic SDL surface
+	updates
+
+	* Fixed border rendering when a frame is not sent to the rendering
+	backend
+
 0.5.1 / 2010-09-18
 ==================
 

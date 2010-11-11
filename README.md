@@ -58,7 +58,9 @@ don't forget to fork and send patches, of course ;)
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
 * Beeper support
 * An interactive console interface
-* Format support (48k versions): SNA, Z80, snapshot in a ZIP file
+* Snapshot support: SNA, Z80 formats (48k versions)
+* Tape support (TAP format)
+* ZIP files support
 * SDL backend
 * 2x scaler and fullscreen (to be improved)
 
@@ -118,14 +120,6 @@ games and demos in Z80 format. For example:
 * [Pouet.net search](http://pouet.net/prodlist.php?platform[]=ZX+Spectrum)
 * [Forever](http://forever.zeroteam.sk/download.htm)
 
-In order to create a Z80 file from another 48k format, install
-[FUSE](http://fuse-emulator.sourceforge.net/), load the original file
-into FUSE (e.g: fuse -m48 file.tap), wait until it loads, and save it
-in Z80 format as "file.z80". For example, you can test this procedure on
-the [48K](http://forever.zeroteam.sk/download/f11speccy.zip) ZX demo. All these
-things will hopefully improve as GoSpeccy matures, so that you won't need to
-resort to using other ZX Spectrum emulators.
-
 # Key bindings
 
     Host computer   Zx Spectrum
@@ -182,7 +176,7 @@ Manic Miner running on GoSpeccy.
 
 * Fix some memory and I/O contention bugs
 * Add support for more file formats (take a look [here](http://www.worldofspectrum.org/faq/reference/formats.htm))
-* Add support for tape saving & loading
+* Add support for tape saving
 * Better general performance
 * Add more filters and improve the scaler
 * Add new graphical backends (Go's exp/draw?)

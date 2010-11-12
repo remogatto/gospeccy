@@ -1,3 +1,28 @@
+/*
+
+Copyright (c) 2010 Andrea Fazzi
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+*/
+
 package spectrum
 
 import (
@@ -6,6 +31,7 @@ import (
 	"io/ioutil"
 	"os"
 	"container/vector"
+	"time"
 )
 
 const TStatesPerFrame = 69888 // Number of T-states per frame
@@ -63,56 +89,10 @@ type Spectrum48k struct {
 	// A vector of 'AudioReceiver', initially empty
 	audioReceivers vector.Vector
 
+	// Register the state of FPS before accelerating tape loading
+	fpsBeforeAccelerating float
+
 	app *Application
-}
-
-// Create a new speccy object.
-func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
-	memory := NewMemory()
-	keyboard := NewKeyboard()
-	ports := NewPorts()
-	z80 := NewZ80(memory, ports)
-	ula := NewULA()
-
-	tapeDrive := NewTapeDrive()
-
-	speccy := &Spectrum48k{
-		Cpu:            z80,
-		Memory:         memory,
-		ula:            ula,
-		Keyboard:       keyboard,
-		Ports:          ports,
-		romPath:        romPath,
-		displays:       vector.Vector{},
-		audioReceivers: vector.Vector{},
-		app:            app,
-		tapeDrive:      tapeDrive,
-	}
-
-	memory.init(speccy)
-	keyboard.init(speccy)
-	z80.init(speccy)
-	ula.init(speccy)
-	ports.init(speccy)
-	tapeDrive.init(speccy)
-
-	err := speccy.reset(make(chan bool))
-
-	if err != nil {
-		return nil, err
-	}
-
-	speccy.currentFPS = DefaultFPS
-	speccy.fps = make(chan float, 1)
-	speccy.FPS = speccy.fps
-	speccy.fps <- DefaultFPS
-
-	commandChannel := make(chan interface{})
-	speccy.CommandChannel = commandChannel
-	speccy.commandChannel = commandChannel
-	go commandLoop(speccy)
-
-	return speccy, nil
 }
 
 type Cmd_Reset struct {
@@ -170,6 +150,191 @@ type Cmd_KeyboardReadState struct {
 }
 type Cmd_CheckSystemROMLoaded struct{}
 
+// Create a new speccy object.
+func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
+	memory := NewMemory()
+	keyboard := NewKeyboard()
+	ports := NewPorts()
+	z80 := NewZ80(memory, ports)
+	ula := NewULA()
+
+	tapeDrive := NewTapeDrive()
+
+	speccy := &Spectrum48k{
+		Cpu:            z80,
+		Memory:         memory,
+		ula:            ula,
+		Keyboard:       keyboard,
+		Ports:          ports,
+		romPath:        romPath,
+		displays:       vector.Vector{},
+		audioReceivers: vector.Vector{},
+		app:            app,
+		tapeDrive:      tapeDrive,
+	}
+
+	memory.init(speccy)
+	keyboard.init(speccy)
+	z80.init(speccy)
+	ula.init(speccy)
+	ports.init(speccy)
+	tapeDrive.init(speccy)
+
+	err := speccy.reset(make(chan bool))
+
+	if err != nil {
+		return nil, err
+	}
+
+	speccy.currentFPS = DefaultFPS
+	speccy.fps = make(chan float, 1)
+	speccy.FPS = speccy.fps
+	speccy.fps <- DefaultFPS
+
+	commandChannel := make(chan interface{})
+	speccy.CommandChannel = commandChannel
+	speccy.commandChannel = commandChannel
+	go commandLoop(speccy)
+
+	return speccy, nil
+}
+
+func (speccy *Spectrum48k) ROMLoaded() chan bool {
+	return speccy.systemROMLoaded
+}
+
+// Turn off the machine
+func (speccy *Spectrum48k) Close() {
+	speccy.Cpu.close()
+
+	if speccy.app.Verbose {
+		eff := speccy.Cpu.GetEmulationEfficiency()
+		if eff != 0 {
+			speccy.app.PrintfMsg("emulation efficiency: %d host-CPU instructions per Z80 instruction", eff)
+		} else {
+			speccy.app.PrintfMsg("emulation efficiency: -")
+		}
+
+		for i, display := range speccy.displays {
+			speccy.app.PrintfMsg("display #%d: %d missed frames", i, display.(*DisplayInfo).numMissedFrames)
+		}
+	}
+}
+
+// Set emulation speed in FPS
+func (speccy *Spectrum48k) SetFPS(newFPS float) {
+	if newFPS <= 1.0 {
+		newFPS = DefaultFPS
+	}
+
+	if newFPS != speccy.currentFPS {
+		speccy.currentFPS = newFPS
+		speccy.fps <- newFPS
+	}
+}
+
+// Get current FPS
+func (speccy *Spectrum48k) GetCurrentFPS() float {
+	return speccy.currentFPS
+}
+
+// Load a program (tape or snapshot)
+func (speccy *Spectrum48k) Load(program interface{}) os.Error {
+	var err os.Error
+
+	switch program := program.(type) {
+
+	case formats.Snapshot:
+		speccy.loadSnapshot(program.(formats.Snapshot))
+	case *formats.TAP:
+		speccy.loadTape(program)
+	default:
+		err = os.NewError("Invalid program type.")
+		return err
+	}
+
+	return err
+}
+
+// Return the TapeDrive instance
+func (speccy *Spectrum48k) TapeDrive() *TapeDrive { return speccy.tapeDrive }
+
+// Load the tape file with given filename
+func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
+	tap, err := formats.NewTAPFromFile(filename)
+
+	if err != nil {
+		return err
+	}
+
+	speccy.loadTape(tap)
+
+	return err
+}
+
+// Set accelerated tape load on/off
+func (speccy *Spectrum48k) EnableAcceleratedLoad(enable bool) {
+	speccy.tapeDrive.AcceleratedLoad = enable
+}
+
+// Start the main emulation loop
+func (speccy *Spectrum48k) EmulatorLoop() {
+	evtLoop := speccy.app.NewEventLoop()
+	app := evtLoop.App()
+
+	fps := <-speccy.FPS
+	ticker := time.NewTicker(int64(1e9 / fps))
+
+	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
+	{
+		completionTime := make(chan int64)
+		speccy.CommandChannel <- Cmd_RenderFrame{completionTime}
+
+		go func() {
+			start := app.CreationTime
+			end := <-completionTime
+			if app.Verbose {
+				app.PrintfMsg("first frame latency: %d ms", (end-start)/1e6)
+			}
+		}()
+	}
+
+	for {
+		select {
+		case <-evtLoop.Pause:
+			ticker.Stop()
+			Drain(ticker)
+			close(speccy.ROMLoaded())
+			evtLoop.Pause <- 0
+
+		case <-evtLoop.Terminate:
+			// Terminate this Go routine
+			if app.Verbose {
+				app.PrintfMsg("emulator loop: exit")
+			}
+			evtLoop.Terminate <- 0
+			return
+
+		case <-ticker.C:
+			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
+			speccy.CommandChannel <- Cmd_RenderFrame{}
+			// Check if the system ROM is loaded
+			speccy.CommandChannel <- Cmd_CheckSystemROMLoaded{}
+
+		case FPS_new := <-speccy.FPS:
+			if (FPS_new != fps) && (FPS_new > 0) {
+				if app.Verbose {
+					app.PrintfMsg("setting FPS to %f", FPS_new)
+				}
+				ticker.Stop()
+				Drain(ticker)
+				ticker = time.NewTicker(int64(1e9 / FPS_new))
+				fps = FPS_new
+			}
+		}
+	}
+}
+
 func commandLoop(speccy *Spectrum48k) {
 	evtLoop := speccy.app.NewEventLoop()
 	for {
@@ -216,7 +381,7 @@ func commandLoop(speccy *Spectrum48k) {
 				}()
 
 			case Cmd_SetFPS:
-				speccy.setFPS(cmd.NewFPS)
+				speccy.SetFPS(cmd.NewFPS)
 
 			case Cmd_SetUlaEmulationAccuracy:
 				speccy.ula.setEmulationAccuracy(cmd.AccurateEmulation)
@@ -303,27 +468,6 @@ func (speccy *Spectrum48k) reset(systemROMLoaded chan bool) os.Error {
 	return nil
 }
 
-func (speccy *Spectrum48k) ROMLoaded() chan bool {
-	return speccy.systemROMLoaded
-}
-
-func (speccy *Spectrum48k) Close() {
-	speccy.Cpu.close()
-
-	if speccy.app.Verbose {
-		eff := speccy.Cpu.GetEmulationEfficiency()
-		if eff != 0 {
-			speccy.app.PrintfMsg("emulation efficiency: %d host-CPU instructions per Z80 instruction", eff)
-		} else {
-			speccy.app.PrintfMsg("emulation efficiency: -")
-		}
-
-		for i, display := range speccy.displays {
-			speccy.app.PrintfMsg("display #%d: %d missed frames", i, display.(*DisplayInfo).numMissedFrames)
-		}
-	}
-}
-
 func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
 	d := &DisplayInfo{
 		displayReceiver: display,
@@ -350,17 +494,6 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 	}
 }
 
-func (speccy *Spectrum48k) setFPS(newFPS float) {
-	if newFPS <= 1.0 {
-		newFPS = DefaultFPS
-	}
-
-	if newFPS != speccy.currentFPS {
-		speccy.currentFPS = newFPS
-		speccy.fps <- newFPS
-	}
-}
-
 func (speccy *Spectrum48k) addAudioReceiver(receiver AudioReceiver) {
 	speccy.audioReceivers.Push(receiver)
 }
@@ -376,8 +509,6 @@ func (speccy *Spectrum48k) closeAllAudioReceivers() {
 		r.(AudioReceiver).close()
 	}
 }
-
-var frames uint64
 
 func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Ports.frame_begin()
@@ -451,44 +582,4 @@ func (speccy *Spectrum48k) sendLOADCommand() {
 
 func (speccy *Spectrum48k) makeVideoMemoryDump() []byte {
 	return speccy.Memory.Data()[0x4000 : 0x4000+6912]
-}
-
-func (speccy *Spectrum48k) GetCurrentFPS() float {
-	return speccy.currentFPS
-}
-
-func (speccy *Spectrum48k) Load(program interface{}) os.Error {
-	var err os.Error
-
-	switch program := program.(type) {
-
-	case formats.Snapshot:
-		speccy.loadSnapshot(program.(formats.Snapshot))
-	case *formats.TAP:
-		speccy.loadTape(program)
-	default:
-		err = os.NewError("Invalid program type.")
-		return err
-	}
-
-	return err
-}
-
-// Return the TapeDrive instance
-func (speccy *Spectrum48k) TapeDrive() *TapeDrive { return speccy.tapeDrive }
-
-// Load the given tape file
-func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
-	tape, err := NewTapeFromFile(filename)
-
-	if err != nil {
-		return err
-	}
-
-	speccy.tapeDrive.Insert(tape)
-	speccy.tapeDrive.Stop()
-	speccy.sendLOADCommand()
-	speccy.tapeDrive.Play()
-
-	return err
 }

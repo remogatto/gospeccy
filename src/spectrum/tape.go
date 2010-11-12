@@ -29,6 +29,8 @@ const (
 	TAPE_PAUSE                = 3500000
 )
 
+const TAPE_ACCELERATION_IN_FPS = DefaultFPS * 1000
+
 type Tape struct {
 	tap *formats.TAP
 }
@@ -50,8 +52,12 @@ func (tape *Tape) At(pos uint) byte {
 }
 
 type TapeDrive struct {
-	Status                                byte
-	tape                                  *Tape
+	AcceleratedLoad    bool
+	NotifyLoadComplete bool
+
+	speccy *Spectrum48k
+	tape   *Tape
+
 	pos                                   int
 	tstate, lastIn                        uint64
 	earBit                                byte
@@ -59,15 +65,13 @@ type TapeDrive struct {
 	timeLastIn, currBlockLen, currBlockId int
 	leaderPulses, bitTime                 uint16
 	state, mask                           byte
-	speccy                                *Spectrum48k
-	NotifyLoadComplete                    bool
+	startAcceleration                     bool
+	fpsBeforeAcceleration                 float
 	loadComplete                          chan bool
 }
 
 func NewTapeDrive() *TapeDrive {
 	return &TapeDrive{
-
-		Status:       TAPE_DRIVE_STOP,
 		pos:          0,
 		earBit:       0xbf,
 		loadComplete: make(chan bool),
@@ -97,6 +101,23 @@ func (tapeDrive *TapeDrive) Stop() {
 	tapeDrive.timeout = 0
 	tapeDrive.timeLastIn = 0
 	tapeDrive.currBlockId = 0
+}
+
+func (tapeDrive *TapeDrive) accelerate() {
+	if tapeDrive.startAcceleration {
+		return
+	} else {
+		tapeDrive.fpsBeforeAcceleration = tapeDrive.speccy.GetCurrentFPS()
+		tapeDrive.speccy.SetFPS(TAPE_ACCELERATION_IN_FPS)
+		tapeDrive.startAcceleration = true
+	}
+}
+
+func (tapeDrive *TapeDrive) decelerate() {
+	if tapeDrive.startAcceleration {
+		tapeDrive.speccy.SetFPS(tapeDrive.fpsBeforeAcceleration)
+		tapeDrive.startAcceleration = false
+	}
 }
 
 func (tapeDrive *TapeDrive) doPlay() {
@@ -148,6 +169,9 @@ func (tapeDrive *TapeDrive) doPlay() {
 		tapeDrive.state = TAPE_DRIVE_NEWBYTE
 
 	case TAPE_DRIVE_NEWBYTE:
+		if tapeDrive.AcceleratedLoad {
+			tapeDrive.accelerate()
+		}
 		tapeDrive.mask = 0x80
 		fallthrough
 
@@ -202,6 +226,10 @@ func (tapeDrive *TapeDrive) doPlay() {
 			if tapeDrive.NotifyLoadComplete {
 				tapeDrive.loadComplete <- true
 			}
+			if tapeDrive.AcceleratedLoad {
+				tapeDrive.decelerate()
+			}
+
 		} else {
 			tapeDrive.currBlockId++
 			tapeDrive.state = TAPE_DRIVE_START

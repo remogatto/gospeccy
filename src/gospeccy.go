@@ -35,7 +35,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"time"
 )
 
 // A Go routine for processing SDL events.
@@ -109,62 +108,6 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 	}
 }
 
-func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
-	app := evtLoop.App()
-
-	fps := <-speccy.FPS
-	ticker := time.NewTicker(int64(1e9 / fps))
-
-	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
-	{
-		completionTime := make(chan int64)
-		speccy.CommandChannel <- spectrum.Cmd_RenderFrame{completionTime}
-
-		go func() {
-			start := app.CreationTime
-			end := <-completionTime
-			if app.Verbose {
-				app.PrintfMsg("first frame latency: %d ms", (end-start)/1e6)
-			}
-		}()
-	}
-
-	for {
-		select {
-		case <-evtLoop.Pause:
-			ticker.Stop()
-			spectrum.Drain(ticker)
-			close(speccy.ROMLoaded())
-			evtLoop.Pause <- 0
-			
-		case <-evtLoop.Terminate:
-			// Terminate this Go routine
-			if app.Verbose {
-				app.PrintfMsg("emulator loop: exit")
-			}
-			evtLoop.Terminate <- 0
-			return
-
-		case <-ticker.C:
-			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
-			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
-			// Check if the system ROM is loaded
-			speccy.CommandChannel <- spectrum.Cmd_CheckSystemROMLoaded{}
-
-		case FPS_new := <-speccy.FPS:
-			if (FPS_new != fps) && (FPS_new > 0) {
-				if app.Verbose {
-					app.PrintfMsg("setting FPS to %f", FPS_new)
-				}
-				ticker.Stop()
-				spectrum.Drain(ticker)
-				ticker = time.NewTicker(int64(1e9 / FPS_new))
-				fps = FPS_new
-			}
-		}
-	}
-}
-
 type handler_SIGTERM struct {
 	app *spectrum.Application
 }
@@ -196,6 +139,7 @@ func main() {
 	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
 	fps := flag.Float("fps", spectrum.DefaultFPS, "Frames per second")
 	sound := flag.Bool("sound", true, "Enable or disable sound")
+	acceleratedLoad := flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseKeyboard := flag.Bool("verbose-keyboard", false, "Enable debugging messages (keyboard events)")
 
@@ -231,6 +175,10 @@ func main() {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()
 		goto quit
+	}
+
+	if *acceleratedLoad {
+		speccy.TapeDrive().AcceleratedLoad = true
 	}
 
 	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
@@ -281,9 +229,11 @@ func main() {
 		close(n)
 	}
 
-	// Begin speccy emulation
 	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
-	go emulatorLoop(app.NewEventLoop(), speccy)
+
+	// Begin speccy emulation
+	go speccy.EmulatorLoop()
+
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
 
 	// Start the console goroutine.
@@ -338,7 +288,6 @@ func main() {
 			goto quit
 		}
 	}
-
 
 	// Drain systemROMLoaded channel
 	<-speccy.ROMLoaded()

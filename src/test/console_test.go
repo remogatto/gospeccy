@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 	"container/vector"
 	pt "spectrum/prettytest"
 	"spectrum"
@@ -45,6 +46,7 @@ func (out *testMessageOutput) PrintfMsg(format string, a ...interface{}) {
 
 func beforeAllConsole(t *pt.T) {
 	beforeAll(t)
+	console.IgnoreStartupScript = true
 	console.Init(app, speccy)
 }
 
@@ -59,6 +61,23 @@ func should_allow_loading_tapes_using_ROM_routine(t *pt.T) {
 
 	<-speccy.TapeDrive().LoadComplete()
 
+	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+}
+
+func should_allow_accelerated_tape_load(t *pt.T) {
+	err := console.RunString("acceleratedLoad(true)")
+	t.Nil(err)
+
+	start := time.Nanoseconds()
+	err = console.RunString(fmt.Sprintf("load(\"%s\")", "testdata/hello.tap"))
+	t.Nil(err)
+
+	<-speccy.TapeDrive().LoadComplete()
+
+	err = console.RunString("acceleratedLoad(false)")
+
+	t.True((time.Nanoseconds() - start) < 10e9)
+	t.False(speccy.TapeDrive().AcceleratedLoad)
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
@@ -134,6 +153,7 @@ func TestConsoleFeatures(t *testing.T) {
 		t,
 		"The console",
 		should_allow_loading_tapes_using_ROM_routine,
+		should_allow_accelerated_tape_load,
 		should_honor_convention_over_configuration_when_loading_files,
 		should_allow_reset,
 		should_print_help,

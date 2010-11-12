@@ -40,7 +40,9 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 		case <-evtLoop.Pause:
 			ticker.Stop()
 			spectrum.Drain(ticker)
+
 			close(speccy.ROMLoaded())
+
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:
@@ -56,15 +58,18 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 			speccy.CommandChannel <- spectrum.Cmd_CheckSystemROMLoaded{}
 
 		case FPS_new := <-speccy.FPS:
-			if (FPS_new != fps) && (FPS_new > 0) {
+			if (FPS_new != fps && FPS_new > 0) {
 				if app.Verbose {
 					app.PrintfMsg("setting FPS to %f", FPS_new)
 				}
 				ticker.Stop()
 				spectrum.Drain(ticker)
-				ticker = time.NewTicker(int64(1e9 / FPS_new))
+				// ticker = time.NewTicker(int64(1e9 / FPS_new))
+				ticker = time.NewTicker(1)
 				fps = FPS_new
 			}
+
+
 		}
 	}
 }
@@ -72,7 +77,8 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 func StartFullEmulation() {
 	var err os.Error
 
-	app := spectrum.NewApplication()
+	app = spectrum.NewApplication()
+
 	speccy, err = spectrum.NewSpectrum48k(app, "testdata/48.rom")
 	speccy.TapeDrive().NotifyLoadComplete = true
 
@@ -99,7 +105,7 @@ func StartFullEmulation() {
 		app.PrintfMsg("%s", err)
 	}
 
-	go emulatorLoop(app.NewEventLoop(), speccy)
+	go speccy.EmulatorLoop()
 
 	<-speccy.ROMLoaded()
 }

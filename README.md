@@ -28,7 +28,7 @@ development:
 * it is garbage collected so you haven't to worry about memory leaks
 
 * it has an int16 built-in type that helps dealing with 8/16 bit
-  machines
+  emulation
 
 * as already mentioned, it has goroutines to enable concurrency in the
   emulator design and implementation
@@ -60,9 +60,10 @@ don't forget to fork and send patches, of course ;)
 * An interactive console interface
 * Snapshot support: SNA, Z80 formats (48k versions)
 * Tape support (TAP format)
+* Accelerated tape loading
 * ZIP files support
 * SDL backend
-* 2x scaler and fullscreen (to be improved)
+* 2x scaler and fullscreen
 
 # Quick start
 
@@ -102,11 +103,16 @@ And see your shining new ZX Spectrum 48k responding :)
 
 For a nice picture of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
 
-To load a Z80 snapshot file:
+To load a program simply run:
 
-    ./gospeccy file.z80
+    ./gospeccy file.tap
 
-And if you're curious to see what this machine can do, try the simple
+To enable tape loading acceleration use the <tt>accelerated-load</tt>
+option. For a complete list of the command-line options run:
+
+    ./gospeccy -help
+
+If you can't wait to see what this machine can do, try the nice
 [Fire104b](http://pouet.net/prod.php?which=54076) intro by Andrew
 Gerrand included in the gospeccy distribution! In the gospeccy folder,
 run:
@@ -114,7 +120,7 @@ run:
     ./gospeccy -2x snapshots/Syntax09nF.z80
 
 For more, try searching the Internet find some ZX Spectrum 48k
-games and demos in Z80 format. For example:
+games and demos in Z80 and TAP format. For example:
 
 * [World of spectrum](http://www.worldofspectrum.org/archive.html)
 * [Pouet.net search](http://pouet.net/prodlist.php?platform[]=ZX+Spectrum)

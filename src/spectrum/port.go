@@ -345,7 +345,7 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 
 		// EAR(bit 4) and MIC(bit 3) output
 		newBeeperLevel := (b & 0x18) >> 3
-		if p.speccy.Cpu.readFromTape {
+		if p.speccy.Cpu.readFromTape && !p.speccy.tapeDrive.AcceleratedLoad {
 			if p.speccy.tapeDrive.earBit == 0xff {
 				newBeeperLevel = 3
 			} else {

@@ -34,7 +34,7 @@ const PROMPT_EMPTY = "          "
 var havePrompt = false
 var havePrompt_mutex sync.Mutex
 
-var ignoreStartupScript = false
+var IgnoreStartupScript = false
 
 const SCRIPT_DIRECTORY = "scripts"
 const STARTUP_SCRIPT = "startup"
@@ -322,6 +322,12 @@ func wrapper_puts(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	app.PrintfMsg("%s", str)
 }
 
+// Signature: func acceleratedLoad(on bool)
+func wrapper_acceleratedLoad(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	value := in[0].(eval.BoolValue).Get(t)
+	speccy.EnableAcceleratedLoad(value)
+}
+
 // ==============
 // Initialization
 // ==============
@@ -444,6 +450,14 @@ func defineFunctions(w *eval.World) {
 		w.DefineVar("puts", funcType, funcValue)
 		help_keys.Push("puts(str string)")
 		help_vals.Push("Print the given string")
+	}
+
+	{
+		var functionSignature func(bool)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_acceleratedLoad, functionSignature)
+		w.DefineVar("acceleratedLoad", funcType, funcValue)
+		help_keys.Push("acceleratedLoad(on bool)")
+		help_vals.Push("Set accelerated tape load on/off")
 	}
 
 }
@@ -611,7 +625,7 @@ func Init(_app *spectrum.Application, _speccy *spectrum.Spectrum48k) {
 	// Run the startup script
 	var err os.Error
 
-	err = runScript(w, STARTUP_SCRIPT, /*optional*/ ignoreStartupScript)
+	err = runScript(w, STARTUP_SCRIPT, /*optional*/ IgnoreStartupScript)
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()

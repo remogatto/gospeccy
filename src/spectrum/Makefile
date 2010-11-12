@@ -19,7 +19,7 @@ GOFILES=\
 	helpers.go\
 	application.go\
 	tape.go\
-	event.go
+	event.go\
 
 DEPS+="../prettytest" "../formats"
 

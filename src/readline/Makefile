@@ -1,12 +1,10 @@
-GOSPECCY_ROOT=../..
-include $(GOSPECCY_ROOT)/Make.inc-head
+include $(GOROOT)/src/Make.inc
 
 TARG=spectrum/readline
 CGOFILES=readline.go
 CGO_LDFLAGS=-lreadline
 
 include $(GOROOT)/src/Make.pkg
-include $(GOSPECCY_ROOT)/Make.inc-tail
 
 .PHONY: uninstall
 uninstall:

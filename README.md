@@ -71,17 +71,23 @@ On Ubuntu Linux you'll need to install the following packages:
 
     sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev libreadline6-dev git-core
 
+GoSpeccy is using the GOAM build tool. To install it:
+
+    goinstall github.com/0xe2-0x9a-0x9b/goam
+    cd $GOROOT/src/pkg/github.com/0xe2-0x9a-0x9b/goam
+    make install
+
 To install the dependencies and create the gospeccy executable:
 
     git clone http://github.com/remogatto/gospeccy.git
     cd gospeccy
-    gomake
+    goam make
     ./gospeccy
 
 To install (uninstall) gospeccy and its resource files:
 
-    gomake install
-    (gomake uninstall)
+    goam install
+    (goam uninstall)
 
 The following dependencies are installed automatically:
 

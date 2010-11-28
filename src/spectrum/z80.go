@@ -29,7 +29,6 @@ import (
 	"⚛perf"
 	"os"
 	"spectrum/formats"
-	"syscall"
 )
 
 
@@ -165,7 +164,7 @@ func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
 	z80.iy = register16{&z80.iyh, &z80.iyl}
 	z80.de_ = register16{&z80.d_, &z80.e_}
 
-	z80.perfCounter_hostCpuInstr = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)
+	z80.perfCounter_hostCpuInstr, _ = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)
 
 	return z80
 }
@@ -660,53 +659,57 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 }
 
 func (z80 *Z80) doOpcodes() {
-	ttid_start := syscall.Gettid()
-
-	var hostCpu_instrCount_start uint64
+	var ttid_start int
 	if z80.perfCounter_hostCpuInstr != nil {
-		hostCpu_instrCount_start, _ = z80.perfCounter_hostCpuInstr.Read()
+		ttid_start = z80.perfCounter_hostCpuInstr.Gettid()
 	} else {
-		hostCpu_instrCount_start = 0
+		ttid_start = -1
+	}
+
+	var hostCpu_instrCount_start uint64 = 0
+	var hostCpu_instrCount_startErr os.Error = nil
+	if z80.perfCounter_hostCpuInstr != nil {
+		hostCpu_instrCount_start, hostCpu_instrCount_startErr = z80.perfCounter_hostCpuInstr.Read()
 	}
 
 	var z80_localInstructionCounter uint = 0
 
-	for (z80.tstates < z80.eventNextEvent) && !z80.halted {
-		z80.memory.contendRead(z80.pc, 4)
-		opcode := z80.memory.readByteInternal(z80.pc)
-
-		z80.r = (z80.r + 1) & 0x7f
-		z80.pc++
-
-		z80_localInstructionCounter++
-
-		opcodesMap[opcode](z80)
-
-		if z80.speccy.Cpu.readFromTape {
-			z80.speccy.tapeDrive.doPlay()
-		}
-	}
-
-	if z80.halted {
-		// Repeat emulating the HALT instruction until 'z80.eventNextEvent'
-		for z80.tstates < z80.eventNextEvent {
+	// Main instruction emulation loop
+	{
+		for (z80.tstates < z80.eventNextEvent) && !z80.halted {
 			z80.memory.contendRead(z80.pc, 4)
+			opcode := z80.memory.readByteInternal(z80.pc)
 
 			z80.r = (z80.r + 1) & 0x7f
+			z80.pc++
+
 			z80_localInstructionCounter++
+
+			opcodesMap[opcode](z80)
+
+			if z80.speccy.Cpu.readFromTape {
+				z80.speccy.tapeDrive.doPlay()
+			}
+		}
+
+		if z80.halted {
+			// Repeat emulating the HALT instruction until 'z80.eventNextEvent'
+			for z80.tstates < z80.eventNextEvent {
+				z80.memory.contendRead(z80.pc, 4)
+
+				z80.r = (z80.r + 1) & 0x7f
+				z80_localInstructionCounter++
+			}
 		}
 	}
 
 	// Update emulation efficiency counters
-	{
-		ttid_end := syscall.Gettid()
+	if z80.perfCounter_hostCpuInstr != nil {
+		ttid_end := z80.perfCounter_hostCpuInstr.Gettid()
 
 		var hostCpu_instrCount_end uint64
-		if z80.perfCounter_hostCpuInstr != nil {
-			hostCpu_instrCount_end, _ = z80.perfCounter_hostCpuInstr.Read()
-		} else {
-			hostCpu_instrCount_end = 0
-		}
+		var hostCpu_instrCount_endErr os.Error
+		hostCpu_instrCount_end, hostCpu_instrCount_endErr = z80.perfCounter_hostCpuInstr.Read()
 
 		z80.z80_instructionCounter += uint64(z80_localInstructionCounter)
 
@@ -716,10 +719,10 @@ func (z80 *Z80) doOpcodes() {
 					(hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter) )
 		}*/
 
-		if (ttid_start == ttid_end) &&
+		if (hostCpu_instrCount_startErr == nil) &&
+			(hostCpu_instrCount_endErr == nil) &&
+			(ttid_start == ttid_end) &&
 			(z80_localInstructionCounter > 0) &&
-			(hostCpu_instrCount_start > 0) &&
-			(hostCpu_instrCount_end > 0) &&
 			(hostCpu_instrCount_end > hostCpu_instrCount_start) {
 
 			avg := uint((hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter))

@@ -239,33 +239,11 @@ func main() {
 	// Start the console goroutine.
 	go console.Run(true)
 
-	// Process command line argument. Load the given program (if
-	// any)
+	// Process command line argument. Load the given program (if any)
 	if flag.Arg(0) != "" {
 		file := flag.Arg(0)
 
-		var path string
-
-		format, err := formats.TypeFromSuffix(file)
-
-		if err != nil {
-			app.PrintfMsg("%s", err)
-		}
-
-		switch format {
-
-		case formats.FORMAT_SNA, formats.FORMAT_Z80:
-			path = spectrum.SnaPath(file)
-
-		case formats.FORMAT_TAP:
-			path = spectrum.TapePath(file)
-
-		case formats.FORMAT_ZIP:
-			path = spectrum.ZipPath(file)
-
-		default:
-			os.NewError("Unknown file format!")
-		}
+		path := spectrum.ProgramPath(file)
 
 		program, err := formats.ReadProgram(path)
 		if err != nil {
@@ -274,12 +252,14 @@ func main() {
 			goto quit
 		}
 
+		fmt.Printf("%T\n", program)
+		if _, isTAP := program.(*formats.TAP); isTAP {
+			romLoaded := make(chan bool, 1)
+			speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+			<-romLoaded
+		}
+
 		errChan := make(chan os.Error)
-
-		romLoaded := make(chan bool, 1)
-		speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
-		<-romLoaded
-
 		speccy.CommandChannel <- spectrum.Cmd_Load{file, program, errChan}
 		err = <-errChan
 		if err != nil {

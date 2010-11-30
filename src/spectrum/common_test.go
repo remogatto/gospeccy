@@ -11,7 +11,7 @@ import (
 
 var (
 	speccy *Spectrum48k
-	app *Application
+	app    *Application
 )
 
 func emulatorLoop(evtLoop *EventLoop, speccy *Spectrum48k) {
@@ -87,12 +87,12 @@ func StartFullEmulation() {
 
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
 
-	speccy.CommandChannel <- Cmd_AddDisplay{ NewSDLScreen(app) }
+	speccy.CommandChannel <- Cmd_AddDisplay{NewSDLScreen(app)}
 
 	audio, err := NewSDLAudio(app)
 
 	if err == nil {
-		speccy.CommandChannel <- Cmd_AddAudioReceiver{ audio }
+		speccy.CommandChannel <- Cmd_AddAudioReceiver{audio}
 	} else {
 		app.PrintfMsg("%s", err)
 	}
@@ -123,7 +123,9 @@ func after(t *prettytest.T) {
 func loadSnapshot(filename string) formats.Snapshot {
 	snapshot, err := formats.ReadProgram(filename)
 
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 
 	return snapshot.(formats.Snapshot)
 }
@@ -140,8 +142,8 @@ func assertScreenEqual(expected, actual formats.Snapshot) bool {
 
 func assertStateEqual(expected, actual formats.Snapshot) bool {
 	// Compare memory ignoring PC value
-	for address, actualValue := range actual.Memory(){
-		if expected.Memory()[address] != actualValue && address != 0xbf4a && address != 0xbf4b { 
+	for address, actualValue := range actual.Memory() {
+		if expected.Memory()[address] != actualValue && address != 0xbf4a && address != 0xbf4b {
 			return false
 		}
 	}
@@ -152,15 +154,15 @@ func assertStateEqual(expected, actual formats.Snapshot) bool {
 }
 
 func stateEqualTo(filename string) bool {
-	return assertStateEqual(loadSnapshot(filename), speccy.Cpu.makeSnapshot())
+	return assertStateEqual(loadSnapshot(filename), speccy.Cpu.MakeSnapshot())
 }
 
 func screenEqualTo(filename string) bool {
-	return assertScreenEqual(loadSnapshot(filename), speccy.Cpu.makeSnapshot())
+	return assertScreenEqual(loadSnapshot(filename), speccy.Cpu.MakeSnapshot())
 }
 
 func saveSnapshot(filename string) {
-	fullSnapshot := speccy.Cpu.makeSnapshot()
+	fullSnapshot := speccy.Cpu.MakeSnapshot()
 
 	data, err := fullSnapshot.EncodeSNA()
 

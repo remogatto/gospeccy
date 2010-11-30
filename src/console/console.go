@@ -110,46 +110,26 @@ func wrapper_addSearchPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func load(path string)
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	var (
-		completePath string
-		program      interface{}
-	)
-
 	if app.TerminationInProgress() {
 		return
 	}
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	format, err := formats.TypeFromSuffix(path)
+	path = spectrum.ProgramPath(path)
 
+	var program interface{}
+	program, err := formats.ReadProgram(path)
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		return
 	}
 
-	switch format {
-
-	case formats.FORMAT_SNA, formats.FORMAT_Z80:
-		completePath = spectrum.SnaPath(path)
-
-	case formats.FORMAT_TAP:
-		completePath = spectrum.TapePath(path)
-
-	case formats.FORMAT_ZIP:
-		completePath = spectrum.ZipPath(path)
+	if _, isTAP := program.(*formats.TAP); isTAP {
+		romLoaded := make(chan bool, 1)
+		speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+		<-romLoaded
 	}
-
-	program, err = formats.ReadProgram(completePath)
-
-	if err != nil {
-		app.PrintfMsg("%s", err)
-		return
-	}
-
-	romLoaded := make(chan bool, 1)
-	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
-	<-romLoaded
 
 	errChan := make(chan os.Error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{path, program, errChan}
@@ -741,7 +721,7 @@ func (out *consoleMessageOutput) PrintfMsg(format string, a ...interface{}) {
 
 // type uintV uint
 
-// func newUint(v uint) *uintV { 
+// func newUint(v uint) *uintV {
 // 	vp := uintV(v)
 // 	return &vp
 // }

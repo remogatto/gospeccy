@@ -39,11 +39,12 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 	"sync"
 )
 
 var DefaultUserDir = path.Join(os.Getenv("HOME"), ".gospeccy")
-var distDir = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS + "_" + runtime.GOARCH, "gospeccy")
+var distDir = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS+"_"+runtime.GOARCH, "gospeccy")
 
 var customSearchPaths vector.StringVector
 var customSearchPaths_mutex sync.RWMutex
@@ -75,7 +76,8 @@ func appendCustomSearchPaths(paths *vector.StringVector) {
 	customSearchPaths_mutex.RUnlock()
 }
 
-// Return a valid path for the named snapshot.
+// Return a valid path for the named snapshot,
+// or the original filename of the search fails.
 //
 // The search is performed in this order:
 // 1. ./
@@ -94,7 +96,8 @@ func SnaPath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
-// Return a valid path for the named tape file.
+// Return a valid path for the named tape file,
+// or the original filename of the search fails.
 //
 // The search is performed in this order:
 // 1. ./
@@ -113,7 +116,8 @@ func TapePath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
-// Return a valid path for the named zip file.
+// Return a valid path for the named zip file,
+// or the original filename of the search fails.
 //
 // The search is performed in this order:
 // 1. ./
@@ -132,7 +136,27 @@ func ZipPath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
-// Return a valid path for the 48k system ROM.
+// Return a valid path for the file based on its extension,
+// or the original filename of the search fails.
+func ProgramPath(fileName string) string {
+	ext := strings.ToLower(path.Ext(fileName))
+
+	switch ext {
+	case ".sna", ".z80":
+		return SnaPath(fileName)
+
+	case ".tap":
+		return TapePath(fileName)
+
+	case ".zip":
+		return ZipPath(fileName)
+	}
+
+	return fileName
+}
+
+// Returns a valid path for the 48k system ROM,
+// or the original filename of the search fails.
 //
 // The search is performed in this order:
 // 1. ./roms/48.rom
@@ -154,7 +178,8 @@ func SystemRomPath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
-// Return a valid path for the named script.
+// Return a valid path for the named script,
+// or the original filename of the search fails.
 //
 // The search is performed in this order:
 // 1. ./scripts/

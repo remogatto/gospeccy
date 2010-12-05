@@ -11,7 +11,7 @@ import (
 const testdataDir = "testdata"
 
 var (
-	tapCodeFn = path.Join(testdataDir, "code.tap")
+	tapCodeFn    = path.Join(testdataDir, "code.tap")
 	tapProgramFn = path.Join(testdataDir, "hello.tap")
 )
 
@@ -70,7 +70,7 @@ func testReadTAPProgramFile(assert *prettytest.T) {
 	_, err := tap.Read(data)
 
 	assert.Nil(err)
-	
+
 	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
@@ -81,7 +81,7 @@ func testReadTAPProgramFile(assert *prettytest.T) {
 
 		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
 		assert.True(bytes.Equal([]byte{
-			0x00, 0x0a, 
+			0x00, 0x0a,
 			0x10, 0x00,
 			0x20, 0xf5,
 			0x22, 0x48,
@@ -92,7 +92,8 @@ func testReadTAPProgramFile(assert *prettytest.T) {
 			0x6c, 0x64,
 			0x22, 0x0d,
 			0x1d,
-		}, dataBlock[1:]))
+		},
+			dataBlock[1:]))
 	}
 }
 
@@ -102,7 +103,7 @@ func testReadTAPWithCustomLoader(assert *prettytest.T) {
 	_, err := tap.Read(data)
 
 	assert.Nil(err)
-	
+
 	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
@@ -177,6 +178,5 @@ func TestTAPAccessors(t *testing.T) {
 		testTAPBlockLen,
 		testTAPGetBlock,
 	)
-		
-}
 
+}

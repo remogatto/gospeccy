@@ -3,6 +3,7 @@ package formats
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -62,29 +63,71 @@ const (
 	FORMAT_SNA = iota
 	FORMAT_Z80
 	FORMAT_TAP
-	FORMAT_ZIP
 )
 
-// Derives the program format from the filename, or returns -1 if the
-// type could not be detected
-func TypeFromSuffix(filename string) (int, os.Error) {
-	fName := strings.ToLower(filename)
+const (
+	ENCAPSULATION_NONE = iota
+	ENCAPSULATION_ZIP
+)
 
-	switch {
-	case strings.HasSuffix(fName, ".sna"):
-		return FORMAT_SNA, nil
+type FormatInfo struct {
+	Format        int
+	Encapsulation int
+}
 
-	case strings.HasSuffix(fName, ".z80"):
-		return FORMAT_Z80, nil
+// Determines the format of the specified file based on its name,
+// or based on the names of embedded files in case the file is an archive.
+// Returns an error if the format could not be detected.
+func DetectFormat(filePath string) (*FormatInfo, os.Error) {
+	return detectFormat(filePath, ENCAPSULATION_NONE, true)
+}
 
-	case strings.HasSuffix(fName, ".tap"):
-		return FORMAT_TAP, nil
+func detectFormat(filePath string, encapsulation int, allowEncapsulation bool) (*FormatInfo, os.Error) {
+	ext := strings.ToLower(path.Ext(filePath))
 
-	case strings.HasSuffix(fName, ".zip"):
-		return FORMAT_ZIP, nil
+	switch ext {
+	case ".sna":
+		return &FormatInfo{FORMAT_SNA, encapsulation}, nil
+
+	case ".z80":
+		return &FormatInfo{FORMAT_Z80, encapsulation}, nil
+
+	case ".tap":
+		return &FormatInfo{FORMAT_TAP, encapsulation}, nil
+
+	case ".zip":
+		if (encapsulation == ENCAPSULATION_NONE) && allowEncapsulation {
+			archive, err := ReadZipFile(filePath)
+			if err != nil {
+				return nil, err
+			}
+
+			var embeddedFile_format *FormatInfo
+			{
+				n := 0
+				for _, name := range archive.Filenames() {
+					format, err := detectFormat(name, ENCAPSULATION_ZIP, false)
+					if err == nil {
+						embeddedFile_format = format
+						n++
+					}
+				}
+
+				if n == 0 {
+					return nil, os.NewError("the archive does not contain any supported files")
+				}
+				if n >= 2 {
+					return nil, os.NewError("the archive contains multiple supported files")
+				}
+			}
+
+			return embeddedFile_format, nil
+		} else {
+			return nil, os.NewError("unrecognized file format")
+		}
 	}
 
-	return -1, os.NewError("unable to detect the program format (missing or unknown filename extension)")
+	return nil, os.NewError("unrecognized file format")
 }
 
 // Decode a snapshot from binary data.
@@ -107,15 +150,15 @@ func readZIP(filePath string) (interface{}, os.Error) {
 		return nil, err
 	}
 
-	var archive_fileIndex int
-	var archive_programFormat int
+	var embeddedFile_index int
+	var embeddedFile_format *FormatInfo
 	{
 		n := 0
 		for i, name := range archive.Filenames() {
-			format, err := TypeFromSuffix(name)
+			format, err := detectFormat(name, ENCAPSULATION_ZIP, false)
 			if err == nil {
-				archive_fileIndex = i
-				archive_programFormat = format
+				embeddedFile_index = i
+				embeddedFile_format = format
 				n++
 			}
 		}
@@ -129,25 +172,28 @@ func readZIP(filePath string) (interface{}, os.Error) {
 	}
 
 	var data []byte
-	data, err = archive.Read(archive_fileIndex)
+	data, err = archive.Read(embeddedFile_index)
 	if err != nil {
 		return nil, err
 	}
-	if archive_programFormat == FORMAT_TAP {
+
+	if embeddedFile_format.Format == FORMAT_TAP {
 		tap := NewTAP()
 		_, err = tap.Read(data)
 		return tap, err
 	}
-	return SnapshotData(data).Decode(archive_programFormat)
+
+	return SnapshotData(data).Decode(embeddedFile_format.Format)
 }
 
-// Read a program from the specified file. Return the program and
-// errors if any. The file can be compressed.
+// Read a program from the specified file.
+// Return the program and errors if any.
+// The file can be compressed.
 func ReadProgram(filePath string) (interface{}, os.Error) {
-	fName := strings.ToLower(filePath)
+	ext := strings.ToLower(path.Ext(filePath))
 
 	// ZIP archive
-	if strings.HasSuffix(fName, ".zip") {
+	if ext == ".zip" {
 		return readZIP(filePath)
 	}
 
@@ -156,33 +202,19 @@ func ReadProgram(filePath string) (interface{}, os.Error) {
 		return nil, err
 	}
 
-	var format int
-	format, err = TypeFromSuffix(filePath)
+	var format *FormatInfo
+	format, err = detectFormat(filePath, ENCAPSULATION_NONE, false)
 	if err != nil {
 		return nil, err
 	}
-	if format == FORMAT_TAP {
+
+	if format.Format == FORMAT_TAP {
 		tap := NewTAP()
 		_, err = tap.Read(data)
 		return tap, err
 	}
-	return SnapshotData(data).Decode(format)
-}
 
-// Read a snapshot from the specified file. Return the snapshot and
-// errors if any. The file can be compressed.
-func ReadSnapshot(filePath string) (Snapshot, os.Error) {
-	data, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	var format int
-	format, err = TypeFromSuffix(filePath)
-	if err != nil {
-		return nil, err
-	}
-	return SnapshotData(data).Decode(format)
+	return SnapshotData(data).Decode(format.Format)
 }
 
 func splitWord(word uint16) (byte, byte) {

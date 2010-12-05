@@ -12,7 +12,7 @@ import (
 
 var (
 	speccy *spectrum.Spectrum48k
-	app *spectrum.Application
+	app    *spectrum.Application
 )
 
 func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
@@ -58,7 +58,7 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 			speccy.CommandChannel <- spectrum.Cmd_CheckSystemROMLoaded{}
 
 		case FPS_new := <-speccy.FPS:
-			if (FPS_new != fps && FPS_new > 0) {
+			if FPS_new != fps && FPS_new > 0 {
 				if app.Verbose {
 					app.PrintfMsg("setting FPS to %f", FPS_new)
 				}
@@ -68,7 +68,6 @@ func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 				ticker = time.NewTicker(1)
 				fps = FPS_new
 			}
-
 
 		}
 	}
@@ -95,12 +94,12 @@ func StartFullEmulation() {
 
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
 
-	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{ spectrum.NewSDLScreen(app) }
+	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
 
 	audio, err := spectrum.NewSDLAudio(app)
 
 	if err == nil {
-		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{ audio }
+		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 	} else {
 		app.PrintfMsg("%s", err)
 	}
@@ -129,9 +128,17 @@ func after(t *prettytest.T) {
 }
 
 func loadSnapshot(filename string) formats.Snapshot {
-	snapshot, err := formats.ReadSnapshot(filename)
+	_snapshot, err := formats.ReadProgram(filename)
 
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
+
+	var snapshot formats.Snapshot
+	var ok bool
+	if snapshot, ok = _snapshot.(formats.Snapshot); !ok {
+		panic("invalid type")
+	}
 
 	return snapshot
 }
@@ -149,7 +156,7 @@ func assertScreenEqual(expected, actual formats.Snapshot) bool {
 func assertStateEqual(expected, actual formats.Snapshot) bool {
 	// Compare memory ignoring PC value
 	for address, actualValue := range actual.Memory() {
-		if expected.Memory()[address] != actualValue && address != 0xbf4a && address != 0xbf4b { 
+		if expected.Memory()[address] != actualValue && address != 0xbf4a && address != 0xbf4b {
 			return false
 		}
 	}

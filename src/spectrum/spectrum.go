@@ -96,8 +96,7 @@ type Spectrum48k struct {
 }
 
 type Cmd_Reset struct {
-	// This channel will receive true when the system ROM has been
-	// loaded
+	// This channel will receive true when the system ROM has been loaded
 	SystemROMLoaded chan bool
 }
 type Cmd_RenderFrame struct {
@@ -257,7 +256,9 @@ func (speccy *Spectrum48k) Load(program interface{}) os.Error {
 }
 
 // Return the TapeDrive instance
-func (speccy *Spectrum48k) TapeDrive() *TapeDrive { return speccy.tapeDrive }
+func (speccy *Spectrum48k) TapeDrive() *TapeDrive {
+	return speccy.tapeDrive
+}
 
 // Load the tape file with given filename
 func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
@@ -350,6 +351,7 @@ func commandLoop(speccy *Spectrum48k) {
 			}
 			evtLoop.Terminate <- 0
 			return
+
 		case untyped_cmd := <-speccy.commandChannel:
 			switch cmd := untyped_cmd.(type) {
 			case Cmd_Reset:

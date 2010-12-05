@@ -91,20 +91,20 @@ func TestBaseAssertions(t *testing.T) {
 	)
 }
 
-func testPending(assert *T) { 
+func testPending(assert *T) {
 	assert.Pending()
 }
 
-func testPass(assert *T) { 
+func testPass(assert *T) {
 	assert.True(true)
 }
 
 var (
-	state int = 0
-	beforeState = 0
-	afterState = 0
+	state          int = 0
+	beforeState    = 0
+	afterState     = 0
 	beforeAllState int = 0
-	afterAllState int = 0
+	afterAllState  int = 0
 )
 
 func before(assert *T) {
@@ -191,7 +191,7 @@ func TestMisplacedSetupTeardown(t *testing.T) {
 		before,
 		testSetup_2,
 		after,
-	)	
+	)
 }
 
 func TestSetupAllTeardownAll(t *testing.T) {
@@ -202,7 +202,7 @@ func TestSetupAllTeardownAll(t *testing.T) {
 		beforeAll,
 		afterAll,
 		testBeforeAfterAll_1,
-		testBeforeAfterAll_2,		
+		testBeforeAfterAll_2,
 	)
 	if beforeAllState != 1 {
 		t.Errorf("beforeAllState should be 1 after all tests but was %d\n", beforeAllState)
@@ -251,7 +251,7 @@ func afterTestPath(assert *T) {
 func testPath(assert *T) {
 	ioutil.WriteFile("testfile", nil, 0600)
 	assert.Path("testfile")
-	
+
 	assert.Dry = true
 	assert.Path("foo")
 	assert.True(assert.Failed())
@@ -265,8 +265,8 @@ func TestPath(t *testing.T) {
 	)
 }
 
-func testNil(assert *T) { assert.Nil(nil) }
-func testNotNil(assert *T) { assert.NotNil([]byte{1,2,3}) }
+func testNil(assert *T)    { assert.Nil(nil) }
+func testNotNil(assert *T) { assert.NotNil([]byte{1, 2, 3}) }
 
 func TestNilNotNil(t *testing.T) {
 	Run(

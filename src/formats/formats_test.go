@@ -39,7 +39,7 @@ func TestReadProgram(t *testing.T) {
 }
 
 func testReadSnapshot(t *pt.T) {
-	_, err := ReadSnapshot("testdata/fire.sna")
+	_, err := ReadProgram("testdata/fire.sna")
 	t.Nil(err)
 }
 
@@ -49,4 +49,3 @@ func TestReadSnapshot(t *testing.T) {
 		testReadSnapshot,
 	)
 }
-

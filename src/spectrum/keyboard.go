@@ -73,7 +73,6 @@ func (keyboard *Keyboard) commandLoop() {
 		select {
 
 		case <-evtLoop.Pause:
-			keyboard.speccy.Close()
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:

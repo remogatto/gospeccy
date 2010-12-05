@@ -198,12 +198,12 @@ func BenchmarkRender(b *testing.B) {
 
 	speccy.addDisplay(sdlScreen)
 
-	snapshot, err := formats.ReadSnapshot("testdata/fire.sna")
+	snapshot, err := formats.ReadProgram("testdata/fire.sna")
 	if err != nil {
 		panic(err)
 	}
 
-	err = speccy.loadSnapshot(snapshot)
+	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
 	if err != nil {
 		panic(err)
 	}

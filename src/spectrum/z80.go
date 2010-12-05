@@ -165,7 +165,7 @@ func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
 	z80.iy = register16{&z80.iyh, &z80.iyl}
 	z80.de_ = register16{&z80.d_, &z80.e_}
 
-	z80.perfCounter_hostCpuInstr = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)
+	z80.perfCounter_hostCpuInstr, _ = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)
 
 	return z80
 }

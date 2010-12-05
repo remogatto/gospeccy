@@ -28,20 +28,71 @@ package main
 import (
 	"spectrum"
 	"spectrum/formats"
-	"spectrum/console"
 	"⚛sdl"
+	"⚛sdl/ttf"
+	"strings"
 	"fmt"
 	"flag"
 	"os"
 	"os/signal"
 	"runtime"
+	"clingon"
 )
+
+var (
+	appSurface *sdl.Surface
+	sdlScreen *spectrum.SDLScreen2x
+	cliRenderer *clingon.SDLRenderer
+	cli *clingon.Console
+	font *ttf.Font
+	sdlInitComplete, enableCLI, cliAnimation bool
+	cliY int16 = 480
+)
+
+func render() {
+	if sdlInitComplete {
+		if sdlScreen != nil {
+			if surface := sdlScreen.GetSurface(); surface != nil {
+				appSurface.Blit(nil, sdlScreen.GetSurface(), nil)
+			}
+		}
+		if enableCLI {
+			if cliY > 240 {
+				cliY--
+			}
+		} else {
+			if cliY > 480 {
+				cliRenderer = nil
+			} else {
+				cliY++
+			}
+		}
+		if cliRenderer != nil {
+			appSurface.Blit(&sdl.Rect{0, cliY, 0, 0}, cliRenderer.GetSurface(), &sdl.Rect{0,0, 640, 240})
+		}
+		appSurface.Flip()
+	}
+}
+
+func toggleCLI() {
+	enableCLI = !enableCLI
+	if enableCLI {
+		cliRenderer = clingon.NewSDLRenderer(sdl.CreateRGBSurface(sdl.SRCALPHA, 640, 240, 32, 0, 0, 0, 0), font)
+		cliRenderer.GetSurface().SetAlpha(sdl.SRCALPHA, 0xaa)
+		
+		cli = clingon.NewConsole(cliRenderer, i)
+		cli.SetPrompt("gospeccy> ")
+	}
+}
 
 // A Go routine for processing SDL events.
 func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
+	var toUpper bool
+
 	app := evtLoop.App()
 
 	for {
+
 		select {
 		case <-evtLoop.Pause:
 			evtLoop.Pause <- 0
@@ -85,26 +136,60 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 						app.PrintfMsg("escape key -> request[exit the application]")
 					}
 					app.RequestExit()
-				} else {
-					sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
 
-					if haveMapping {
-						switch e.Type {
-						case sdl.KEYDOWN:
-							// Normal order
-							for i := 0; i < len(sequence); i++ {
-								speccy.Keyboard.KeyDown(sequence[i])
+				} else if (keyName == "f10") && (e.Type == sdl.KEYDOWN) {
+					if app.Verbose {
+						app.PrintfMsg("f10 key -> toggle console")
+					}
+					toggleCLI()
+				} else {
+					if enableCLI {
+						if (keyName == "left shift") && (e.Type == sdl.KEYDOWN) {
+							toUpper = true
+						} else if (keyName == "up") && (e.Type == sdl.KEYDOWN) {
+							cli.HistoryCh() <- clingon.HISTORY_PREV
+						} else if (keyName == "down") && (e.Type == sdl.KEYDOWN) {
+							cli.HistoryCh() <- clingon.HISTORY_NEXT
+						} else if (keyName == "left") && (e.Type == sdl.KEYDOWN) {
+							cli.CursorCh() <- clingon.CURSOR_LEFT
+						} else if (keyName == "right") && (e.Type == sdl.KEYDOWN) {
+							cli.CursorCh() <- clingon.CURSOR_RIGHT
+						} else {
+							unicode := e.Keysym.Unicode
+							if unicode > 0 {
+								if toUpper {
+									cli.CharCh() <- uint16([]int(strings.ToUpper(string(unicode)))[0])
+								} else {
+									cli.CharCh() <- unicode
+								}
 							}
-						case sdl.KEYUP:
-							// Reverse order
-							for i := len(sequence) - 1; i >= 0; i-- {
-								speccy.Keyboard.KeyUp(sequence[i])
+						}
+
+					} else {
+						sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
+
+						if haveMapping {
+							switch e.Type {
+							case sdl.KEYDOWN:
+								// Normal order
+								for i := 0; i < len(sequence); i++ {
+									speccy.Keyboard.KeyDown(sequence[i])
+								}
+							case sdl.KEYUP:
+								// Reverse order
+								for i := len(sequence) - 1; i >= 0; i-- {
+									speccy.Keyboard.KeyUp(sequence[i])
+								}
 							}
 						}
 					}
 				}
 			}
+
+		default: render()
+
 		}
+
 	}
 }
 
@@ -187,11 +272,26 @@ func main() {
 		goto quit
 	}
 
+	if ttf.Init() != 0 {
+		panic(sdl.GetError())
+	}
+
+	font = ttf.OpenFont("font/VeraMono.ttf", 12)
+
+	if font == nil {
+		panic(sdl.GetError())
+	}
+
+	sdl.EnableUNICODE(1)
+
+	appSurface = sdl.SetVideoMode(640, 480, 32, 0)
+
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 
 	// Run startup scripts. The startup scripts may create a display/audio receiver.
 	{
-		console.Init(app, speccy)
+		i = new(Interpreter)
+		InitConsole(app, speccy)
 
 		if app.TerminationInProgress() || closed(app.HasTerminated) {
 			goto quit
@@ -209,7 +309,8 @@ func main() {
 			}
 
 			if *scale2x {
-				speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen2x(app, *fullscreen)}
+				sdlScreen = spectrum.NewSDLScreen2x(app, *fullscreen)
+				speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 			} else {
 				speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
 			}
@@ -237,7 +338,7 @@ func main() {
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
 
 	// Start the console goroutine.
-	go console.Run(true)
+//	go console.Run(true)
 
 	// Process command line argument. Load the given program (if
 	// any)
@@ -288,6 +389,8 @@ func main() {
 			goto quit
 		}
 	}
+
+	sdlInitComplete = true
 
 	// Drain systemROMLoaded channel
 	<-speccy.ROMLoaded()

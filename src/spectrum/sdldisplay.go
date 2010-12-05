@@ -76,12 +76,12 @@ func (s SDLSurface) addrXY(x, y uint) uintptr {
 	return uintptr(unsafe.Pointer(pixels + offset))
 }
 
-
 // ==============================
 // Screen render loop (goroutine)
 // ==============================
 
 func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, renderer screen_renderer_t) {
+	var screen *DisplayData
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -95,13 +95,14 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, ren
 			evtLoop.Terminate <- 0
 			return
 
-		case screen := <-screenChannel:
-			if screen != nil {
-				renderer.render(screen)
-			} else {
-				evtLoop.Delete()
-			}
+		case screen = <-screenChannel:
 		}
+		if screen != nil {
+			renderer.render(screen)
+		} else {
+			evtLoop.Delete()
+		}
+
 	}
 }
 
@@ -138,6 +139,10 @@ func NewSDLScreen(app *Application) *SDLScreen {
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
 	return SDL_screen
+}
+
+func (display *SDLScreen) GetSurface() *sdl.Surface {
+	return display.screenSurface.surface
 }
 
 // Implement DisplayReceiver
@@ -208,9 +213,10 @@ type SDLScreen2x struct {
 	// The whole screen, borders included.
 	// Initially nil.
 	screenSurface SDLSurface
+	frontendSurface *sdl.Surface
 
 	unscaledDisplay *UnscaledDisplay
-
+	
 	app *Application
 }
 
@@ -226,6 +232,10 @@ func NewSDLScreen2x(app *Application, fullscreen bool) *SDLScreen2x {
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
 
 	return SDL_screen
+}
+
+func (display *SDLScreen2x) GetSurface() *sdl.Surface {
+	return display.screenSurface.surface
 }
 
 // Implement DisplayReceiver
@@ -244,14 +254,14 @@ func (display *SDLScreen2x) render(screen *DisplayData) {
 	unscaledDisplay.render(screen)
 
 	if display.screenSurface.surface == nil {
-		var sdlMode uint32
-		if display.fullscreen {
-			sdlMode = sdl.FULLSCREEN
-		} else {
-			sdlMode = 0
-		}
+//		var sdlMode uint32
+		// if display.fullscreen {
+		// 	sdlMode = sdl.FULLSCREEN
+		// } else {
+		// 	sdlMode = 0
+		// }
 
-		surface := sdl.SetVideoMode(2*TotalScreenWidth, 2*TotalScreenHeight, 32, sdlMode)
+		surface := sdl.CreateRGBSurface(sdl.SWSURFACE, 2*TotalScreenWidth, 2*TotalScreenHeight, 32, 0, 0 ,0, 0)
 		if surface == nil {
 			display.app.PrintfMsg("%s", sdl.GetError())
 			display.app.RequestExit()
@@ -296,9 +306,8 @@ func (display *SDLScreen2x) render(screen *DisplayData) {
 	if screen.completionTime_orNil != nil {
 		screen.completionTime_orNil <- time.Nanoseconds()
 	}
-
+ 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2)
-
 	unscaledDisplay.releaseMemory()
 }
 

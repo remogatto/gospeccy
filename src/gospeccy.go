@@ -252,7 +252,6 @@ func main() {
 			goto quit
 		}
 
-		fmt.Printf("%T\n", program)
 		if _, isTAP := program.(*formats.TAP); isTAP {
 			romLoaded := make(chan bool, 1)
 			speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}

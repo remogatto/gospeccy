@@ -15,6 +15,7 @@ import (
 	"sync"
 	"bytes"
 	"time"
+	"go/token"
 )
 
 // ==============
@@ -443,11 +444,16 @@ func defineFunctions(w *eval.World) {
 }
 
 // Runs the specified Go source code in the context of 'w'
-func run(w *eval.World, sourceCode string) os.Error {
+func run(w *eval.World, path_orEmpty string, sourceCode string) os.Error {
 	var err os.Error
 	var code eval.Code
 
-	code, err = w.Compile(sourceCode)
+	fileSet := token.NewFileSet()
+	if len(path_orEmpty) > 0 {
+		fileSet.AddFile(path_orEmpty, fileSet.Base(), len(sourceCode))
+	}
+
+	code, err = w.Compile(fileSet, sourceCode)
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		return err
@@ -476,7 +482,7 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 
 	var buf bytes.Buffer
 	buf.Write(data)
-	run(w, buf.String())
+	run(w, fileName, buf.String())
 
 	return nil
 }
@@ -648,7 +654,7 @@ func Run(exitAppIfEndOfInput bool) {
 		case code := <-code_chan:
 			//app.PrintfMsg("code=\"%s\"", code)
 			if len(code) > 0 {
-				run(w, code)
+				run(w, "", code)
 			} else {
 				printHelp()
 			}
@@ -665,7 +671,7 @@ func Run(exitAppIfEndOfInput bool) {
 }
 
 func RunString(code string) os.Error {
-	return run(w, code)
+	return run(w, "", code)
 }
 
 type consoleMessageOutput struct {

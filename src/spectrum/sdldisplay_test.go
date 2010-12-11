@@ -1,230 +1,230 @@
 package spectrum
 
-import (
-	"testing"
-	"⚛sdl"
-	"io/ioutil"
-	"image"
-	"image/png"
-	"os"
-	"strings"
-	"unsafe"
-	"spectrum/formats"
-)
+// import (
+// 	"testing"
+// 	"⚛sdl"
+// 	"io/ioutil"
+// 	"image"
+// 	"image/png"
+// 	"os"
+// 	"strings"
+// 	"unsafe"
+// 	"spectrum/formats"
+// )
 
-func (s *SDLSurface) At(x, y int) image.Color {
-	var bpp = int(s.surface.Format.BytesPerPixel)
+// func (s *SDLSurface) At(x, y int) image.Color {
+// 	var bpp = int(s.surface.Format.BytesPerPixel)
 
-	var pixel = uintptr(unsafe.Pointer(s.surface.Pixels))
+// 	var pixel = uintptr(unsafe.Pointer(s.surface.Pixels))
 
-	pixel += uintptr(y*int(s.surface.Pitch) + x*bpp)
+// 	pixel += uintptr(y*int(s.surface.Pitch) + x*bpp)
 
-	var color = *((*uint32)(unsafe.Pointer(pixel)))
+// 	var color = *((*uint32)(unsafe.Pointer(pixel)))
 
-	var r uint8
-	var g uint8
-	var b uint8
-	var a uint8
+// 	var r uint8
+// 	var g uint8
+// 	var b uint8
+// 	var a uint8
 
-	sdl.GetRGBA(color, s.surface.Format, &r, &g, &b, &a)
+// 	sdl.GetRGBA(color, s.surface.Format, &r, &g, &b, &a)
 
-	return image.RGBAColor{uint8(r), uint8(g), uint8(b), uint8(a)}
-}
+// 	return image.RGBAColor{uint8(r), uint8(g), uint8(b), uint8(a)}
+// }
 
-func initSDL() {
-	if sdl.Init(sdl.INIT_VIDEO) != 0 {
-		panic(sdl.GetError())
-	}
-}
+// func initSDL() {
+// 	if sdl.Init(sdl.INIT_VIDEO) != 0 {
+// 		panic(sdl.GetError())
+// 	}
+// }
 
-func newSurface() *sdl.Surface {
-	return sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, 0)
-}
+// func newSurface() *sdl.Surface {
+// 	return sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, 0)
+// }
 
-func loadExpectedImage(filename string) image.Image {
-	var file *os.File
-	var err os.Error
-	var image image.Image
+// func loadExpectedImage(filename string) image.Image {
+// 	var file *os.File
+// 	var err os.Error
+// 	var image image.Image
 
-	if file, err = os.Open(filename, os.O_RDONLY, 0); err != nil {
-		panic(err)
-	}
+// 	if file, err = os.Open(filename, os.O_RDONLY, 0); err != nil {
+// 		panic(err)
+// 	}
 
-	if image, err = png.Decode(file); err != nil {
-		panic(err)
-	}
-	return image
-}
+// 	if image, err = png.Decode(file); err != nil {
+// 		panic(err)
+// 	}
+// 	return image
+// }
 
-func loadScreen(filename string, speccy *Spectrum48k, borderColor byte) *ULA {
-	memory := NewMemory()
-	memory.init(speccy)
-	ula := NewULA()
-	ula.init(speccy)
-	ula.speccy.Ports.writePortInternal(254, borderColor, false)
-	image, _ := ioutil.ReadFile(filename)
-	for offset, value := range image {
-		speccy.Memory.Write(0x4000+uint16(offset), value)
-	}
-	return ula
-}
+// func loadScreen(filename string, speccy *Spectrum48k, borderColor byte) *ULA {
+// 	memory := NewMemory()
+// 	memory.init(speccy)
+// 	ula := NewULA()
+// 	ula.init(speccy)
+// 	ula.speccy.Ports.writePortInternal(254, borderColor, false)
+// 	image, _ := ioutil.ReadFile(filename)
+// 	for offset, value := range image {
+// 		speccy.Memory.Write(0x4000+uint16(offset), value)
+// 	}
+// 	return ula
+// }
 
-func colorsAreNotEqual(got, expected image.Color) bool {
-	got_r, got_g, got_b, got_a := got.RGBA()
-	expected_r, expected_g, expected_b, expected_a := expected.RGBA()
-	if (got_r != expected_r) || (got_g != expected_g) || (got_b != expected_b) || (got_a != expected_a) {
-		return true
-	}
-	return false
-}
+// func colorsAreNotEqual(got, expected image.Color) bool {
+// 	got_r, got_g, got_b, got_a := got.RGBA()
+// 	expected_r, expected_g, expected_b, expected_a := expected.RGBA()
+// 	if (got_r != expected_r) || (got_g != expected_g) || (got_b != expected_b) || (got_a != expected_a) {
+// 		return true
+// 	}
+// 	return false
+// }
 
-func imagesAreNotEqual(got *SDLScreen, expected image.Image) image.Image {
-	diff := false
-	diffImage := image.NewRGBA(TotalScreenWidth, TotalScreenHeight)
+// func imagesAreNotEqual(got *SDLScreen, expected image.Image) image.Image {
+// 	diff := false
+// 	diffImage := image.NewRGBA(TotalScreenWidth, TotalScreenHeight)
 
-	for y := 0; y < TotalScreenHeight; y++ {
-		for x := 0; x < TotalScreenWidth; x++ {
-			if colorsAreNotEqual(got.screenSurface.At(x, y), expected.At(x, y)) {
-				diff = true
-				diffImage.Set(x, y, image.RGBAColor{255, 0, 0, 255})
-			}
-		}
-	}
+// 	for y := 0; y < TotalScreenHeight; y++ {
+// 		for x := 0; x < TotalScreenWidth; x++ {
+// 			if colorsAreNotEqual(got.screenSurface.At(x, y), expected.At(x, y)) {
+// 				diff = true
+// 				diffImage.Set(x, y, image.RGBAColor{255, 0, 0, 255})
+// 			}
+// 		}
+// 	}
 
-	if diff {
-		return diffImage
-	}
+// 	if diff {
+// 		return diffImage
+// 	}
 
-	return nil
+// 	return nil
 
-}
+// }
 
-type RenderTest struct {
-	in, out     string
-	borderColor byte
-	flash       bool
-	diffImage   image.Image
-}
+// type RenderTest struct {
+// 	in, out     string
+// 	borderColor byte
+// 	flash       bool
+// 	diffImage   image.Image
+// }
 
-func (r *RenderTest) renderScreen(speccy *Spectrum48k) bool {
-	renderedSDLScreen := &SDLScreen{nil, SDLSurface{newSurface()}, newUnscaledDisplay(), speccy.app}
+// func (r *RenderTest) renderScreen(speccy *Spectrum48k) bool {
+// 	renderedSDLScreen := &SDLScreen{nil, &SDLSurface{newSurface()}, newUnscaledDisplay(), speccy.app}
 
-	speccy.addDisplay(renderedSDLScreen)
+// 	speccy.addDisplay(renderedSDLScreen)
 
-	expectedImage := loadExpectedImage(r.out)
-	inputScreen := loadScreen(r.in, speccy, r.borderColor)
+// 	expectedImage := loadExpectedImage(r.out)
+// 	inputScreen := loadScreen(r.in, speccy, r.borderColor)
 
-	inputScreen.borderColor = r.borderColor
+// 	inputScreen.borderColor = r.borderColor
 
-	if r.flash {
-		inputScreen.frame = 0x10
-		inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
-	}
+// 	if r.flash {
+// 		inputScreen.frame = 0x10
+// 		inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
+// 	}
 
-	displayData := inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
+// 	displayData := inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
 
-	renderedSDLScreen.render(displayData)
+// 	renderedSDLScreen.render(displayData)
 
-	if diffImage := imagesAreNotEqual(renderedSDLScreen, expectedImage); diffImage != nil {
-		r.diffImage = diffImage
-		return true
-	}
+// 	if diffImage := imagesAreNotEqual(renderedSDLScreen, expectedImage); diffImage != nil {
+// 		r.diffImage = diffImage
+// 		return true
+// 	}
 
-	return false
-}
+// 	return false
+// }
 
-func (r *RenderTest) getDiffFn() string {
-	return strings.TrimRight(r.out, ".png") + "_diff.png"
-}
+// func (r *RenderTest) getDiffFn() string {
+// 	return strings.TrimRight(r.out, ".png") + "_diff.png"
+// }
 
-func (r *RenderTest) reportError(t *testing.T) {
-	t.Errorf("Expected image %s is not equal to the rendered one! Check %s\n", r.out, r.getDiffFn())
+// func (r *RenderTest) reportError(t *testing.T) {
+// 	t.Errorf("Expected image %s is not equal to the rendered one! Check %s\n", r.out, r.getDiffFn())
 
-	if file, err := os.Open(r.getDiffFn(), os.O_CREATE|os.O_WRONLY, 0666); err != nil {
-		panic(err)
-	} else {
-		if err := png.Encode(file, r.diffImage); err != nil {
-			panic(err)
-		}
-	}
-}
+// 	if file, err := os.Open(r.getDiffFn(), os.O_CREATE|os.O_WRONLY, 0666); err != nil {
+// 		panic(err)
+// 	} else {
+// 		if err := png.Encode(file, r.diffImage); err != nil {
+// 			panic(err)
+// 		}
+// 	}
+// }
 
-var RenderTests = []RenderTest{
-	RenderTest{in: "testdata/initial.scr", out: "testdata/initial.png", borderColor: 7},
-	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_0.png", borderColor: 7},
-	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_1.png", borderColor: 7, flash: true},
-}
+// var RenderTests = []RenderTest{
+// 	RenderTest{in: "testdata/initial.scr", out: "testdata/initial.png", borderColor: 7},
+// 	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_0.png", borderColor: 7},
+// 	RenderTest{in: "testdata/flash.scr", out: "testdata/flash_1.png", borderColor: 7, flash: true},
+// }
 
-func TestSDLRenderer(t *testing.T) {
+// func TestSDLRenderer(t *testing.T) {
 
-	initSDL()
+// 	initSDL()
 
-	romPath := "testdata/48.rom"
+// 	romPath := "testdata/48.rom"
 
-	app := NewApplication()
+// 	app := NewApplication()
 
-	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
-		panic(err)
-	} else {
-		for _, r := range RenderTests {
-			if notEqual := r.renderScreen(speccy); notEqual {
-				r.reportError(t)
-			}
-		}
-	}
+// 	if speccy, err := NewSpectrum48k(app, romPath); err != nil {
+// 		panic(err)
+// 	} else {
+// 		for _, r := range RenderTests {
+// 			if notEqual := r.renderScreen(speccy); notEqual {
+// 				r.reportError(t)
+// 			}
+// 		}
+// 	}
 
-	sdl.Quit()
+// 	sdl.Quit()
 
-}
+// }
 
-func BenchmarkRender(b *testing.B) {
+// func BenchmarkRender(b *testing.B) {
 
-	b.StopTimer()
+// 	b.StopTimer()
 
-	initSDL()
+// 	initSDL()
 
-	app := NewApplication()
+// 	app := NewApplication()
 
-	const numFrames = 1000
+// 	const numFrames = 1000
 
-	var frames [numFrames]*DisplayData
+// 	var frames [numFrames]*DisplayData
 
-	sdlScreen := &SDLScreen{make(chan *DisplayData), SDLSurface{newSurface()}, newUnscaledDisplay(), app}
+// 	sdlScreen := &SDLScreen{make(chan *DisplayData), &SDLSurface{newSurface()}, newUnscaledDisplay(), app}
 
-	speccy, err := NewSpectrum48k(app, "testdata/48.rom")
-	if err != nil {
-		panic(err)
-	}
+// 	speccy, err := NewSpectrum48k(app, "testdata/48.rom")
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	speccy.addDisplay(sdlScreen)
+// 	speccy.addDisplay(sdlScreen)
 
-	snapshot, err := formats.ReadProgram("testdata/fire.sna")
-	if err != nil {
-		panic(err)
-	}
+// 	snapshot, err := formats.ReadProgram("testdata/fire.sna")
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
-	if err != nil {
-		panic(err)
-	}
+// 	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	go func() {
-		for i := 0; i < numFrames; i++ {
-			speccy.renderFrame(nil)
-		}
-	}()
+// 	go func() {
+// 		for i := 0; i < numFrames; i++ {
+// 			speccy.renderFrame(nil)
+// 		}
+// 	}()
 
-	for i := 0; i < numFrames; i++ {
-		frames[i] = <-sdlScreen.screenChannel
-	}
+// 	for i := 0; i < numFrames; i++ {
+// 		frames[i] = <-sdlScreen.screenChannel
+// 	}
 
-	var j int
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		j %= numFrames
-		sdlScreen.render(frames[j])
-		j++
-	}
+// 	var j int
+// 	b.StartTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		j %= numFrames
+// 		sdlScreen.render(frames[j])
+// 		j++
+// 	}
 
-	sdl.Quit()
-}
+// 	sdl.Quit()
+// }

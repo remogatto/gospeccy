@@ -237,7 +237,6 @@ func (e *EventLoop) Delete() {
 				}
 			}
 		}
-
 		if !found {
 			panic("no such event-loop")
 		}

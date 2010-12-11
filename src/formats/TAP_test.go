@@ -1,8 +1,6 @@
 package formats
 
 import (
-	"testing"
-	"spectrum/prettytest"
 	"path"
 	"io/ioutil"
 	"bytes"
@@ -15,7 +13,7 @@ var (
 	tapProgramFn = path.Join(testdataDir, "hello.tap")
 )
 
-func testReadTAP(assert *prettytest.T) {
+func (t *testSuite) testReadTAP() {
 	data, _ := ioutil.ReadFile(tapCodeFn)
 	tap := NewTAP()
 	n, err := tap.Read(data)
@@ -23,64 +21,64 @@ func testReadTAP(assert *prettytest.T) {
 	headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 	dataBlock := tap.blocks.At(1).(tapBlockData)
 
-	assert.Nil(err)
-	assert.Equal(27, n)
+	t.Nil(err)
+	t.Equal(27, n)
 
-	assert.NotNil(headerBlock)
-	assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
-	assert.Equal("ROM       ", headerBlock.filename)
-	assert.Equal(uint16(2), headerBlock.length)
-	assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+	t.NotNil(headerBlock)
+	t.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
+	t.Equal("ROM       ", headerBlock.filename)
+	t.Equal(uint16(2), headerBlock.length)
+	t.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
 }
 
-func testReadTAPError(assert *prettytest.T) {
+func (t *testSuite) testReadTAPError() {
 	tap := NewTAP()
 	_, err := tap.Read(nil)
-	assert.NotNil(err)
+	t.NotNil(err)
 }
 
 // SAVE "ROM" CODE 0,2
-func testReadTAPCodeFile(assert *prettytest.T) {
+func (t *testSuite) testReadTAPCodeFile() {
 	data, _ := ioutil.ReadFile(tapCodeFn)
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	assert.Nil(err)
+	t.Nil(err)
 
-	if !assert.Failed() {
+	if !t.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
-		assert.Equal(uint16(0), headerBlock.par1)
-		assert.Equal(uint16(0x8000), headerBlock.par2)
+		t.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
+		t.Equal(uint16(0), headerBlock.par1)
+		t.Equal(uint16(0x8000), headerBlock.par2)
 
-		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
-		assert.Equal(byte(0xf3), dataBlock[1])
-		assert.Equal(byte(0xaf), dataBlock[2])
-		assert.Equal(byte(0xa3), dataBlock[3])
+		t.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		t.Equal(byte(0xf3), dataBlock[1])
+		t.Equal(byte(0xaf), dataBlock[2])
+		t.Equal(byte(0xa3), dataBlock[3])
 	}
 }
 
 // 10 PRINT "Hello World"
 // SAVE "HELLO"
-func testReadTAPProgramFile(assert *prettytest.T) {
+func (t *testSuite) testReadTAPProgramFile() {
 	data, _ := ioutil.ReadFile(tapProgramFn)
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	assert.Nil(err)
+	t.Nil(err)
 
-	if !assert.Failed() {
+	if !t.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		assert.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
-		assert.Equal(uint16(0x8000), headerBlock.par1)
-		assert.Equal(uint16(0x14), headerBlock.par2)
+		t.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
+		t.Equal(uint16(0x8000), headerBlock.par1)
+		t.Equal(uint16(0x14), headerBlock.par2)
 
-		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
-		assert.True(bytes.Equal([]byte{
+		t.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		t.True(bytes.Equal([]byte{
 			0x00, 0x0a,
 			0x10, 0x00,
 			0x20, 0xf5,
@@ -97,86 +95,62 @@ func testReadTAPProgramFile(assert *prettytest.T) {
 	}
 }
 
-func testReadTAPWithCustomLoader(assert *prettytest.T) {
+func (t *testSuite) testReadTAPWithCustomLoader() {
 	data, _ := ioutil.ReadFile("testdata/fire.tap")
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	assert.Nil(err)
+	t.Nil(err)
 
-	if !assert.Failed() {
+	if !t.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		assert.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
-		assert.Equal(uint16(0x8000), headerBlock.par1)
-		assert.Equal(uint16(0x14), headerBlock.par2)
-
-		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		t.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
+		t.Equal(uint16(0x0a), headerBlock.par1)
+		t.Equal(uint16(0x1e), headerBlock.par2)
+		t.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
 	}
 }
 
-func testNewTAPFromFile(assert *prettytest.T) {
+func (t *testSuite) testNewTAPFromFile() {
 	tap, err := NewTAPFromFile(tapCodeFn)
-	assert.Nil(err)
-	if !assert.Failed() {
+	t.Nil(err)
+	if !t.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
-		assert.Equal(uint16(0), headerBlock.par1)
-		assert.Equal(uint16(0x8000), headerBlock.par2)
+		t.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
+		t.Equal(uint16(0), headerBlock.par1)
+		t.Equal(uint16(0x8000), headerBlock.par2)
 
-		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
-		assert.Equal(byte(0xf3), dataBlock[1])
-		assert.Equal(byte(0xaf), dataBlock[2])
-		assert.Equal(byte(0xa3), dataBlock[3])
+		t.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		t.Equal(byte(0xf3), dataBlock[1])
+		t.Equal(byte(0xaf), dataBlock[2])
+		t.Equal(byte(0xa3), dataBlock[3])
 	}
-}
-
-func TestLoadTAP(t *testing.T) {
-	prettytest.Run(
-		t,
-		testNewTAPFromFile,
-		testReadTAP,
-		testReadTAPError,
-		testReadTAPCodeFile,
-		testReadTAPProgramFile,
-		testReadTAPWithCustomLoader,
-	)
 }
 
 var tap *TAP
 
-func before(assert *prettytest.T) {
+func (t *testSuite) before() {
 	data, _ := ioutil.ReadFile(tapProgramFn)
 	tap = NewTAP()
 	tap.Read(data)
 }
 
-func testTAPAt(assert *prettytest.T) {
-	assert.Equal(byte(0x00), tap.At(0))
-	assert.Equal(byte(0xff), tap.At(0x13))
+func (t *testSuite) testTAPAt() {
+	t.Equal(byte(0x00), tap.At(0))
+	t.Equal(byte(0xff), tap.At(0x13))
 }
 
-func testTAPGetBlock(assert *prettytest.T) {
+func (t *testSuite) testTAPGetBlock() {
 	_, ok := tap.GetBlock(0).(*tapBlockHeader)
-	assert.True(ok)
+	t.True(ok)
 	_, ok = tap.GetBlock(1).(tapBlockData)
-	assert.True(ok)
+	t.True(ok)
 }
 
-func testTAPBlockLen(assert *prettytest.T) {
-	assert.Equal(19, tap.GetBlock(0).Len())
-}
-
-func TestTAPAccessors(t *testing.T) {
-	prettytest.Run(
-		t,
-		before,
-		testTAPAt,
-		testTAPBlockLen,
-		testTAPGetBlock,
-	)
-
+func (t *testSuite) testTAPBlockLen() {
+	t.Equal(19, tap.GetBlock(0).Len())
 }

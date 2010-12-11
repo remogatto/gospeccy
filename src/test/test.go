@@ -7,13 +7,33 @@ import (
 	"⚛sdl"
 	"spectrum"
 	"spectrum/formats"
-	"spectrum/prettytest"
-)
+	"prettytest"
+ )
 
-var (
-	speccy *spectrum.Spectrum48k
-	app    *spectrum.Application
-)
+ var (
+	 speccy *spectrum.Spectrum48k
+	 app    *spectrum.Application
+ )
+
+type testSuite struct { prettytest.Suite }
+
+func (t *testSuite) beforeAll() {
+	StartFullEmulation()
+}
+
+func (t *testSuite) afterAll() {
+	app.RequestExit()
+	<-app.HasTerminated
+}
+
+func (t *testSuite) before() {
+	StartFullEmulation()
+}
+
+func (t *testSuite) after() {
+	app.RequestExit()
+	<-app.HasTerminated
+}
 
 func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
 	app = evtLoop.App()
@@ -107,24 +127,6 @@ func StartFullEmulation() {
 	go speccy.EmulatorLoop()
 
 	<-speccy.ROMLoaded()
-}
-
-func beforeAll(t *prettytest.T) {
-	StartFullEmulation()
-}
-
-func afterAll(t *prettytest.T) {
-	app.RequestExit()
-	<-app.HasTerminated
-}
-
-func before(t *prettytest.T) {
-	StartFullEmulation()
-}
-
-func after(t *prettytest.T) {
-	app.RequestExit()
-	<-app.HasTerminated
 }
 
 func loadSnapshot(filename string) formats.Snapshot {

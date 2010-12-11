@@ -1,6 +1,7 @@
 package main
 
 import (
+	"⚛sdl"
 	"spectrum"
 	"spectrum/formats"
 	"clingon"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"container/vector"
 	"bytes"
-	"strings"
 	"time"
 )
 
@@ -20,30 +20,24 @@ import (
 
 // These variables are set only once, before starting new goroutines,
 // so there is no need for controlling concurrent access via a sync.Mutex
-var app *spectrum.Application
-var speccy *spectrum.Spectrum48k
-var i *Interpreter
-var w *eval.World
+var (
+	w *eval.World
+	i Interpreter
+)
 
 var IgnoreStartupScript = false
 
 const SCRIPT_DIRECTORY = "scripts"
 const STARTUP_SCRIPT = "startup"
 
-type Interpreter struct {
-	console *clingon.Console
-}
+type Interpreter struct {}
 
-func (i *Interpreter) SetConsole(console *clingon.Console) {
-	i.console = console
-}
-
-func (i *Interpreter) Run(command string) os.Error {
-	return i.run(w, command)
-}
-
-func (i *Interpreter) Print(str string) {
-	i.console.PushLines(strings.Split(str, "\n", -1))
+func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
+	if command == "" {
+		return i.run(console, w, "help()")
+		
+	}
+	return i.run(console, w, command)
 }
 
 // ================
@@ -53,7 +47,7 @@ func (i *Interpreter) Print(str string) {
 var help_keys vector.StringVector
 var help_vals vector.StringVector
 
-func (i *Interpreter) printHelp() {
+func printHelp() {
 	var buf bytes.Buffer
 
 	fmt.Fprintf(&buf, "\nAvailable commands:\n")
@@ -73,12 +67,12 @@ func (i *Interpreter) printHelp() {
 		fmt.Fprintf(&buf, "  %s\n", help_vals[i])
 	}
 
-	i.Print(buf.String())
+	cli.Print(buf.String())
 }
 
 // Signature: func help()
 func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	i.printHelp()
+	printHelp()
 }
 
 // Signature: func exit()
@@ -128,7 +122,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	var program interface{}
 	program, err := formats.ReadProgram(path)
 	if err != nil {
-		i.Print(err.String())
+		cli.Print(err.String())
 		return
 	}
 
@@ -143,7 +137,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	err = <-errChan
 	if err != nil {
-		i.Print(err.String())
+		cli.Print(err.String())
 	}
 }
 
@@ -162,17 +156,17 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	data, err := fullSnapshot.EncodeSNA()
 	if err != nil {
-		i.Print(err.String())
+		cli.Print(err.String())
 		return
 	}
 
 	err = ioutil.WriteFile(path, data, 0600)
 	if err != nil {
-		i.Print(err.String())
+		cli.Print(err.String())
 	}
 
 	if app.Verbose {
-		i.Print(fmt.Sprintf("wrote SNA snapshot \"%s\"", path))
+		cli.Print(fmt.Sprintf("wrote SNA snapshot \"%s\"", path))
 	}
 }
 
@@ -190,15 +184,21 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
 
-		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
+		initDisplay(false, false)
+		initCLI()
+		r.cliY = r.half_height
 
 	case 2:
 		finished := make(chan byte)
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
 
-		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen2x(app, /*fullscreen*/ false)}
+		initDisplay(true, false)
+		initCLI()
+		r.cliY = r.half_height
 	}
+
+	r.appSurface = sdl.SetVideoMode(r.width, r.height, 32, 0)
 }
 
 // Signature: func fps(n float)
@@ -238,7 +238,7 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 		} else {
-			i.Print(err.String())
+			cli.Print(err.String())
 		}
 	} else {
 		finished := make(chan byte)
@@ -261,9 +261,9 @@ func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	scriptName := in[0].(eval.StringValue).Get(t)
 
-	err := i.runScript(w, scriptName, /*optional*/ false)
+	err := runScript(w, scriptName, /*optional*/ false)
 	if err != nil {
-		i.Print(err.String())
+		cli.Print(err.String())
 		return
 	}
 }
@@ -272,9 +272,9 @@ func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_optionalScript(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	scriptName := in[0].(eval.StringValue).Get(t)
 
-	err := i.runScript(w, scriptName, /*optional*/ true)
+	err := runScript(w, scriptName, /*optional*/ true)
 	if err != nil {
-		i.Print(err.String())
+		cli.Print(err.String())
 		return
 	}
 }
@@ -295,18 +295,18 @@ func wrapper_screenshot(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	err := ioutil.WriteFile(path, data, 0600)
 
 	if err != nil {
-		i.Print(err.String())
+		cli.Print(err.String())
 	}
 
 	if app.Verbose {
-		i.Print(fmt.Sprintf("wrote screenshot \"%s\"", path))
+		cli.Print(fmt.Sprintf("wrote screenshot \"%s\"", path))
 	}
 }
 
 // Signature: func puts(str string)
 func wrapper_puts(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	str := in[0].(eval.StringValue).Get(t)
-	i.Print(str)
+	cli.Print(str)
 }
 
 // Signature: func acceleratedLoad(on bool)
@@ -450,19 +450,19 @@ func defineFunctions(w *eval.World) {
 }
 
 // Runs the specified Go source code in the context of 'w'
-func (i *Interpreter) run(w *eval.World, sourceCode string) os.Error {
+func (i *Interpreter) run(console *clingon.Console, w *eval.World, sourceCode string) os.Error {
 	var err os.Error
 	var code eval.Code
 
 	code, err = w.Compile(sourceCode)
 	if err != nil {
-		i.Print(err.String())
+		console.Print(err.String())
 		return err
 	}
 
 	_, err = code.Run()
 	if err != nil {
-		i.Print(err.String())
+		console.Print(err.String())
 		return err
 	}
 
@@ -470,7 +470,7 @@ func (i *Interpreter) run(w *eval.World, sourceCode string) os.Error {
 }
 
 // Loads and evaluates the specified Go script
-func (i *Interpreter) runScript(w *eval.World, scriptName string, optional bool) os.Error {
+func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	fileName := scriptName + ".go"
 	data, err := ioutil.ReadFile(spectrum.ScriptPath(fileName))
 	if err != nil {
@@ -483,26 +483,19 @@ func (i *Interpreter) runScript(w *eval.World, scriptName string, optional bool)
 
 	var buf bytes.Buffer
 	buf.Write(data)
-	i.run(w, buf.String())
+	i.run(cli, w, buf.String())
 
 	return nil
 }
 
-func InitConsole(_app *spectrum.Application, _speccy *spectrum.Spectrum48k) {
-	if app != nil {
-		panic("running multiple consoles is unsupported")
-	}
-
-	app = _app
-	speccy = _speccy
+func initInterpreter() {
 	w = eval.NewWorld()
-
 	defineFunctions(w)
 
 	// Run the startup script
 	var err os.Error
 
-	err = i.runScript(w, STARTUP_SCRIPT, /*optional*/ IgnoreStartupScript)
+	err = runScript(w, STARTUP_SCRIPT, /*optional*/ IgnoreStartupScript)
 	if err != nil {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()

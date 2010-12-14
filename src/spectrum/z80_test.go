@@ -26,15 +26,15 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"testing"
-	"io/ioutil"
-	"fmt"
-	"strings"
-	"strconv"
-	"os"
 	"bufio"
 	"container/vector"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"spectrum/formats"
+	"strconv"
+	"strings"
+	"testing"
 )
 
 var (

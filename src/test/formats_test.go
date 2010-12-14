@@ -1,52 +1,51 @@
 package test
 
 import (
-	"testing"
-	pt "spectrum/prettytest"
+	"prettytest"
 	"spectrum/formats"
+	"testing"
 )
 
-func should_support_SNA_format(t *pt.T) {
+type formats_suite_t struct {
+	test_suite_t
+}
+
+func (s *formats_suite_t) should_support_SNA_format() {
 	program, err := formats.ReadProgram("testdata/hello.sna")
-	t.Nil(err)
+	s.Nil(err)
 
 	err = speccy.Load(program)
-	t.Nil(err)
+	s.Nil(err)
 
-	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func should_support_Z80_format(t *pt.T) {
+func (s *formats_suite_t) should_support_Z80_format() {
 	program, err := formats.ReadProgram("testdata/hello.z80")
-	t.Nil(err)
+	s.Nil(err)
 
 	err = speccy.Load(program)
-	t.Nil(err)
+	s.Nil(err)
 
-	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func should_support_TAP_format(t *pt.T) {
+func (s *formats_suite_t) should_support_TAP_format() {
 	program, err := formats.ReadProgram("testdata/hello.tap")
-	t.Nil(err)
+	s.Nil(err)
 
 	err = speccy.Load(program)
-	t.Nil(err)
+	s.Nil(err)
 
 	<-speccy.TapeDrive().LoadComplete()
 
-	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
 func TestLoadFormats(t *testing.T) {
-	pt.Describe(
+	prettytest.RunWithFormatter(
 		t,
-		"The emulator",
-		should_support_SNA_format,
-		should_support_Z80_format,
-		should_support_TAP_format,
-
-		before,
-		after,
+		&prettytest.BDDFormatter{"The formats"},
+		new(formats_suite_t),
 	)
 }

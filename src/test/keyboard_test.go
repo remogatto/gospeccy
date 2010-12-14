@@ -1,19 +1,23 @@
 package test
 
 import (
-	"testing"
-	"spectrum/prettytest"
+	"prettytest"
 	"spectrum"
+	"testing"
 )
 
-func should_respond_to_keypress(t *prettytest.T) {
+type keyboard_suite_t struct {
+	test_suite_t
+}
+
+func (s *keyboard_suite_t) should_respond_to_keypress() {
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_R)
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_Enter)
 
-	t.True(screenEqualTo("testdata/key_press_1_ok.sna"))
+	s.True(screenEqualTo("testdata/key_press_1_ok.sna"))
 }
 
-func should_respond_to_keypress_sequence(t *prettytest.T) {
+func (s *keyboard_suite_t) should_respond_to_keypress_sequence() {
 	k := speccy.Keyboard
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_P)
 
@@ -37,17 +41,13 @@ func should_respond_to_keypress_sequence(t *prettytest.T) {
 	k.KeyUp(spectrum.KEY_SymbolShift)
 
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_Enter)
-	t.True(screenEqualTo("testdata/key_press_sequence_1_ok.sna"))
+	s.True(screenEqualTo("testdata/key_press_sequence_1_ok.sna"))
 }
 
 func TestKeyboard(t *testing.T) {
-	prettytest.Describe(
+	prettytest.RunWithFormatter(
 		t,
-		"The keyboard",
-		should_respond_to_keypress,
-		should_respond_to_keypress_sequence,
-
-		before,
-		after,
+		&prettytest.BDDFormatter{"The keyboard"},
+		new(keyboard_suite_t),
 	)
 }

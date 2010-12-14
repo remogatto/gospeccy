@@ -1,13 +1,13 @@
 package test
 
 import (
-	"time"
-	"os"
 	"io/ioutil"
-	"⚛sdl"
+	"os"
+	"prettytest"
 	"spectrum"
 	"spectrum/formats"
-	"spectrum/prettytest"
+	"time"
+	"⚛sdl"
 )
 
 var (
@@ -109,20 +109,17 @@ func StartFullEmulation() {
 	<-speccy.ROMLoaded()
 }
 
-func beforeAll(t *prettytest.T) {
+type test_suite_t struct {
+	prettytest.Suite
+}
+
+func (s *test_suite_t) before() {
+	println("func (s *test_suite_t) before()")
 	StartFullEmulation()
 }
 
-func afterAll(t *prettytest.T) {
-	app.RequestExit()
-	<-app.HasTerminated
-}
-
-func before(t *prettytest.T) {
-	StartFullEmulation()
-}
-
-func after(t *prettytest.T) {
+func (s *test_suite_t) after() {
+	println("func (s *test_suite_t) after()")
 	app.RequestExit()
 	<-app.HasTerminated
 }

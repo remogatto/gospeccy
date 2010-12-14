@@ -1,40 +1,40 @@
 package test
 
 import (
+	"prettytest"
 	"testing"
-	pt "spectrum/prettytest"
 	"time"
 )
 
-func should_load_tapes_using_ROM_routine(t *pt.T) {
+type tape_test_t struct {
+	test_suite_t
+}
+
+func (s *tape_test_t) should_load_tapes_using_ROM_routine() {
 	err := speccy.LoadTape("testdata/hello.tap")
-	t.Nil(err)
+	s.Nil(err)
 
 	<-speccy.TapeDrive().LoadComplete()
 
-	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func should_support_accelerated_loading(t *pt.T) {
+func (s *tape_test_t) should_support_accelerated_loading() {
 	start := time.Nanoseconds()
 	speccy.TapeDrive().AcceleratedLoad = true
 	err := speccy.LoadTape("testdata/hello.tap")
-	t.Nil(err)
+	s.Nil(err)
 
 	<-speccy.TapeDrive().LoadComplete()
 
-	t.True((time.Nanoseconds() - start) < 10e9)
-	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	s.True((time.Nanoseconds() - start) < 10e9)
+	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
 func TestTapeFeatures(t *testing.T) {
-	pt.Describe(
+	prettytest.RunWithFormatter(
 		t,
-		"The emulator",
-		//		should_load_tapes_using_ROM_routine,
-		should_support_accelerated_loading,
-
-		before,
-		after,
+		&prettytest.BDDFormatter{"The tape"},
+		new(tape_test_t),
 	)
 }

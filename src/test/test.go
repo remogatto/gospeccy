@@ -8,7 +8,7 @@ import (
 	"spectrum"
 	"spectrum/formats"
 	"prettytest"
- )
+)
 
  var (
 	speccy *spectrum.Spectrum48k
@@ -25,23 +25,30 @@ type renderer struct {
 func (r *renderer) render(speccyRects []sdl.Rect) {
 	for _, rect := range speccyRects {
 		r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
-		// r.appSurface.UpdateRect(int32(rect.X+r.config.consoleX), int32(rect.Y+r.config.consoleY), uint32(rect.W), uint32(rect.H))
+		r.appSurface.UpdateRect(int32(rect.X), int32(rect.Y), uint32(rect.W), uint32(rect.H))
 	}
-	r.appSurface.Flip()
-}
-
-func initDisplay() {
-	r.width = spectrum.TotalScreenWidth*2
-	r.height = spectrum.TotalScreenHeight*2
-
-	sdlScreen := spectrum.NewSDLScreen2x(app)
-	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
-	r.speccySurface = sdlScreen
-
-	r.appSurface = sdl.SetVideoMode(r.width, r.height, 32, 0)
 }
 
 type testSuite struct { prettytest.Suite }
+
+func (t *testSuite) beforeAll() {
+	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
+		app.PrintfMsg("%s", sdl.GetError())
+		app.RequestExit()
+		<-app.HasTerminated
+		sdl.Quit()
+	}
+
+	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
+
+	r.width = spectrum.TotalScreenWidth*2
+	r.height = spectrum.TotalScreenHeight*2
+	r.appSurface = sdl.SetVideoMode(r.width, r.height, 32, 0)
+}
+
+func (t *testSuite) afterAll() {
+	sdl.Quit()
+}
 
 func (t *testSuite) before() {
 	StartFullEmulation()
@@ -67,16 +74,9 @@ func StartFullEmulation() {
 		panic(err)
 	}
 
-	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
-		app.PrintfMsg("%s", sdl.GetError())
-		app.RequestExit()
-		<-app.HasTerminated
-		sdl.Quit()
-	}
-
-	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
-
-	initDisplay()
+	sdlScreen := spectrum.NewSDLScreen2x(app)
+	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
+	r.speccySurface = sdlScreen
 
 	audio, err := spectrum.NewSDLAudio(app)
 
@@ -89,11 +89,22 @@ func StartFullEmulation() {
 	go speccy.EmulatorLoop()
 
 	ticker := time.NewTicker(1e9/int64(60))
+	evtLoop := app.NewEventLoop()
 
 	go func() {
 		for {
 			select {
+			case <-evtLoop.Pause:
+				evtLoop.Pause <- 0
+
+			case <-evtLoop.Terminate:
+				close(r.speccySurface.UpdatedRectsCh())
+				ticker.Stop()
+				evtLoop.Terminate <- 0
+				return
+
 			case speccyRects = <-r.speccySurface.UpdatedRectsCh():
+
 			case <-ticker.C: r.render(speccyRects)
 			}
 		}

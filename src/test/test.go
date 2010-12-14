@@ -43,15 +43,6 @@ func initDisplay() {
 
 type testSuite struct { prettytest.Suite }
 
-// func (t *testSuite) beforeAll() {
-// 	StartFullEmulation()
-// }
-
-// func (t *testSuite) afterAll() {
-// 	app.RequestExit()
-// 	<-app.HasTerminated
-// }
-
 func (t *testSuite) before() {
 	StartFullEmulation()
 }

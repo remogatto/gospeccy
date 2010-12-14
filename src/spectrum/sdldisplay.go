@@ -206,8 +206,7 @@ func (display *SDLScreen) render(screen *DisplayData) {
 		screen.completionTime_orNil <- time.Nanoseconds()
 	}
 
-//	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1)
-
+	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, display.updatedRectsCh)
 	unscaledDisplay.releaseMemory()
 }
 
@@ -297,8 +296,6 @@ func (display *SDLScreen2x) render(screen *DisplayData) {
 	if screen.completionTime_orNil != nil {
 		screen.completionTime_orNil <- time.Nanoseconds()
 	}
-
-//	display.updatedRectsCh <- *unscaledDisplay.changedRegions
 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, display.updatedRectsCh)
 	unscaledDisplay.releaseMemory()

@@ -11,20 +11,46 @@ import (
  )
 
  var (
-	 speccy *spectrum.Spectrum48k
-	 app    *spectrum.Application
+	speccy *spectrum.Spectrum48k
+	app    *spectrum.Application
+	r renderer
  )
+
+type renderer struct {
+	appSurface *sdl.Surface
+	speccySurface *spectrum.SDLScreen2x
+	width, height int
+}
+
+func (r *renderer) render(speccyRects []sdl.Rect) {
+	for _, rect := range speccyRects {
+		r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
+		// r.appSurface.UpdateRect(int32(rect.X+r.config.consoleX), int32(rect.Y+r.config.consoleY), uint32(rect.W), uint32(rect.H))
+	}
+	r.appSurface.Flip()
+}
+
+func initDisplay() {
+	r.width = spectrum.TotalScreenWidth*2
+	r.height = spectrum.TotalScreenHeight*2
+
+	sdlScreen := spectrum.NewSDLScreen2x(app)
+	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
+	r.speccySurface = sdlScreen
+
+	r.appSurface = sdl.SetVideoMode(r.width, r.height, 32, 0)
+}
 
 type testSuite struct { prettytest.Suite }
 
-func (t *testSuite) beforeAll() {
-	StartFullEmulation()
-}
+// func (t *testSuite) beforeAll() {
+// 	StartFullEmulation()
+// }
 
-func (t *testSuite) afterAll() {
-	app.RequestExit()
-	<-app.HasTerminated
-}
+// func (t *testSuite) afterAll() {
+// 	app.RequestExit()
+// 	<-app.HasTerminated
+// }
 
 func (t *testSuite) before() {
 	StartFullEmulation()
@@ -35,66 +61,11 @@ func (t *testSuite) after() {
 	<-app.HasTerminated
 }
 
-func emulatorLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k) {
-	app = evtLoop.App()
-
-	fps := <-speccy.FPS
-	ticker := time.NewTicker(int64(1e9 / fps))
-
-	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
-	{
-		completionTime := make(chan int64)
-		speccy.CommandChannel <- spectrum.Cmd_RenderFrame{completionTime}
-
-		go func() {
-			start := app.CreationTime
-			end := <-completionTime
-			if app.Verbose {
-				app.PrintfMsg("first frame latency: %d ms", (end-start)/1e6)
-			}
-		}()
-	}
-
-	for {
-		select {
-		case <-evtLoop.Pause:
-			ticker.Stop()
-			spectrum.Drain(ticker)
-
-			close(speccy.ROMLoaded())
-
-			evtLoop.Pause <- 0
-
-		case <-evtLoop.Terminate:
-			// Terminate this Go routine
-			if app.Verbose {
-				app.PrintfMsg("emulator loop: exit")
-			}
-			evtLoop.Terminate <- 0
-			return
-
-		case <-ticker.C:
-			speccy.CommandChannel <- spectrum.Cmd_RenderFrame{}
-			speccy.CommandChannel <- spectrum.Cmd_CheckSystemROMLoaded{}
-
-		case FPS_new := <-speccy.FPS:
-			if FPS_new != fps && FPS_new > 0 {
-				if app.Verbose {
-					app.PrintfMsg("setting FPS to %f", FPS_new)
-				}
-				ticker.Stop()
-				spectrum.Drain(ticker)
-				// ticker = time.NewTicker(int64(1e9 / FPS_new))
-				ticker = time.NewTicker(1)
-				fps = FPS_new
-			}
-
-		}
-	}
-}
-
 func StartFullEmulation() {
-	var err os.Error
+	var (
+		err os.Error
+		speccyRects []sdl.Rect
+	)
 
 	app = spectrum.NewApplication()
 
@@ -114,7 +85,7 @@ func StartFullEmulation() {
 
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
 
-	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{spectrum.NewSDLScreen(app)}
+	initDisplay()
 
 	audio, err := spectrum.NewSDLAudio(app)
 
@@ -125,6 +96,17 @@ func StartFullEmulation() {
 	}
 
 	go speccy.EmulatorLoop()
+
+	ticker := time.NewTicker(1e9/int64(60))
+
+	go func() {
+		for {
+			select {
+			case speccyRects = <-r.speccySurface.UpdatedRectsCh():
+			case <-ticker.C: r.render(speccyRects)
+			}
+		}
+	}()
 
 	<-speccy.ROMLoaded()
 }

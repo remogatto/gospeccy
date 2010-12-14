@@ -77,6 +77,7 @@ func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
  		if cli.Paused {
 			for _, rect := range speccyRects {
 				r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
+				r.appSurface.UpdateRect(int32(rect.X), int32(rect.Y), uint32(rect.W), uint32(rect.H))
 			}
 		} else {
 			for _, rect := range speccyRects {
@@ -89,6 +90,7 @@ func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
 				r.appSurface.Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
 				r.appSurface.Blit(&sdl.Rect{rect.X, rect.Y + int16(r.cliY), 0, 0}, r.cliSurface.GetSurface(), &rect)
 			}
+			r.appSurface.Flip()
 		}
 	} else {
 		if !cli.Paused {
@@ -194,13 +196,13 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 						if (keyName == "left shift") && (e.Type == sdl.KEYDOWN) {
 							toUpper = true
 						} else if (keyName == "up") && (e.Type == sdl.KEYDOWN) {
-							cli.HistoryCh() <- clingon.HISTORY_PREV
+							cli.ReadlineCh() <- clingon.HISTORY_PREV
 						} else if (keyName == "down") && (e.Type == sdl.KEYDOWN) {
-							cli.HistoryCh() <- clingon.HISTORY_NEXT
+							cli.ReadlineCh() <- clingon.HISTORY_NEXT
 						} else if (keyName == "left") && (e.Type == sdl.KEYDOWN) {
-							cli.CursorCh() <- clingon.CURSOR_LEFT
+							cli.ReadlineCh() <- clingon.CURSOR_LEFT
 						} else if (keyName == "right") && (e.Type == sdl.KEYDOWN) {
-							cli.CursorCh() <- clingon.CURSOR_RIGHT
+							cli.ReadlineCh() <- clingon.CURSOR_RIGHT
 						} else {
 							unicode := e.Keysym.Unicode
 							if unicode > 0 {

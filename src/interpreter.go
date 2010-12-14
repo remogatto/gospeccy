@@ -35,10 +35,10 @@ type Interpreter struct {}
 
 func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
 	if command == "" {
-		return i.run(console, w, "help()")
+		return i.run(console, w, "", "help()")
 		
 	}
-	return i.run(console, w, command)
+	return i.run(console, w, "", command)
 }
 
 // ================
@@ -490,7 +490,7 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	var buf bytes.Buffer
 
 	buf.Write(data)
-	run(cli, w, fileName, buf.String())
+	i.run(cli, w, fileName, buf.String())
 
 	return nil
 }

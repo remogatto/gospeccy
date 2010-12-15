@@ -1,11 +1,11 @@
 package formats
 
 import (
-	"bytes"
-	"io/ioutil"
-	"path"
-	"prettytest"
 	"testing"
+	"spectrum/prettytest"
+	"path"
+	"io/ioutil"
+	"bytes"
 )
 
 const testdataDir = "testdata"
@@ -15,11 +15,7 @@ var (
 	tapProgramFn = path.Join(testdataDir, "hello.tap")
 )
 
-type tap_suite_t struct {
-	prettytest.Suite
-}
-
-func (s *tap_suite_t) testReadTAP() {
+func testReadTAP(assert *prettytest.T) {
 	data, _ := ioutil.ReadFile(tapCodeFn)
 	tap := NewTAP()
 	n, err := tap.Read(data)
@@ -27,64 +23,64 @@ func (s *tap_suite_t) testReadTAP() {
 	headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 	dataBlock := tap.blocks.At(1).(tapBlockData)
 
-	s.Nil(err)
-	s.Equal(27, n)
+	assert.Nil(err)
+	assert.Equal(27, n)
 
-	s.NotNil(headerBlock)
-	s.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
-	s.Equal("ROM       ", headerBlock.filename)
-	s.Equal(uint16(2), headerBlock.length)
-	s.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+	assert.NotNil(headerBlock)
+	assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
+	assert.Equal("ROM       ", headerBlock.filename)
+	assert.Equal(uint16(2), headerBlock.length)
+	assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
 }
 
-func (s *tap_suite_t) testReadTAPError() {
+func testReadTAPError(assert *prettytest.T) {
 	tap := NewTAP()
 	_, err := tap.Read(nil)
-	s.NotNil(err)
+	assert.NotNil(err)
 }
 
 // SAVE "ROM" CODE 0,2
-func (s *tap_suite_t) testReadTAPCodeFile() {
+func testReadTAPCodeFile(assert *prettytest.T) {
 	data, _ := ioutil.ReadFile(tapCodeFn)
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	s.Nil(err)
+	assert.Nil(err)
 
-	if !s.Failed() {
+	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		s.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
-		s.Equal(uint16(0), headerBlock.par1)
-		s.Equal(uint16(0x8000), headerBlock.par2)
+		assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
+		assert.Equal(uint16(0), headerBlock.par1)
+		assert.Equal(uint16(0x8000), headerBlock.par2)
 
-		s.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
-		s.Equal(byte(0xf3), dataBlock[1])
-		s.Equal(byte(0xaf), dataBlock[2])
-		s.Equal(byte(0xa3), dataBlock[3])
+		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		assert.Equal(byte(0xf3), dataBlock[1])
+		assert.Equal(byte(0xaf), dataBlock[2])
+		assert.Equal(byte(0xa3), dataBlock[3])
 	}
 }
 
 // 10 PRINT "Hello World"
 // SAVE "HELLO"
-func (s *tap_suite_t) testReadTAPProgramFile() {
+func testReadTAPProgramFile(assert *prettytest.T) {
 	data, _ := ioutil.ReadFile(tapProgramFn)
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	s.Nil(err)
+	assert.Nil(err)
 
-	if !s.Failed() {
+	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		s.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
-		s.Equal(uint16(0x8000), headerBlock.par1)
-		s.Equal(uint16(0x14), headerBlock.par2)
+		assert.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
+		assert.Equal(uint16(0x8000), headerBlock.par1)
+		assert.Equal(uint16(0x14), headerBlock.par2)
 
-		s.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
-		s.True(bytes.Equal([]byte{
+		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		assert.True(bytes.Equal([]byte{
 			0x00, 0x0a,
 			0x10, 0x00,
 			0x20, 0xf5,
@@ -101,71 +97,86 @@ func (s *tap_suite_t) testReadTAPProgramFile() {
 	}
 }
 
-func (s *tap_suite_t) testReadTAPWithCustomLoader() {
+func testReadTAPWithCustomLoader(assert *prettytest.T) {
 	data, _ := ioutil.ReadFile("testdata/fire.tap")
 	tap := NewTAP()
 	_, err := tap.Read(data)
 
-	s.Nil(err)
+	assert.Nil(err)
 
-	if !s.Failed() {
+	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		s.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
-		s.Equal(uint16(0x8000), headerBlock.par1)
-		s.Equal(uint16(0x14), headerBlock.par2)
+		assert.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
+		assert.Equal(uint16(0x8000), headerBlock.par1)
+		assert.Equal(uint16(0x14), headerBlock.par2)
 
-		s.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
 	}
 }
 
-func (s *tap_suite_t) testNewTAPFromFile() {
+func testNewTAPFromFile(assert *prettytest.T) {
 	tap, err := NewTAPFromFile(tapCodeFn)
-	s.Nil(err)
-	if !s.Failed() {
+	assert.Nil(err)
+	if !assert.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
 
-		s.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
-		s.Equal(uint16(0), headerBlock.par1)
-		s.Equal(uint16(0x8000), headerBlock.par2)
+		assert.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
+		assert.Equal(uint16(0), headerBlock.par1)
+		assert.Equal(uint16(0x8000), headerBlock.par2)
 
-		s.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
-		s.Equal(byte(0xf3), dataBlock[1])
-		s.Equal(byte(0xaf), dataBlock[2])
-		s.Equal(byte(0xa3), dataBlock[3])
+		assert.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
+		assert.Equal(byte(0xf3), dataBlock[1])
+		assert.Equal(byte(0xaf), dataBlock[2])
+		assert.Equal(byte(0xa3), dataBlock[3])
 	}
+}
+
+func TestLoadTAP(t *testing.T) {
+	prettytest.Run(
+		t,
+		testNewTAPFromFile,
+		testReadTAP,
+		testReadTAPError,
+		testReadTAPCodeFile,
+		testReadTAPProgramFile,
+		testReadTAPWithCustomLoader,
+	)
 }
 
 var tap *TAP
 
-func (s *tap_suite_t) before() {
+func before(assert *prettytest.T) {
 	data, _ := ioutil.ReadFile(tapProgramFn)
 	tap = NewTAP()
 	tap.Read(data)
 }
 
-func (s *tap_suite_t) testTAPAt() {
-	s.Equal(byte(0x00), tap.At(0))
-	s.Equal(byte(0xff), tap.At(0x13))
+func testTAPAt(assert *prettytest.T) {
+	assert.Equal(byte(0x00), tap.At(0))
+	assert.Equal(byte(0xff), tap.At(0x13))
 }
 
-func (s *tap_suite_t) testTAPGetBlock() {
+func testTAPGetBlock(assert *prettytest.T) {
 	_, ok := tap.GetBlock(0).(*tapBlockHeader)
-	s.True(ok)
+	assert.True(ok)
 	_, ok = tap.GetBlock(1).(tapBlockData)
-	s.True(ok)
+	assert.True(ok)
 }
 
-func (s *tap_suite_t) testTAPBlockLen() {
-	s.Equal(19, tap.GetBlock(0).Len())
+func testTAPBlockLen(assert *prettytest.T) {
+	assert.Equal(19, tap.GetBlock(0).Len())
 }
 
-func TestTAP(t *testing.T) {
+func TestTAPAccessors(t *testing.T) {
 	prettytest.Run(
 		t,
-		new(tap_suite_t),
+		before,
+		testTAPAt,
+		testTAPBlockLen,
+		testTAPGetBlock,
 	)
-}
 
+}

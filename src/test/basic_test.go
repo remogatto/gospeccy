@@ -1,22 +1,21 @@
 package test
 
 import (
-	"prettytest"
 	"testing"
+	pt "spectrum/prettytest"
 )
 
-type basic_suite_t struct {
-	test_suite_t
-}
-
-func (s *basic_suite_t) should_load_system_ROM() {
-	s.True(screenEqualTo("testdata/system_rom_loaded.sna"))
+func should_load_system_ROM(t *pt.T) {
+	t.True(screenEqualTo("testdata/system_rom_loaded.sna"))
 }
 
 func TestBasicFeature(t *testing.T) {
-	prettytest.RunWithFormatter(
+	pt.Describe(
 		t,
-		&prettytest.BDDFormatter{"Basic emulator tests"},
-		new(basic_suite_t),
+		"The emulator",
+		should_load_system_ROM,
+
+		before,
+		after,
 	)
 }

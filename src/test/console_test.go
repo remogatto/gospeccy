@@ -1,15 +1,15 @@
 package test
 
 import (
-	"container/vector"
+	"testing"
 	"fmt"
 	"os"
-	"prettytest"
 	"regexp"
+	"time"
+	"container/vector"
+	pt "spectrum/prettytest"
 	"spectrum"
 	"spectrum/console"
-	"testing"
-	"time"
 )
 
 type testMessageOutput struct {
@@ -44,127 +44,126 @@ func (out *testMessageOutput) PrintfMsg(format string, a ...interface{}) {
 
 }
 
-type console_suite_t struct {
-	prettytest.Suite
-}
-
-func (s *console_suite_t) beforeAll() {
-	println("func (s *console_suite_t) beforeAll()")
-	StartFullEmulation()
-
+func beforeAllConsole(t *pt.T) {
+	beforeAll(t)
 	console.IgnoreStartupScript = true
 	console.Init(app, speccy)
 }
 
-func (s *console_suite_t) afterAll() {
-	println("func (s *console_suite_t) after()")
-	app.RequestExit()
-	<-app.HasTerminated
-}
-
-func (s *console_suite_t) before() {
-	println("func (s *console_suite_t) before()")
+func beforeConsole(t *pt.T) {
 	app.SetMessageOutput(&testMessageOutput{new(vector.StringVector)})
 	messageOutput = app.GetMessageOutput().(*testMessageOutput)
 }
 
-func (s *console_suite_t) should_allow_loading_tapes_using_ROM_routine() {
+func should_allow_loading_tapes_using_ROM_routine(t *pt.T) {
 	err := console.RunString(fmt.Sprintf("load(\"%s\")", "testdata/hello.tap"))
-	s.Nil(err)
+	t.Nil(err)
 
 	<-speccy.TapeDrive().LoadComplete()
 
-	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func (s *console_suite_t) should_allow_accelerated_tape_load() {
+func should_allow_accelerated_tape_load(t *pt.T) {
 	err := console.RunString("acceleratedLoad(true)")
-	s.Nil(err)
+	t.Nil(err)
 
 	start := time.Nanoseconds()
 	err = console.RunString(fmt.Sprintf("load(\"%s\")", "testdata/hello.tap"))
-	s.Nil(err)
+	t.Nil(err)
 
 	<-speccy.TapeDrive().LoadComplete()
 
 	err = console.RunString("acceleratedLoad(false)")
 
-	s.True((time.Nanoseconds() - start) < 10e9)
-	s.False(speccy.TapeDrive().AcceleratedLoad)
-	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	t.True((time.Nanoseconds() - start) < 10e9)
+	t.False(speccy.TapeDrive().AcceleratedLoad)
+	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func (s *console_suite_t) should_honor_convention_over_configuration_when_loading_files() {
+func should_honor_convention_over_configuration_when_loading_files(t *pt.T) {
 	spectrum.DefaultUserDir = "testdata/"
 
 	err := console.RunString(fmt.Sprintf("load(\"%s\")", "hello.tap"))
-	s.Nil(err)
-	s.Equal(0, messageOutput.strings.Len())
+	t.Nil(err)
+	t.Equal(0, messageOutput.strings.Len())
 
 	<-speccy.TapeDrive().LoadComplete()
-	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 
 	err = console.RunString(fmt.Sprintf("load(\"%s\")", "hello.zip"))
-	s.Nil(err)
-	s.Equal(0, messageOutput.strings.Len())
-	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	t.Nil(err)
+	t.Equal(0, messageOutput.strings.Len())
+	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 
 	err = console.RunString(fmt.Sprintf("load(\"%s\")", "hello.sna"))
-	s.Nil(err)
-	s.Equal(0, messageOutput.strings.Len())
-	s.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
+	t.Nil(err)
+	t.Equal(0, messageOutput.strings.Len())
+	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func (s *console_suite_t) should_allow_reset() {
+func should_allow_reset(t *pt.T) {
 	err := console.RunString("reset()")
-	s.Nil(err)
+	t.Nil(err)
 
 	<-speccy.ROMLoaded()
 
-	s.True(screenEqualTo("testdata/system_rom_loaded.sna"))
+	t.True(screenEqualTo("testdata/system_rom_loaded.sna"))
 }
 
-func (s *console_suite_t) should_print_help() {
+func should_print_help(t *pt.T) {
 	err := console.RunString("help()")
 	matched, _ := regexp.MatchString("Available commands:\n *.* *\n", messageOutput.String())
 
-	s.Nil(err)
-	s.True(matched)
+	t.Nil(err)
+	t.True(matched)
 }
 
-func (s *console_suite_t) should_allow_printing_strings() {
+func should_allow_printing_strings(t *pt.T) {
 	err := console.RunString(fmt.Sprintf("puts(\"%s\")", "Hello World!"))
 
-	s.Nil(err)
-	s.Equal("Hello World!\n", messageOutput.String())
+	t.Nil(err)
+	t.Equal("Hello World!\n", messageOutput.String())
 }
 
-func (s *console_suite_t) should_allow_taking_screenshots() {
+func should_allow_taking_screenshots(t *pt.T) {
 	defer os.Remove("testdata/screenshot.scr")
 
 	err := console.RunString(fmt.Sprintf("screenshot(\"%s\")", "testdata/screenshot.scr"))
 
-	s.Nil(err)
-	s.Equal(0, messageOutput.strings.Len())
-	s.Path("testdata/screenshot.scr")
+	t.Nil(err)
+	t.Equal(0, messageOutput.strings.Len())
+	t.Path("testdata/screenshot.scr")
 }
 
-func (s *console_suite_t) should_allow_loading_scripts() {
+func should_allow_loading_scripts(t *pt.T) {
 	err := console.RunString(fmt.Sprintf("script(\"%s\")", "testdata/script"))
 
-	s.True(err == nil)
-	s.Equal(2, messageOutput.strings.Len())
-	s.Equal("Hello World!\n", messageOutput.String())
+	t.True(err == nil)
+	t.Equal(2, messageOutput.strings.Len())
+	t.Equal("Hello World!\n", messageOutput.String())
 }
 
-func (s *console_suite_t) should_allow_keypress_events() {
-	s.Pending()
+func should_allow_keypress_events(t *pt.T) {
+	t.Pending()
 }
 
 func TestConsoleFeatures(t *testing.T) {
-	prettytest.RunWithFormatter(
+	pt.Describe(
 		t,
-		&prettytest.BDDFormatter{"The console"},
-		new(console_suite_t),
+		"The console",
+		should_allow_loading_tapes_using_ROM_routine,
+		should_allow_accelerated_tape_load,
+		should_honor_convention_over_configuration_when_loading_files,
+		should_allow_reset,
+		should_print_help,
+		should_allow_printing_strings,
+		should_allow_taking_screenshots,
+		should_allow_loading_scripts,
+		should_allow_keypress_events,
+
+		beforeAllConsole,
+		beforeConsole,
+		afterAll,
 	)
 }

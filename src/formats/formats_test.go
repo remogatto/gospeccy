@@ -1,47 +1,51 @@
 package formats
 
 import (
-	"prettytest"
 	"testing"
+	pt "spectrum/prettytest"
 )
 
-type formats_suite_t struct {
-	prettytest.Suite
-}
-
-func (s *formats_suite_t) testReadProgramSnapshot() {
+func testReadProgramSnapshot(t *pt.T) {
 	program, err := ReadProgram("testdata/fire.sna")
 	_, ok := program.(Snapshot)
 
-	s.Nil(err)
-	s.True(ok)
+	t.Nil(err)
+	t.True(ok)
 }
 
-func (s *formats_suite_t) testReadProgramTape() {
+func testReadProgramTape(t *pt.T) {
 	program, err := ReadProgram("testdata/fire.tap")
 	_, ok := program.(*TAP)
 
-	s.Nil(err)
-	s.True(ok)
+	t.Nil(err)
+	t.True(ok)
 }
 
-func (s *formats_suite_t) testReadProgramZIP() {
+func testReadProgramZIP(t *pt.T) {
 	program, err := ReadProgram("testdata/fire.sna.zip")
 	_, ok := program.(Snapshot)
 
-	s.Nil(err)
-	s.True(ok)
+	t.Nil(err)
+	t.True(ok)
 }
 
-func (s *formats_suite_t) testReadSnapshot() {
-	_, err := ReadProgram("testdata/fire.sna")
-	s.Nil(err)
-}
-
-func TestRead(t *testing.T) {
-	prettytest.Run(
+func TestReadProgram(t *testing.T) {
+	pt.Run(
 		t,
-		new(formats_suite_t),
+		testReadProgramSnapshot,
+		testReadProgramTape,
+		testReadProgramZIP,
 	)
 }
 
+func testReadSnapshot(t *pt.T) {
+	_, err := ReadProgram("testdata/fire.sna")
+	t.Nil(err)
+}
+
+func TestReadSnapshot(t *testing.T) {
+	pt.Run(
+		t,
+		testReadSnapshot,
+	)
+}

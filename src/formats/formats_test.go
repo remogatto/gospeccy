@@ -1,11 +1,13 @@
 package formats
 
 import (
+	"prettytest"
 	"testing"
-	pt "spectrum/prettytest"
 )
 
-func testReadProgramSnapshot(t *pt.T) {
+type testSuite struct { prettytest.Suite }
+
+func (t *testSuite) testReadProgramSnapshot() {
 	program, err := ReadProgram("testdata/fire.sna")
 	_, ok := program.(Snapshot)
 
@@ -13,7 +15,7 @@ func testReadProgramSnapshot(t *pt.T) {
 	t.True(ok)
 }
 
-func testReadProgramTape(t *pt.T) {
+func (t *testSuite) testReadProgramTape() {
 	program, err := ReadProgram("testdata/fire.tap")
 	_, ok := program.(*TAP)
 
@@ -21,7 +23,7 @@ func testReadProgramTape(t *pt.T) {
 	t.True(ok)
 }
 
-func testReadProgramZIP(t *pt.T) {
+func (t *testSuite) testReadProgramZIP() {
 	program, err := ReadProgram("testdata/fire.sna.zip")
 	_, ok := program.(Snapshot)
 
@@ -29,23 +31,11 @@ func testReadProgramZIP(t *pt.T) {
 	t.True(ok)
 }
 
-func TestReadProgram(t *testing.T) {
-	pt.Run(
-		t,
-		testReadProgramSnapshot,
-		testReadProgramTape,
-		testReadProgramZIP,
-	)
-}
-
-func testReadSnapshot(t *pt.T) {
+func (t *testSuite) testReadSnapshot() {
 	_, err := ReadProgram("testdata/fire.sna")
 	t.Nil(err)
 }
 
-func TestReadSnapshot(t *testing.T) {
-	pt.Run(
-		t,
-		testReadSnapshot,
-	)
+func TestFormats(t *testing.T) {
+	prettytest.Run(t, new(testSuite))
 }

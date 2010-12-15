@@ -1,478 +1,478 @@
-/*
+// /*
 
-Copyright (c) 2010 Andrea Fazzi
+// Copyright (c) 2010 Andrea Fazzi
 
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
 
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-*/
+// */
 
 package spectrum
 
-import (
-	"testing"
-	"io/ioutil"
-	"fmt"
-	"strings"
-	"strconv"
-	"os"
-	"bufio"
-	"container/vector"
-	"spectrum/formats"
-)
-
-var (
-	events        *vector.StringVector = new(vector.StringVector)
-	initialMemory [0x10000]byte
-	dirtyMemory   [0x10000]bool
-)
-
-func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
-	var halted byte
-
-	if z80.halted {
-		halted = 1
-	} else {
-		halted = 0
-	}
-
-	out.Push(fmt.Sprintf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
-		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc))
-	out.Push(fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|byte(z80.r&0x7f),
-		z80.iff1, z80.iff2, z80.im, halted, z80.tstates))
-}
-
-func (z80 *Z80) DumpMemory(out *vector.StringVector) {
-	var i uint
-	for i = 0; i < 0x10000; i++ {
-		if z80.memory.Read(uint16(i)) == initialMemory[uint16(i)] {
-			continue
-		}
-
-		line := fmt.Sprintf("%04x ", i)
-
-		for (i < 0x10000) && (z80.memory.Read(uint16(i)) != initialMemory[uint16(i)] || (dirtyMemory[uint16(i)])) {
-			line += fmt.Sprintf("%02x ", z80.memory.Read(uint16(i)))
-			i++
-		}
-
-		line += fmt.Sprintf("-1\n")
-		out.Push(line)
-	}
-}
-
-type testMemory struct {
-	data [0x10000]byte
-	z80  *Z80
-}
-
-func (memory *testMemory) frame_begin() {
-}
-
-func (memory *testMemory) getDirtyScreen() []bool {
-	return nil
-}
-
-func (memory *testMemory) readByteInternal(addr uint16) byte {
-	events.Push(fmt.Sprintf("%5d MR %04x %02x\n", memory.z80.tstates, addr, memory.data[addr]))
-	return memory.data[addr]
-}
-
-func (memory *testMemory) readByte(addr uint16) byte {
-	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, addr))
-	memory.z80.tstates += 3
-	return memory.readByteInternal(addr)
-}
-
-func (memory *testMemory) writeByte(address uint16, b byte) {
-	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
-	memory.z80.tstates += 3
-	memory.writeByteInternal(address, b)
-}
-
-func (memory *testMemory) writeByteInternal(address uint16, b byte) {
-	events.Push(fmt.Sprintf("%5d MW %04x %02x\n", memory.z80.tstates, address, b))
-	memory.data[address] = b
-
-	if b == 0 {
-		dirtyMemory[address] = true
-	}
-}
-
-func (memory *testMemory) contendRead(addr uint16, time uint) {
-	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, addr))
-	memory.z80.tstates += time
-}
-
-func (memory *testMemory) contendReadNoMreq(address uint16, time uint) {
-	memory.contendRead(address, time)
-}
-
-func (memory *testMemory) contendReadNoMreq_loop(address uint16, time uint, count uint) {
-	for i := uint(0); i < count; i++ {
-		memory.contendReadNoMreq(address, time)
-	}
-}
+// import (
+// 	"testing"
+// 	"io/ioutil"
+// 	"fmt"
+// 	"strings"
+// 	"strconv"
+// 	"os"
+// 	"bufio"
+// 	"container/vector"
+// 	"spectrum/formats"
+// )
+
+// var (
+// 	events        *vector.StringVector = new(vector.StringVector)
+// 	initialMemory [0x10000]byte
+// 	dirtyMemory   [0x10000]bool
+// )
+
+// func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
+// 	var halted byte
+
+// 	if z80.halted {
+// 		halted = 1
+// 	} else {
+// 		halted = 0
+// 	}
+
+// 	out.Push(fmt.Sprintf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
+// 		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc))
+// 	out.Push(fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|byte(z80.r&0x7f),
+// 		z80.iff1, z80.iff2, z80.im, halted, z80.tstates))
+// }
+
+// func (z80 *Z80) DumpMemory(out *vector.StringVector) {
+// 	var i uint
+// 	for i = 0; i < 0x10000; i++ {
+// 		if z80.memory.Read(uint16(i)) == initialMemory[uint16(i)] {
+// 			continue
+// 		}
+
+// 		line := fmt.Sprintf("%04x ", i)
+
+// 		for (i < 0x10000) && (z80.memory.Read(uint16(i)) != initialMemory[uint16(i)] || (dirtyMemory[uint16(i)])) {
+// 			line += fmt.Sprintf("%02x ", z80.memory.Read(uint16(i)))
+// 			i++
+// 		}
+
+// 		line += fmt.Sprintf("-1\n")
+// 		out.Push(line)
+// 	}
+// }
+
+// type testMemory struct {
+// 	data [0x10000]byte
+// 	z80  *Z80
+// }
+
+// func (memory *testMemory) frame_begin() {
+// }
+
+// func (memory *testMemory) getDirtyScreen() []bool {
+// 	return nil
+// }
+
+// func (memory *testMemory) readByteInternal(addr uint16) byte {
+// 	events.Push(fmt.Sprintf("%5d MR %04x %02x\n", memory.z80.tstates, addr, memory.data[addr]))
+// 	return memory.data[addr]
+// }
+
+// func (memory *testMemory) readByte(addr uint16) byte {
+// 	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, addr))
+// 	memory.z80.tstates += 3
+// 	return memory.readByteInternal(addr)
+// }
+
+// func (memory *testMemory) writeByte(address uint16, b byte) {
+// 	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
+// 	memory.z80.tstates += 3
+// 	memory.writeByteInternal(address, b)
+// }
+
+// func (memory *testMemory) writeByteInternal(address uint16, b byte) {
+// 	events.Push(fmt.Sprintf("%5d MW %04x %02x\n", memory.z80.tstates, address, b))
+// 	memory.data[address] = b
+
+// 	if b == 0 {
+// 		dirtyMemory[address] = true
+// 	}
+// }
+
+// func (memory *testMemory) contendRead(addr uint16, time uint) {
+// 	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, addr))
+// 	memory.z80.tstates += time
+// }
+
+// func (memory *testMemory) contendReadNoMreq(address uint16, time uint) {
+// 	memory.contendRead(address, time)
+// }
+
+// func (memory *testMemory) contendReadNoMreq_loop(address uint16, time uint, count uint) {
+// 	for i := uint(0); i < count; i++ {
+// 		memory.contendReadNoMreq(address, time)
+// 	}
+// }
 
-func (memory *testMemory) contendWriteNoMreq(address uint16, time uint) {
-	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
-	memory.z80.tstates += time
-}
+// func (memory *testMemory) contendWriteNoMreq(address uint16, time uint) {
+// 	events.Push(fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
+// 	memory.z80.tstates += time
+// }
 
-func (memory *testMemory) contendWriteNoMreq_loop(address uint16, time uint, count uint) {
-	for i := uint(0); i < count; i++ {
-		memory.contendWriteNoMreq(address, time)
-	}
-}
+// func (memory *testMemory) contendWriteNoMreq_loop(address uint16, time uint, count uint) {
+// 	for i := uint(0); i < count; i++ {
+// 		memory.contendWriteNoMreq(address, time)
+// 	}
+// }
 
-func (memory *testMemory) renderScreen() {
+// func (memory *testMemory) renderScreen() {
 
-}
+// }
 
-func (memory *testMemory) Read(address uint16) byte {
-	return memory.data[address]
-}
+// func (memory *testMemory) Read(address uint16) byte {
+// 	return memory.data[address]
+// }
 
-func (memory *testMemory) Write(address uint16, value byte) {
-	memory.data[address] = value
-}
+// func (memory *testMemory) Write(address uint16, value byte) {
+// 	memory.data[address] = value
+// }
 
-func (memory *testMemory) Data() *[0x10000]byte {
-	return &memory.data
-}
+// func (memory *testMemory) Data() *[0x10000]byte {
+// 	return &memory.data
+// }
 
-func (memory *testMemory) reset() {
-	for i := 0; i < 0x10000; i++ {
-		memory.data[i] = 0
-	}
-}
+// func (memory *testMemory) reset() {
+// 	for i := 0; i < 0x10000; i++ {
+// 		memory.data[i] = 0
+// 	}
+// }
 
-type testPort struct {
-	z80 *Z80
-}
+// type testPort struct {
+// 	z80 *Z80
+// }
 
 
-func (p *testPort) readPortInternal(address uint16, contend bool) byte {
-	var r byte = byte(address >> 8)
-	p.contendPortPreio(address)
+// func (p *testPort) readPortInternal(address uint16, contend bool) byte {
+// 	var r byte = byte(address >> 8)
+// 	p.contendPortPreio(address)
 
-	events.Push(fmt.Sprintf("%5d PR %04x %02x\n", p.z80.tstates, address, r))
+// 	events.Push(fmt.Sprintf("%5d PR %04x %02x\n", p.z80.tstates, address, r))
 
-	p.contendPortPostio(address)
-	return r
-}
+// 	p.contendPortPostio(address)
+// 	return r
+// }
 
-func (p *testPort) readPort(port uint16) byte {
-	return p.readPortInternal(port, false)
-}
+// func (p *testPort) readPort(port uint16) byte {
+// 	return p.readPortInternal(port, false)
+// }
 
-func (p *testPort) writePortInternal(address uint16, b byte, contend bool) {
-	p.contendPortPreio(address)
+// func (p *testPort) writePortInternal(address uint16, b byte, contend bool) {
+// 	p.contendPortPreio(address)
 
-	events.Push(fmt.Sprintf("%5d PW %04x %02x\n", p.z80.tstates, address, b))
+// 	events.Push(fmt.Sprintf("%5d PW %04x %02x\n", p.z80.tstates, address, b))
 
-	p.contendPortPostio(address)
-}
+// 	p.contendPortPostio(address)
+// }
 
-func (p *testPort) writePort(port uint16, b byte) {
-	p.writePortInternal(port, b, false)
-}
+// func (p *testPort) writePort(port uint16, b byte) {
+// 	p.writePortInternal(port, b, false)
+// }
 
-func (p *testPort) contendPortPreio(port uint16) {
-	if (port & 0xc000) == 0x4000 {
-		events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
-	}
-	p.z80.tstates++
-}
+// func (p *testPort) contendPortPreio(port uint16) {
+// 	if (port & 0xc000) == 0x4000 {
+// 		events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+// 	}
+// 	p.z80.tstates++
+// }
 
-func (p *testPort) contendPortPostio(port uint16) {
-	if (port & 0x0001) != 0 {
-		if (port & 0xc000) == 0x4000 {
+// func (p *testPort) contendPortPostio(port uint16) {
+// 	if (port & 0x0001) != 0 {
+// 		if (port & 0xc000) == 0x4000 {
 
-			events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
-			p.z80.tstates++
-			events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
-			p.z80.tstates++
-			events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
-			p.z80.tstates++
+// 			events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+// 			p.z80.tstates++
+// 			events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+// 			p.z80.tstates++
+// 			events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+// 			p.z80.tstates++
 
-		} else {
-			p.z80.tstates += 3
-		}
+// 		} else {
+// 			p.z80.tstates += 3
+// 		}
 
-	} else {
-		events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
-		p.z80.tstates += 3
+// 	} else {
+// 		events.Push(fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+// 		p.z80.tstates += 3
 
-	}
+// 	}
 
-}
+// }
 
-func (p *testPort) frame_begin() {
-}
+// func (p *testPort) frame_begin() {
+// }
 
-func (p *testPort) frame_end() {
-}
+// func (p *testPort) frame_end() {
+// }
 
-func (p *testPort) getBorderEvents_orNil() *BorderEvent {
-	return nil
-}
+// func (p *testPort) getBorderEvents_orNil() *BorderEvent {
+// 	return nil
+// }
 
-func (p *testPort) getBeeperEvents_orNil() *BeeperEvent {
-	return nil
-}
+// func (p *testPort) getBeeperEvents_orNil() *BeeperEvent {
+// 	return nil
+// }
 
-func (p *testPort) reset() {
-}
+// func (p *testPort) reset() {
+// }
 
-var maxLines = 20000
+// var maxLines = 20000
 
-func TestDoOpcodes(t *testing.T) {
+// func TestDoOpcodes(t *testing.T) {
 
-	var memory testMemory
-	var port testPort
+// 	var memory testMemory
+// 	var port testPort
 
-	// Instantiate a Z80 processor
-	z80 := NewZ80(&memory, &port)
+// 	// Instantiate a Z80 processor
+// 	z80 := NewZ80(&memory, &port)
 
-	memory.z80 = z80
-	port.z80 = z80
+// 	memory.z80 = z80
+// 	port.z80 = z80
 
-	// Read the test.in file
+// 	// Read the test.in file
 
-	bytes, err := ioutil.ReadFile("tests.in")
+// 	bytes, err := ioutil.ReadFile("tests.in")
 
-	if err != nil {
-		fmt.Println("Error reading tests.in")
-	} else {
-		content := string(bytes)
-		lines := strings.Split(content, "\n", -1)
+// 	if err != nil {
+// 		fmt.Println("Error reading tests.in")
+// 	} else {
+// 		content := string(bytes)
+// 		lines := strings.Split(content, "\n", -1)
 
-		currLine := 0
+// 		currLine := 0
 
-		for (currLine < len(lines)-1) && currLine < maxLines {
+// 		for (currLine < len(lines)-1) && currLine < maxLines {
 
-			// Skip all blank lines and consume the first non-blank line
-			if lines[currLine] == "" {
-				currLine++
-				continue
-			}
+// 			// Skip all blank lines and consume the first non-blank line
+// 			if lines[currLine] == "" {
+// 				currLine++
+// 				continue
+// 			}
 
-			currOp := lines[currLine]
+// 			currOp := lines[currLine]
 
-			currLine++
+// 			currLine++
 
-			mainRegs := strings.Split(lines[currLine], " ", -1)
+// 			mainRegs := strings.Split(lines[currLine], " ", -1)
 
-			// Fill registers
+// 			// Fill registers
 
-			af, _ := strconv.Btoui64(mainRegs[0], 16)
-			z80.a, z80.f = byte(int16(af)>>8), byte(int16(af)&0xff)
+// 			af, _ := strconv.Btoui64(mainRegs[0], 16)
+// 			z80.a, z80.f = byte(int16(af)>>8), byte(int16(af)&0xff)
 
-			bc, _ := strconv.Btoui64(mainRegs[1], 16)
-			z80.b, z80.c = byte(int16(bc)>>8), byte(int16(bc)&0xff)
+// 			bc, _ := strconv.Btoui64(mainRegs[1], 16)
+// 			z80.b, z80.c = byte(int16(bc)>>8), byte(int16(bc)&0xff)
 
-			de, _ := strconv.Btoui64(mainRegs[2], 16)
-			z80.d, z80.e = byte(int16(de)>>8), byte(int16(de)&0xff)
+// 			de, _ := strconv.Btoui64(mainRegs[2], 16)
+// 			z80.d, z80.e = byte(int16(de)>>8), byte(int16(de)&0xff)
 
-			hl, _ := strconv.Btoui64(mainRegs[3], 16)
-			z80.h, z80.l = byte(int16(hl)>>8), byte(int16(hl)&0xff)
+// 			hl, _ := strconv.Btoui64(mainRegs[3], 16)
+// 			z80.h, z80.l = byte(int16(hl)>>8), byte(int16(hl)&0xff)
 
-			af_, _ := strconv.Btoui64(mainRegs[4], 16)
-			z80.a_, z80.f_ = byte(int16(af_)>>8), byte(int16(af_)&0xff)
+// 			af_, _ := strconv.Btoui64(mainRegs[4], 16)
+// 			z80.a_, z80.f_ = byte(int16(af_)>>8), byte(int16(af_)&0xff)
 
-			bc_, _ := strconv.Btoui64(mainRegs[5], 16)
-			z80.b_, z80.c_ = byte(int16(bc_)>>8), byte(int16(bc_)&0xff)
+// 			bc_, _ := strconv.Btoui64(mainRegs[5], 16)
+// 			z80.b_, z80.c_ = byte(int16(bc_)>>8), byte(int16(bc_)&0xff)
 
-			de_, _ := strconv.Btoui64(mainRegs[6], 16)
-			z80.d_, z80.e_ = byte(int16(de_)>>8), byte(int16(de_)&0xff)
+// 			de_, _ := strconv.Btoui64(mainRegs[6], 16)
+// 			z80.d_, z80.e_ = byte(int16(de_)>>8), byte(int16(de_)&0xff)
 
-			hl_, _ := strconv.Btoui64(mainRegs[7], 16)
-			z80.h_, z80.l_ = byte(int16(hl_)>>8), byte(int16(hl_)&0xff)
+// 			hl_, _ := strconv.Btoui64(mainRegs[7], 16)
+// 			z80.h_, z80.l_ = byte(int16(hl_)>>8), byte(int16(hl_)&0xff)
 
-			ix, _ := strconv.Btoui64(mainRegs[8], 16)
-			z80.ixh, z80.ixl = byte(int16(ix)>>8), byte(int16(ix)&0xff)
+// 			ix, _ := strconv.Btoui64(mainRegs[8], 16)
+// 			z80.ixh, z80.ixl = byte(int16(ix)>>8), byte(int16(ix)&0xff)
 
-			iy, _ := strconv.Btoui64(mainRegs[9], 16)
-			z80.iyh, z80.iyl = byte(int16(iy)>>8), byte(int16(iy)&0xff)
+// 			iy, _ := strconv.Btoui64(mainRegs[9], 16)
+// 			z80.iyh, z80.iyl = byte(int16(iy)>>8), byte(int16(iy)&0xff)
 
-			sp, _ := strconv.Btoui64(mainRegs[10], 16)
-			z80.sp = uint16(sp)
+// 			sp, _ := strconv.Btoui64(mainRegs[10], 16)
+// 			z80.sp = uint16(sp)
 
-			pc, _ := strconv.Btoui64(mainRegs[11], 16)
-			z80.pc = uint16(pc)
+// 			pc, _ := strconv.Btoui64(mainRegs[11], 16)
+// 			z80.pc = uint16(pc)
 
-			currLine++
+// 			currLine++
 
-			otherRegs := strings.Split(lines[currLine], " ", -1)
+// 			otherRegs := strings.Split(lines[currLine], " ", -1)
 
-			i, _ := strconv.Btoui64(otherRegs[0], 16)
-			z80.i = byte(i)
+// 			i, _ := strconv.Btoui64(otherRegs[0], 16)
+// 			z80.i = byte(i)
 
-			r, _ := strconv.Btoui64(otherRegs[1], 16)
-			z80.r, z80.r7 = uint16(r), byte(r)
+// 			r, _ := strconv.Btoui64(otherRegs[1], 16)
+// 			z80.r, z80.r7 = uint16(r), byte(r)
 
-			iff1, _ := strconv.Btoui64(otherRegs[2], 16)
-			z80.iff1 = byte(iff1)
+// 			iff1, _ := strconv.Btoui64(otherRegs[2], 16)
+// 			z80.iff1 = byte(iff1)
 
-			iff2, _ := strconv.Btoui64(otherRegs[3], 16)
-			z80.iff2 = byte(iff2)
+// 			iff2, _ := strconv.Btoui64(otherRegs[3], 16)
+// 			z80.iff2 = byte(iff2)
 
-			im, _ := strconv.Btoui64(otherRegs[4], 16)
-			z80.im = byte(im)
+// 			im, _ := strconv.Btoui64(otherRegs[4], 16)
+// 			z80.im = byte(im)
 
-			halted, _ := strconv.Btoui64(otherRegs[5], 10)
+// 			halted, _ := strconv.Btoui64(otherRegs[5], 10)
 
-			if halted != 0 {
-				z80.halted = true
-			} else {
-				z80.halted = false
-			}
+// 			if halted != 0 {
+// 				z80.halted = true
+// 			} else {
+// 				z80.halted = false
+// 			}
 
-			// Should set event_next_event and tstates
+// 			// Should set event_next_event and tstates
 
-			event, _ := strconv.Btoui64(otherRegs[len(otherRegs)-1], 10)
+// 			event, _ := strconv.Btoui64(otherRegs[len(otherRegs)-1], 10)
 
-			z80.eventNextEvent = uint(event)
+// 			z80.eventNextEvent = uint(event)
 
-			// Fill memory
+// 			// Fill memory
 
-			currLine++
+// 			currLine++
 
-			for lines[currLine] != "-1" {
-				memWrites := strings.Split(lines[currLine], " ", -1)
-				addr, _ := strconv.Btoui64(memWrites[0], 16)
-				for i := 1; i < (len(memWrites)); i++ {
-					byte := memWrites[i]
-					if byte != "-1" {
-						value, _ := strconv.Btoui64(byte, 16)
-						z80.memory.Write(uint16(addr), uint8(value))
-						addr++
-					}
-				}
-				currLine++
-			}
+// 			for lines[currLine] != "-1" {
+// 				memWrites := strings.Split(lines[currLine], " ", -1)
+// 				addr, _ := strconv.Btoui64(memWrites[0], 16)
+// 				for i := 1; i < (len(memWrites)); i++ {
+// 					byte := memWrites[i]
+// 					if byte != "-1" {
+// 						value, _ := strconv.Btoui64(byte, 16)
+// 						z80.memory.Write(uint16(addr), uint8(value))
+// 						addr++
+// 					}
+// 				}
+// 				currLine++
+// 			}
 
-			// Take a picture of the initial memory
+// 			// Take a picture of the initial memory
 
-			for i, val := range z80.memory.Data() {
-				initialMemory[i] = val
-			}
+// 			for i, val := range z80.memory.Data() {
+// 				initialMemory[i] = val
+// 			}
 
-			// doOpcodes
+// 			// doOpcodes
 
-			z80.LogEvents = true
+// 			z80.LogEvents = true
 
-			events.Push(currOp + "\n")
+// 			events.Push(currOp + "\n")
 
-			z80.doOpcodes()
+// 			z80.doOpcodes()
 
-			// dump registers and memory and save the
+// 			// dump registers and memory and save the
 
-			z80.DumpRegisters(events)
-			z80.DumpMemory(events)
+// 			z80.DumpRegisters(events)
+// 			z80.DumpMemory(events)
 
-			events.Push("\n")
+// 			events.Push("\n")
 
-			currLine++
+// 			currLine++
 
-			z80.reset()
-			memory.reset()
-			for i, _ := range dirtyMemory {
-				dirtyMemory[i] = false
-			}
-		}
-	}
+// 			z80.reset()
+// 			memory.reset()
+// 			for i, _ := range dirtyMemory {
+// 				dirtyMemory[i] = false
+// 			}
+// 		}
+// 	}
 
-	// Read the tests.expected file
+// 	// Read the tests.expected file
 
-	if file, err := os.Open("tests.expected", os.O_RDONLY, 0); err != nil {
-		t.Fatalf("Error opening tests.expected\n")
-	} else {
-		var nextIsTestDescription bool = false
-		var testDescription string
-		currLine := 0
-		passed := 0
-		buf := bufio.NewReader(file)
-		for {
-			l, err := buf.ReadString('\n') // parse line-by-line
-			if err == os.EOF || currLine >= maxLines {
-				break
-			} else if err != nil {
-				t.Fatalf("Error reading file\n")
-			} else {
+// 	if file, err := os.Open("tests.expected", os.O_RDONLY, 0); err != nil {
+// 		t.Fatalf("Error opening tests.expected\n")
+// 	} else {
+// 		var nextIsTestDescription bool = false
+// 		var testDescription string
+// 		currLine := 0
+// 		passed := 0
+// 		buf := bufio.NewReader(file)
+// 		for {
+// 			l, err := buf.ReadString('\n') // parse line-by-line
+// 			if err == os.EOF || currLine >= maxLines {
+// 				break
+// 			} else if err != nil {
+// 				t.Fatalf("Error reading file\n")
+// 			} else {
 
-				if nextIsTestDescription {
-					testDescription = strings.Trim(l, "\n")
-					nextIsTestDescription = false
-				}
+// 				if nextIsTestDescription {
+// 					testDescription = strings.Trim(l, "\n")
+// 					nextIsTestDescription = false
+// 				}
 
-				if l == "\n" {
-					nextIsTestDescription = true
-				}
+// 				if l == "\n" {
+// 					nextIsTestDescription = true
+// 				}
 
-				if currLine >= events.Len() {
-					t.Errorf("** No events at line %d **", currLine)
-				} else {
-					if l != events.At(currLine) {
-						// diff with expected
-						fmt.Print("F")
-						t.Errorf("\nTest 0x%s failed at line %d\nEXPECTED: %sGOT:      %s\n", testDescription, currLine+1, l, events.At(currLine))
-					} else {
-						passed++
-					}
-				}
-			}
+// 				if currLine >= events.Len() {
+// 					t.Errorf("** No events at line %d **", currLine)
+// 				} else {
+// 					if l != events.At(currLine) {
+// 						// diff with expected
+// 						fmt.Print("F")
+// 						t.Errorf("\nTest 0x%s failed at line %d\nEXPECTED: %sGOT:      %s\n", testDescription, currLine+1, l, events.At(currLine))
+// 					} else {
+// 						passed++
+// 					}
+// 				}
+// 			}
 
-			currLine++
+// 			currLine++
 
-		}
+// 		}
 
-	}
+// 	}
 
-}
+// }
 
-func BenchmarkZ80(b *testing.B) {
+// func BenchmarkZ80(b *testing.B) {
 
-	b.StopTimer()
+// 	b.StopTimer()
 
-	romPath := "testdata/48.rom"
-	app := NewApplication()
+// 	romPath := "testdata/48.rom"
+// 	app := NewApplication()
 
-	speccy, err := NewSpectrum48k(app, romPath)
-	if err != nil {
-		panic(err)
-	}
+// 	speccy, err := NewSpectrum48k(app, romPath)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	snapshot, err := formats.ReadProgram("testdata/fire.sna")
-	if err != nil {
-		panic(err)
-	}
+// 	snapshot, err := formats.ReadProgram("testdata/fire.sna")
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
-	if err != nil {
-		panic(err)
-	}
+// 	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	b.StartTimer()
+// 	b.StartTimer()
 
-	for i := 0; i < b.N; i++ {
-		speccy.Cpu.doOpcodes()
-	}
-}
+// 	for i := 0; i < b.N; i++ {
+// 		speccy.Cpu.doOpcodes()
+// 	}
+// }

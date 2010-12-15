@@ -4,6 +4,7 @@ gospeccy
 *.out
 scripts/startup_local.go
 _testmain.go
-
+_test*
+package-test
 
 

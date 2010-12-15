@@ -10,14 +10,14 @@ import (
 	"prettytest"
 )
 
- var (
+var (
 	speccy *spectrum.Spectrum48k
 	app    *spectrum.Application
-	r renderer
- )
+	r      renderer
+)
 
 type renderer struct {
-	appSurface *sdl.Surface
+	appSurface    *sdl.Surface
 	speccySurface *spectrum.SDLScreen2x
 	width, height int
 }
@@ -29,7 +29,9 @@ func (r *renderer) render(speccyRects []sdl.Rect) {
 	}
 }
 
-type testSuite struct { prettytest.Suite }
+type testSuite struct {
+	prettytest.Suite
+}
 
 func (t *testSuite) beforeAll() {
 	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
@@ -41,8 +43,8 @@ func (t *testSuite) beforeAll() {
 
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
 
-	r.width = spectrum.TotalScreenWidth*2
-	r.height = spectrum.TotalScreenHeight*2
+	r.width = spectrum.TotalScreenWidth * 2
+	r.height = spectrum.TotalScreenHeight * 2
 	r.appSurface = sdl.SetVideoMode(r.width, r.height, 32, 0)
 }
 
@@ -61,7 +63,7 @@ func (t *testSuite) after() {
 
 func StartFullEmulation() {
 	var (
-		err os.Error
+		err         os.Error
 		speccyRects []sdl.Rect
 	)
 
@@ -88,7 +90,7 @@ func StartFullEmulation() {
 
 	go speccy.EmulatorLoop()
 
-	ticker := time.NewTicker(1e9/int64(60))
+	ticker := time.NewTicker(1e9 / int64(60))
 	evtLoop := app.NewEventLoop()
 
 	go func() {
@@ -105,7 +107,8 @@ func StartFullEmulation() {
 
 			case speccyRects = <-r.speccySurface.UpdatedRectsCh():
 
-			case <-ticker.C: r.render(speccyRects)
+			case <-ticker.C:
+				r.render(speccyRects)
 			}
 		}
 	}()

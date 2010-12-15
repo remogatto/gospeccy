@@ -31,7 +31,6 @@ import (
 	"spectrum/formats"
 	"⚛sdl"
 	"⚛sdl/ttf"
-	"strings"
 	"fmt"
 	"flag"
 	"os"
@@ -55,7 +54,7 @@ var (
 
 	// The font used by the CLI
 	font *ttf.Font
-	
+
 	// The application renderer
 	r renderer
 )
@@ -66,27 +65,27 @@ type SDLSurfaceAccessor interface {
 }
 
 type renderer struct {
-	appSurface *sdl.Surface
-	speccySurface, cliSurface SDLSurfaceAccessor
+	appSurface                          *sdl.Surface
+	speccySurface, cliSurface           SDLSurfaceAccessor
 	width, height, half_height, cliY, t int
-	toggling bool
+	toggling                            bool
 }
 
 func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
 	if !r.toggling {
- 		if cli.Paused {
+		if cli.Paused {
 			for _, rect := range speccyRects {
 				r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
 				r.appSurface.UpdateRect(int32(rect.X), int32(rect.Y), uint32(rect.W), uint32(rect.H))
 			}
 		} else {
 			for _, rect := range speccyRects {
-				x, y, w, h := rect.X, rect.Y - int16(r.cliY), rect.W, rect.H
+				x, y, w, h := rect.X, rect.Y-int16(r.cliY), rect.W, rect.H
 				r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
 				r.appSurface.Blit(&sdl.Rect{x, y + int16(r.cliY), 0, 0}, r.cliSurface.GetSurface(), &sdl.Rect{x, y, w, h})
 			}
 			for _, rect := range cliRects {
-				x, y, w, h := rect.X, rect.Y + int16(r.cliY), rect.W, rect.H
+				x, y, w, h := rect.X, rect.Y+int16(r.cliY), rect.W, rect.H
 				r.appSurface.Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
 				r.appSurface.Blit(&sdl.Rect{rect.X, rect.Y + int16(r.cliY), 0, 0}, r.cliSurface.GetSurface(), &rect)
 			}
@@ -95,7 +94,7 @@ func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
 	} else {
 		if !cli.Paused {
 			if r.cliY > r.half_height {
-				r.cliY -= r.t*r.t/10
+				r.cliY -= r.t * r.t / 10
 				r.t++
 			}
 			if r.cliY <= r.half_height {
@@ -107,7 +106,7 @@ func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
 			r.appSurface.Blit(&sdl.Rect{0, int16(r.cliY), 0, 0}, r.cliSurface.GetSurface(), nil)
 		} else {
 			if r.cliY < r.height {
-				r.cliY += r.t*r.t/10
+				r.cliY += r.t * r.t / 10
 				r.t++
 			}
 			if r.cliY >= r.height {
@@ -131,11 +130,10 @@ func toggleCLI() {
 // A Go routine for processing SDL events.
 func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
 	var (
-		toUpper bool
 		cliRects, speccyRects []sdl.Rect
 	)
 
-	ticker := time.NewTicker(1e9/int64(60))
+	ticker := time.NewTicker(1e9 / int64(60))
 	app = evtLoop.App()
 
 	for {
@@ -193,9 +191,7 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 
 				} else {
 					if !cli.Paused {
-						if (keyName == "left shift") && (e.Type == sdl.KEYDOWN) {
-							toUpper = true
-						} else if (keyName == "up") && (e.Type == sdl.KEYDOWN) {
+						if (keyName == "up") && (e.Type == sdl.KEYDOWN) {
 							cli.ReadlineCh() <- clingon.HISTORY_PREV
 						} else if (keyName == "down") && (e.Type == sdl.KEYDOWN) {
 							cli.ReadlineCh() <- clingon.HISTORY_NEXT
@@ -206,11 +202,7 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 						} else {
 							unicode := e.Keysym.Unicode
 							if unicode > 0 {
-								if toUpper {
-									cli.CharCh() <- uint16([]int(strings.ToUpper(string(unicode)))[0])
-								} else {
-									cli.CharCh() <- unicode
-								}
+								cli.CharCh() <- unicode
 							}
 						}
 
@@ -237,7 +229,8 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 
 		case speccyRects = <-r.speccySurface.UpdatedRectsCh():
 		case cliRects = <-r.cliSurface.UpdatedRectsCh():
-		case <-ticker.C: r.render(speccyRects, cliRects)
+		case <-ticker.C:
+			r.render(speccyRects, cliRects)
 
 		}
 
@@ -279,11 +272,11 @@ func initEmulationCore(acceleratedLoad bool) (err os.Error) {
 
 func initSDLSubSystems() os.Error {
 	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
-		return os.NewError( sdl.GetError())
+		return os.NewError(sdl.GetError())
 	}
 
 	if ttf.Init() != 0 {
-		return os.NewError( sdl.GetError())
+		return os.NewError(sdl.GetError())
 	}
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 	sdl.EnableUNICODE(1)
@@ -301,8 +294,8 @@ func initDisplay(scale2x, fullscreen bool) {
 	}
 
 	if scale2x {
-		r.width = spectrum.TotalScreenWidth*2
-		r.height = spectrum.TotalScreenHeight*2
+		r.width = spectrum.TotalScreenWidth * 2
+		r.height = spectrum.TotalScreenHeight * 2
 		r.half_height = spectrum.TotalScreenHeight
 
 		sdlScreen := spectrum.NewSDLScreen2x(app)
@@ -339,7 +332,7 @@ func initCLI() {
 
 	cliRenderer = clingon.NewSDLRenderer(sdl.CreateRGBSurface(sdl.SRCALPHA, r.width, r.half_height, 32, 0, 0, 0, 0), font)
 	cliRenderer.GetSurface().SetAlpha(sdl.SRCALPHA, 0xaa)
-	
+
 	cli = clingon.NewConsole(cliRenderer, &i)
 	cli.SetPrompt("gospeccy> ")
 	cli.Paused = true
@@ -364,7 +357,7 @@ func main() {
 	acceleratedLoad := flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseKeyboard := flag.Bool("verbose-keyboard", false, "Enable debugging messages (keyboard events)")
-	
+
 	{
 		flag.Usage = func() {
 			fmt.Fprintf(os.Stderr, "GoSpeccy - A ZX Spectrum 48k Emulator written in Go\n\n")
@@ -396,7 +389,6 @@ func main() {
 		goto quit
 	}
 
-
 	// SDL subsystems init	
 	if err := initSDLSubSystems(); err != nil {
 		app.PrintfMsg("%s", err)
@@ -422,7 +414,6 @@ func main() {
 				goto quit
 			}
 		}
-
 
 		// Setup the audio
 		speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
@@ -459,6 +450,7 @@ func main() {
 			app.RequestExit()
 			goto quit
 		}
+
 		if _, isTAP := program.(*formats.TAP); isTAP {
 			romLoaded := make(chan bool, 1)
 			speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}

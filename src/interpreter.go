@@ -31,12 +31,12 @@ var IgnoreStartupScript = false
 const SCRIPT_DIRECTORY = "scripts"
 const STARTUP_SCRIPT = "startup"
 
-type Interpreter struct {}
+type Interpreter struct{}
 
 func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
 	if command == "" {
 		return i.run(console, w, "", "help()")
-		
+
 	}
 	return i.run(console, w, "", command)
 }

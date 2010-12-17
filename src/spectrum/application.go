@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 	"os/signal"
+	"runtime"
 )
 
 
@@ -176,19 +177,27 @@ func (app *Application) PrintfMsg(format string, a ...interface{}) {
 // =========
 
 type EventLoop struct {
-	// The application to which this EventLoop belongs,
-	// or nil if this EventLoop was deleted before the whole application terminated.
+	// The application to which this EventLoop belongs, or nil if
+	// this EventLoop was deleted before the whole application
+	// terminated.
 	app       *Application
 	app_mutex sync.RWMutex
+	
+	// A symbolic name associated to the EventLoop (useful for
+	// debugging).
+	Name string
 
-	// If [this channel receives a value] then [this event-loop should pause].
-	// As a response, after this event-loop actually pauses, a value will appear on this channel.
+	// If [this channel receives a value] then [this event-loop
+	// should pause].  As a response, after this event-loop
+	// actually pauses, a value will appear on this channel.
 	Pause chan byte
 
-	// Constraint: A value can be sent to this channel only after this event-loop has been paused.
+	// Constraint: A value can be sent to this channel only after
+	// this event-loop has been paused.
 	//
-	// If [this channel receives a value] then [this event-loop should terminate].
-	// As a response, after this event-loop actually terminates, a value will appear on this channel.
+	// If [this channel receives a value] then [this event-loop
+	// should terminate].  As a response, after this event-loop
+	// actually terminates, a value will appear on this channel.
 	Terminate chan byte
 }
 
@@ -197,7 +206,11 @@ func (app *Application) NewEventLoop() *EventLoop {
 		panic("cannot create a new event-loop because the application has been terminated")
 	}
 
-	e := &EventLoop{app: app, Pause: make(chan byte), Terminate: make(chan byte)}
+	// By default fill the event name with the caller name.
+	pc, _, _, _ := runtime.Caller(1)
+	name := runtime.FuncForPC(pc).Name()
+
+	e := &EventLoop{app: app, Name: name, Pause: make(chan byte), Terminate: make(chan byte)}
 	app.addEventLoop(e)
 	return e
 }

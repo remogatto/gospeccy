@@ -408,6 +408,8 @@ func main() {
 
 		// Run startup scripts. The startup scripts may create a display/audio receiver.
 		{
+			fmt.Println("Hint: Press F10 to invoke the built-in console.")
+			fmt.Println("      Input an empty line in the console to display available commands.")
 			initCLI()
 
 			if app.TerminationInProgress() || closed(app.HasTerminated) {

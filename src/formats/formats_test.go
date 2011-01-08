@@ -5,7 +5,9 @@ import (
 	"testing"
 )
 
-type testSuite struct { prettytest.Suite }
+type testSuite struct {
+	prettytest.Suite
+}
 
 func (t *testSuite) testReadProgramSnapshot() {
 	program, err := ReadProgram("testdata/fire.sna")

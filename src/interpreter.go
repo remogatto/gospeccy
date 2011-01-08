@@ -31,12 +31,12 @@ var IgnoreStartupScript = false
 const SCRIPT_DIRECTORY = "scripts"
 const STARTUP_SCRIPT = "startup"
 
-type Interpreter struct {}
+type Interpreter struct{}
 
 func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
 	if command == "" {
 		return i.run(console, w, "", "help()")
-		
+
 	}
 	return i.run(console, w, "", command)
 }
@@ -187,7 +187,7 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 		initDisplay(false, false)
 		initCLI()
-		r.cliY = r.half_height
+		r.consoleY = int16(r.consoleH_2)
 
 	case 2:
 		finished := make(chan byte)
@@ -196,10 +196,10 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 		initDisplay(true, false)
 		initCLI()
-		r.cliY = r.half_height
+		r.consoleY = int16(r.consoleH_2)
 	}
 
-	r.appSurface = sdl.SetVideoMode(r.width, r.height, 32, 0)
+	r.appSurface = sdl.SetVideoMode(int(r.width), int(r.height), 32, 0)
 }
 
 // Signature: func fps(n float)

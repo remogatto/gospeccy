@@ -182,7 +182,7 @@ type EventLoop struct {
 	// terminated.
 	app       *Application
 	app_mutex sync.RWMutex
-	
+
 	// A symbolic name associated to the EventLoop (useful for
 	// debugging).
 	Name string

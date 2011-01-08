@@ -51,13 +51,14 @@ var (
 	// The CLI
 	cli *clingon.Console
 
+	// The font used by the CLI
+	font *ttf.Font
+
 	// The application renderer
 	r *SDLRenderer
 
 	// CLI animations
 	slideDown, slideUp *clingon.Animation
-
-	font *ttf.Font
 )
 
 type SDLSurfaceAccessor interface {
@@ -428,6 +429,8 @@ func main() {
 
 		// Run startup scripts. The startup scripts may create a display/audio receiver.
 		{
+			fmt.Println("Hint: Press F10 to invoke the built-in console.")
+			fmt.Println("      Input an empty line in the console to display available commands.")
 			initCLI()
 			if app.TerminationInProgress() || closed(app.HasTerminated) {
 				goto quit
@@ -472,6 +475,7 @@ func main() {
 			app.RequestExit()
 			goto quit
 		}
+
 		if _, isTAP := program.(*formats.TAP); isTAP {
 			romLoaded := make(chan bool, 1)
 			speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}

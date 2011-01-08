@@ -496,17 +496,19 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 }
 
 func initInterpreter() {
-	w = eval.NewWorld()
-	defineFunctions(w)
+	if w == nil {
+		w = eval.NewWorld()
+		defineFunctions(w)
 
-	// Run the startup script
-	var err os.Error
+		// Run the startup script
+		var err os.Error
 
-	err = runScript(w, STARTUP_SCRIPT, /*optional*/ IgnoreStartupScript)
-	if err != nil {
-		app.PrintfMsg("%s", err)
-		app.RequestExit()
-		return
+		err = runScript(w, STARTUP_SCRIPT, /*optional*/ IgnoreStartupScript)
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			app.RequestExit()
+			return
+		}
 	}
 }
 

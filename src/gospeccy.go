@@ -84,13 +84,13 @@ func NewSDLRenderer(app *spectrum.Application) *SDLRenderer {
 }
 
 func (r *SDLRenderer) loop() {
-	evtLoop := app.NewEventLoop()
+	evtLoop := r.app.NewEventLoop()
 	for {
 		select {
 		case <-evtLoop.Pause:
 			cli.Pause(true)
 			evtLoop.Pause <- 0
-
+			
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if app.Verbose {

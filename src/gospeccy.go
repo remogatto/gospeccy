@@ -197,7 +197,7 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 						app.PrintfMsg("f10 key -> toggle console")
 					}
 					if !r.toggling {
-						cli.Pause(cli.Paused())
+						cli.Pause(!cli.Paused())
 						if cli.Paused() {
 							slideDown.Start()
 						} else {
@@ -349,6 +349,7 @@ func initCLI() {
 	cliRenderer = clingon.NewSDLRenderer(sdl.CreateRGBSurface(sdl.SRCALPHA, int(r.width), int(r.consoleH_2), 32, 0, 0, 0, 0), font)
 	cliRenderer.GetSurface().SetAlpha(sdl.SRCALPHA, 0xdd)
 	cli = clingon.NewConsole(cliRenderer, &i)
+	cli.Pause(true)
 	cli.Print(`
 Welcome to the GoSpeccy Command Line Interface (CLI)
 ----------------------------------------------------

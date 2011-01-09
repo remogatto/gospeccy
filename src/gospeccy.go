@@ -197,7 +197,7 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 						app.PrintfMsg("f10 key -> toggle console")
 					}
 					if !r.toggling {
-						cli.Pause(!cli.Paused())
+						cli.Pause(cli.Paused())
 						if cli.Paused() {
 							slideDown.Start()
 						} else {

@@ -1,7 +1,8 @@
-package main
+package interpreter
 
 import (
-	"⚛sdl"
+	"bytes"
+	//	"⚛sdl"
 	"spectrum"
 	"spectrum/formats"
 	"clingon"
@@ -10,7 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"container/vector"
-	"bytes"
 	"time"
 	"go/token"
 )
@@ -22,23 +22,56 @@ import (
 // These variables are set only once, before starting new goroutines,
 // so there is no need for controlling concurrent access via a sync.Mutex
 var (
-	w *eval.World
-	i Interpreter
+	app                 *spectrum.Application
+	speccy              *spectrum.Spectrum48k
+	renderer spectrum.Renderer
+	w                   *eval.World
+	buffer              *bytes.Buffer
+	IgnoreStartupScript = false
 )
 
-var IgnoreStartupScript = false
-
-const SCRIPT_DIRECTORY = "scripts"
-const STARTUP_SCRIPT = "startup"
+const (
+	SCRIPT_DIRECTORY = "scripts"
+	STARTUP_SCRIPT   = "startup"
+)
 
 type Interpreter struct{}
 
 func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
+	var err os.Error
+	buffer = bytes.NewBufferString("")
 	if command == "" {
-		return i.run(console, w, "", "help()")
+		err = i.run(w, "", "help()")
+		console.Print(buffer.String())
+		return err
 
 	}
-	return i.run(console, w, "", command)
+	err = i.run(w, "", command)
+	console.Print(buffer.String())
+	return err
+}
+
+// Runs the specified Go source code in the context of 'w'
+func (i *Interpreter) run(w *eval.World, path_orEmpty string, sourceCode string) os.Error {
+	var err os.Error
+	var code eval.Code
+
+	fileSet := token.NewFileSet()
+	if len(path_orEmpty) > 0 {
+		fileSet.AddFile(path_orEmpty, fileSet.Base(), len(sourceCode))
+	}
+
+	code, err = w.Compile(fileSet, sourceCode)
+	if err != nil {
+		return err
+	}
+
+	_, err = code.Run()
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 // ================
@@ -48,10 +81,9 @@ func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
 var help_keys vector.StringVector
 var help_vals vector.StringVector
 
-func printHelp() {
-	var buf bytes.Buffer
-
-	fmt.Fprintf(&buf, "\nAvailable commands:\n")
+// Signature: func help()
+func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	fmt.Fprintf(buffer, "\nAvailable commands:\n")
 
 	maxKeyLen := 1
 	for i := 0; i < help_keys.Len(); i++ {
@@ -61,19 +93,12 @@ func printHelp() {
 	}
 
 	for i := 0; i < help_keys.Len(); i++ {
-		fmt.Fprintf(&buf, "    %s", help_keys[i])
+		fmt.Fprintf(buffer, "    %s", help_keys[i])
 		for j := len(help_keys[i]); j < maxKeyLen; j++ {
-			fmt.Fprintf(&buf, " ")
+			fmt.Fprintf(buffer, " ")
 		}
-		fmt.Fprintf(&buf, "  %s\n", help_vals[i])
+		fmt.Fprintf(buffer, "  %s\n", help_vals[i])
 	}
-
-	cli.Print(buf.String())
-}
-
-// Signature: func help()
-func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	printHelp()
 }
 
 // Signature: func exit()
@@ -123,7 +148,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	var program interface{}
 	program, err := formats.ReadProgram(path)
 	if err != nil {
-		cli.Print(err.String())
+		fmt.Fprintf(buffer, "%s\n", err)
 		return
 	}
 
@@ -138,7 +163,8 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	err = <-errChan
 	if err != nil {
-		cli.Print(err.String())
+		fmt.Fprintf(buffer, "%s\n", err)
+		return
 	}
 }
 
@@ -157,17 +183,17 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	data, err := fullSnapshot.EncodeSNA()
 	if err != nil {
-		cli.Print(err.String())
+		fmt.Fprintf(buffer, "%s\n", err)
 		return
 	}
 
 	err = ioutil.WriteFile(path, data, 0600)
 	if err != nil {
-		cli.Print(err.String())
+		fmt.Fprintf(buffer, "%s\n", err)
 	}
 
 	if app.Verbose {
-		cli.Print(fmt.Sprintf("wrote SNA snapshot \"%s\"", path))
+		fmt.Fprintf(buffer, "wrote SNA snapshot \"%s\"", path)
 	}
 }
 
@@ -184,22 +210,26 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		finished := make(chan byte)
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
+		
+		renderer.Resize(false)
 
-		initDisplay(false, false)
-		initCLI()
-		r.consoleY = int16(r.consoleH_2)
+		// initDisplay(false, false)
+		// initCLI()
+		// r.consoleY = int16(r.consoleH_2)
 
 	case 2:
 		finished := make(chan byte)
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
 
-		initDisplay(true, false)
-		initCLI()
-		r.consoleY = int16(r.consoleH_2)
+		renderer.Resize(true)
+
+		// initDisplay(true, false)
+		// initCLI()
+		// r.consoleY = int16(r.consoleH_2)
 	}
 
-	r.appSurface = sdl.SetVideoMode(int(r.width), int(r.height), 32, 0)
+//	r.appSurface = sdl.SetVideoMode(int(r.width), int(r.height), 32, 0)
 }
 
 // Signature: func fps(n float)
@@ -239,7 +269,8 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 		} else {
-			cli.Print(err.String())
+			fmt.Fprintf(buffer, "%s\n", err)
+			return
 		}
 	} else {
 		finished := make(chan byte)
@@ -264,7 +295,7 @@ func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	err := runScript(w, scriptName, /*optional*/ false)
 	if err != nil {
-		cli.Print(err.String())
+		fmt.Fprintf(buffer, "%s\n", err)
 		return
 	}
 }
@@ -275,7 +306,7 @@ func wrapper_optionalScript(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	err := runScript(w, scriptName, /*optional*/ true)
 	if err != nil {
-		cli.Print(err.String())
+		fmt.Fprintf(buffer, "%s\n", err)
 		return
 	}
 }
@@ -296,18 +327,18 @@ func wrapper_screenshot(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	err := ioutil.WriteFile(path, data, 0600)
 
 	if err != nil {
-		cli.Print(err.String())
+		fmt.Fprintf(buffer, "%s\n", err)
 	}
 
 	if app.Verbose {
-		cli.Print(fmt.Sprintf("wrote screenshot \"%s\"", path))
+		app.PrintfMsg("wrote screenshot \"%s\"", path)
 	}
 }
 
 // Signature: func puts(str string)
 func wrapper_puts(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	str := in[0].(eval.StringValue).Get(t)
-	cli.Print(str)
+	fmt.Fprintf(buffer, "%s", str)
 }
 
 // Signature: func acceleratedLoad(on bool)
@@ -450,33 +481,9 @@ func defineFunctions(w *eval.World) {
 
 }
 
-// Runs the specified Go source code in the context of 'w'
-func (i *Interpreter) run(console *clingon.Console, w *eval.World, path_orEmpty string, sourceCode string) os.Error {
-	var err os.Error
-	var code eval.Code
-
-	fileSet := token.NewFileSet()
-	if len(path_orEmpty) > 0 {
-		fileSet.AddFile(path_orEmpty, fileSet.Base(), len(sourceCode))
-	}
-
-	code, err = w.Compile(fileSet, sourceCode)
-	if err != nil {
-		console.Print(err.String())
-		return err
-	}
-
-	_, err = code.Run()
-	if err != nil {
-		console.Print(err.String())
-		return err
-	}
-
-	return err
-}
-
 // Loads and evaluates the specified Go script
 func runScript(w *eval.World, scriptName string, optional bool) os.Error {
+	var i Interpreter
 	fileName := scriptName + ".go"
 	data, err := ioutil.ReadFile(spectrum.ScriptPath(fileName))
 	if err != nil {
@@ -490,12 +497,16 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	var buf bytes.Buffer
 
 	buf.Write(data)
-	i.run(cli, w, fileName, buf.String())
+	i.run(w, fileName, buf.String())
 
 	return nil
 }
 
-func initInterpreter() {
+func Init(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, _renderer spectrum.Renderer) {
+	app = nil
+	app = _app
+	speccy = _speccy
+	renderer = _renderer
 	if w == nil {
 		w = eval.NewWorld()
 		defineFunctions(w)

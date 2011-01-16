@@ -78,7 +78,7 @@ func (t *testSuite) should_support_accelerated_loading() {
 func (t *testSuite) should_support_SNA_format() {
 	program, err := formats.ReadProgram("testdata/hello.sna")
 	t.Nil(err)
-
+	
 	err = speccy.Load(program)
 	t.Nil(err)
 

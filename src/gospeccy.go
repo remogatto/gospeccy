@@ -28,6 +28,7 @@ package main
 import (
 	"spectrum"
 	"spectrum/formats"
+	"spectrum/interpreter"
 	"⚛sdl"
 	"⚛sdl/ttf"
 	"fmt"
@@ -67,7 +68,7 @@ type SDLSurfaceAccessor interface {
 }
 
 type SDLRenderer struct {
-	app *spectrum.Application
+	app                                           *spectrum.Application
 	consoleX, consoleY                            int16
 	consoleW, consoleH, consoleH_2, width, height uint16
 	appSurface                                    *sdl.Surface
@@ -79,7 +80,19 @@ type SDLRenderer struct {
 
 func NewSDLRenderer(app *spectrum.Application) *SDLRenderer {
 	return &SDLRenderer{
-	app: app,
+		app: app,
+	}
+}
+
+func (r *SDLRenderer) Resize(scale2x bool) {
+	if scale2x {
+		initDisplay(true, false)
+		initCLI()
+		r.consoleY = int16(r.consoleH_2)
+	} else {
+		initDisplay(false, false)
+		initCLI()
+		r.consoleY = int16(r.consoleH_2)
 	}
 }
 
@@ -90,7 +103,7 @@ func (r *SDLRenderer) loop() {
 		case <-evtLoop.Pause:
 			cli.Pause(true)
 			evtLoop.Pause <- 0
-			
+
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if app.Verbose {
@@ -125,12 +138,12 @@ func (r *SDLRenderer) render(speccyRects, cliRects []sdl.Rect) {
 			}
 		} else {
 			for _, rect := range speccyRects {
-				x, y, w, h := rect.X, rect.Y - int16(r.consoleY), rect.W, rect.H
+				x, y, w, h := rect.X, rect.Y-int16(r.consoleY), rect.W, rect.H
 				r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
 				r.appSurface.Blit(&sdl.Rect{x, y + int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), &sdl.Rect{x, y, w, h})
 			}
 			for _, rect := range cliRects {
-				x, y, w, h := rect.X, rect.Y + int16(r.consoleY), rect.W, rect.H
+				x, y, w, h := rect.X, rect.Y+int16(r.consoleY), rect.W, rect.H
 				r.appSurface.Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
 				r.appSurface.Blit(&sdl.Rect{rect.X, rect.Y + int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), &rect)
 			}
@@ -326,7 +339,6 @@ func initDisplay(scale2x, fullscreen bool) {
 		r.speccySurface = sdlScreen
 		initFont(10)
 	}
-
 	r.fps = spectrum.DefaultFPS
 	r.consoleY = int16(r.height)
 	r.appSurface = sdl.SetVideoMode(int(r.width), int(r.height), 32, sdlMode)
@@ -345,10 +357,10 @@ func initFont(fontSize int) {
 
 func initCLI() {
 	// Initialize CLI
-	initInterpreter()
+	interpreter.Init(app, speccy, r)
 	cliRenderer = clingon.NewSDLRenderer(sdl.CreateRGBSurface(sdl.SRCALPHA, int(r.width), int(r.consoleH_2), 32, 0, 0, 0, 0), font)
 	cliRenderer.GetSurface().SetAlpha(sdl.SRCALPHA, 0xdd)
-	cli = clingon.NewConsole(cliRenderer, &i)
+	cli = clingon.NewConsole(cliRenderer, &interpreter.Interpreter{})
 	cli.Pause(true)
 	cli.Print(`
 Welcome to the GoSpeccy Command Line Interface (CLI)

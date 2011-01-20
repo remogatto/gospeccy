@@ -11,7 +11,7 @@ package spectrum
 // from the Z80 CPU emulation core to an audio device.
 type AudioData struct {
 	// The FPS (frames per second) value that applies to this AudioData object
-	fps float
+	fps float32
 
 	beeperEvents_orNil *BeeperEvent
 }
@@ -23,7 +23,7 @@ const MAX_AUDIO_LEVEL = 3
 // Source: http://www.worldofspectrum.org/faq/reference/48kreference.htm
 //
 // The array is indexed by [bits 3&4 of the value sent to the port].
-var Voltage_Issue2 = [4]float{
+var Voltage_Issue2 = [4]float32{
 	0.39,
 	0.73,
 	3.66,
@@ -35,7 +35,7 @@ var Voltage_Issue2 = [4]float{
 // Source: http://www.worldofspectrum.org/faq/reference/48kreference.htm
 //
 // The array is indexed by [bits 3&4 of the value sent to the port].
-var Voltage_Issue3 = [4]float{
+var Voltage_Issue3 = [4]float32{
 	0.34,
 	0.66,
 	3.56,
@@ -44,7 +44,7 @@ var Voltage_Issue3 = [4]float{
 
 // A table for converting the "audio level" to a 16-bit signed value.
 // Note: The code in file "sdlsound.go" assumes that 'Audio16_Table[0]' equals to zero.
-var Audio16_Table = [4]float{
+var Audio16_Table = [4]float32{
 	0,
 	0x7fff * (Voltage_Issue2[1] - Voltage_Issue2[0]) / (Voltage_Issue2[3] - Voltage_Issue2[0]),
 	0x7fff * (Voltage_Issue2[2] - Voltage_Issue2[0]) / (Voltage_Issue2[3] - Voltage_Issue2[0]),

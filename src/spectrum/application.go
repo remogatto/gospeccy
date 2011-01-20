@@ -107,7 +107,7 @@ func appGoroutine(app *Application) {
 
 	if app.Verbose {
 		endTime := time.Nanoseconds()
-		app.PrintfMsg("application shutdown completed after %f milliseconds", float(endTime-startTime)/1e6)
+		app.PrintfMsg("application shutdown completed after %f milliseconds", float64(endTime-startTime)/1e6)
 		app.PrintfMsg("application has terminated")
 	}
 

@@ -24,7 +24,7 @@ import (
 var (
 	app                 *spectrum.Application
 	speccy              *spectrum.Spectrum48k
-	renderer spectrum.Renderer
+	renderer            spectrum.Renderer
 	w                   *eval.World
 	buffer              *bytes.Buffer
 	IgnoreStartupScript = false
@@ -116,7 +116,6 @@ func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
 		return
 	}
-
 	app.RequestExit()
 }
 
@@ -125,7 +124,6 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
 		return
 	}
-
 	speccy.CommandChannel <- spectrum.Cmd_Reset{make(chan bool, 1)}
 }
 
@@ -202,34 +200,19 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
 		return
 	}
-
 	n := in[0].(eval.UintValue).Get(t)
-
 	switch n {
 	case 1:
 		finished := make(chan byte)
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
-		
-		renderer.Resize(false)
-
-		// initDisplay(false, false)
-		// initCLI()
-		// r.consoleY = int16(r.consoleH_2)
-
+		renderer.Resize(app, false, false)
 	case 2:
 		finished := make(chan byte)
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
-
-		renderer.Resize(true)
-
-		// initDisplay(true, false)
-		// initCLI()
-		// r.consoleY = int16(r.consoleH_2)
+		renderer.Resize(app, true, false)
 	}
-
-//	r.appSurface = sdl.SetVideoMode(int(r.width), int(r.height), 32, 0)
 }
 
 // Signature: func fps(n float)

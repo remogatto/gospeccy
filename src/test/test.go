@@ -53,7 +53,7 @@ func newRenderer(app *spectrum.Application, speccySurface, cliSurface SDLSurface
 	return r
 }
 
-func (r *renderer) Resize(scale2x bool) {
+func (r *renderer) Resize(app *spectrum.Application, fullscreen, scale2x bool) {
 }
 
 func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {

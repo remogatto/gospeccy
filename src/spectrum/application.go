@@ -79,9 +79,15 @@ func appGoroutine(app *Application) {
 		for _, x := range eventLoops {
 			switch e := x.(type) {
 			case *EventLoop:
+				if app.Verbose {
+					app.PrintfMsg("Sent pause message to %s", e.Name)
+				}
 				// Request the event-loop to pause, and wait until it actually pauses
 				e.Pause <- 0
 				<-e.Pause
+				if app.Verbose {
+					app.PrintfMsg("%s is now paused", e.Name)
+				}
 			}
 		}
 
@@ -89,9 +95,15 @@ func appGoroutine(app *Application) {
 		for _, x := range eventLoops {
 			switch e := x.(type) {
 			case *EventLoop:
+				if app.Verbose {
+					app.PrintfMsg("Send terminate message to %s", e.Name)
+				}
 				// Request the event-loop to terminate, and wait until it actually terminates
 				e.Terminate <- 0
 				<-e.Terminate
+				if app.Verbose {
+					app.PrintfMsg("%s was terminated", e.Name)
+				}
 			}
 		}
 

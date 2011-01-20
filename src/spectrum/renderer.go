@@ -1,5 +1,5 @@
 package spectrum
 
 type Renderer interface {
-	Resize(scale2x bool)
+	Resize(app *Application, scale2x, fullscreen bool)
 }

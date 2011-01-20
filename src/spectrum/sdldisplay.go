@@ -355,7 +355,6 @@ func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale ui
 	h := uint32(scale) * uint32(maxy-miny)
 
 	updatedRectsCh <- []sdl.Rect{{int16(x), int16(y), uint16(w), uint16(h)}}
-//	surface.UpdateRect(x, y, w, h)
 }
 
 

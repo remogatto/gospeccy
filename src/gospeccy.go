@@ -46,20 +46,11 @@ var (
 	// The speccy instance
 	speccy *spectrum.Spectrum48k
 
-	// The CLI renderer
-	cliRenderer *clingon.SDLRenderer
-
 	// The CLI
 	cli *clingon.Console
 
-	// The font used by the CLI
-	font *ttf.Font
-
 	// The application renderer
 	r *SDLRenderer
-
-	// CLI animations
-	slideDown, slideUp *clingon.Animation
 )
 
 type SDLSurfaceAccessor interface {
@@ -67,60 +58,196 @@ type SDLSurfaceAccessor interface {
 	GetSurface() *sdl.Surface
 }
 
+type newSurface struct {
+	surface SDLSurfaceAccessor
+	done    chan bool
+}
+
 type SDLRenderer struct {
 	app                                           *spectrum.Application
 	consoleX, consoleY                            int16
-	consoleW, consoleH, consoleH_2, width, height uint16
-	appSurface                                    *sdl.Surface
-	speccySurface, cliSurface                     SDLSurfaceAccessor
-	fps                                           float
+	consoleW, consoleH, consoleH_2, width, height int
+	appSurface, speccySurface, cliSurface         SDLSurfaceAccessor
 	toggling                                      bool
+	appSurfaceCh, cliSurfaceCh, speccySurfaceCh   chan *newSurface
+	evtLoop                                       *spectrum.EventLoop
 	animationDuration                             int64
+	slideDown, slideUp                            *clingon.Animation
 }
 
-func NewSDLRenderer(app *spectrum.Application) *SDLRenderer {
-	return &SDLRenderer{
-		app: app,
+func width(scale2x, fullscreen bool) int {
+	if fullscreen {
+		scale2x = true
 	}
-}
-
-func (r *SDLRenderer) Resize(scale2x bool) {
 	if scale2x {
-		initDisplay(true, false)
-		initCLI()
-		r.consoleY = int16(r.consoleH_2)
-	} else {
-		initDisplay(false, false)
-		initCLI()
-		r.consoleY = int16(r.consoleH_2)
+		return spectrum.TotalScreenWidth * 2
 	}
+	return spectrum.TotalScreenWidth
+}
+
+func height(scale2x, fullscreen bool) int {
+	if fullscreen {
+		scale2x = true
+	}
+	if scale2x {
+		return spectrum.TotalScreenHeight * 2
+	}
+	return spectrum.TotalScreenHeight
+}
+
+type wrapSurface struct {
+	surface *sdl.Surface
+}
+
+func (s *wrapSurface) GetSurface() *sdl.Surface {
+	return s.surface
+}
+
+func (s *wrapSurface) UpdatedRectsCh() <-chan []sdl.Rect {
+	return nil
+}
+
+func newAppSurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
+	var sdlMode uint32
+	if fullscreen {
+		scale2x = true
+		sdlMode = sdl.FULLSCREEN
+		sdl.ShowCursor(sdl.DISABLE)
+	} else {
+		sdlMode = sdl.SWSURFACE
+	}
+	return &wrapSurface{sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)}
+}
+
+func newSpeccySurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfaceAccessor {
+	var speccySurface SDLSurfaceAccessor
+	if fullscreen {
+		scale2x = true
+	}
+	if scale2x {
+		sdlScreen := spectrum.NewSDLScreen2x(app)
+		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
+		speccySurface = sdlScreen
+	} else {
+		sdlScreen := spectrum.NewSDLScreen(app)
+		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
+		speccySurface = sdlScreen
+	}
+	return speccySurface
+}
+
+func newCLISurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
+	cliSurface := clingon.NewSDLRenderer(
+		sdl.CreateRGBSurface(
+			sdl.SRCALPHA,
+			width(scale2x, fullscreen),
+			height(scale2x, fullscreen)/2, 32, 0, 0, 0, 0),
+		newFont(scale2x, fullscreen),
+	)
+	cliSurface.GetSurface().SetAlpha(sdl.SRCALPHA, 0xee)
+	return cliSurface
+}
+
+func newFont(scale2x, fullscreen bool) *ttf.Font {
+	var font *ttf.Font
+	if fullscreen {
+		scale2x = true
+	}
+	if scale2x {
+		font = ttf.OpenFont("font/VeraMono.ttf", 12)
+	} else {
+		font = ttf.OpenFont("font/VeraMono.ttf", 10)
+	}
+	if font == nil {
+		panic(sdl.GetError())
+	}
+	return font
+}
+
+func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRenderer {
+	width := width(scale2x, fullscreen)
+	height := height(scale2x, fullscreen)
+	r := &SDLRenderer{
+		app:             app,
+		cliSurfaceCh:    make(chan *newSurface),
+		speccySurfaceCh: make(chan *newSurface),
+		appSurfaceCh:    make(chan *newSurface),
+		appSurface:      newAppSurface(scale2x, fullscreen),
+		cliSurface:      newCLISurface(scale2x, fullscreen),
+		speccySurface:   newSpeccySurface(app, scale2x, fullscreen),
+		width:           width,
+		height:          height,
+		consoleH_2:      height / 2,
+		consoleY:        int16(height),
+	}
+	slidingDistance := height - r.consoleH_2
+	r.slideDown = clingon.NewSlideDownAnimation(500*1e6, float64(slidingDistance))
+	r.slideUp = clingon.NewSlideUpAnimation(500*1e6, float64(slidingDistance))
+	go r.loop()
+	return r
+}
+
+func (r *SDLRenderer) Resize(app *spectrum.Application, scale2x, fullscreen bool) {
+	done := make(chan bool)
+	r.speccySurfaceCh <- &newSurface{newSpeccySurface(app, fullscreen, scale2x), done}
+	<-done
+
+	done = make(chan bool)
+	r.cliSurfaceCh <- &newSurface{newCLISurface(scale2x, fullscreen), done}
+	<-done
+
+	done = make(chan bool)
+	r.appSurfaceCh <- &newSurface{newAppSurface(scale2x, fullscreen), done}
+	<-done
+
+	r.width = width(scale2x, fullscreen)
+	r.height = height(scale2x, fullscreen)
+	r.consoleH_2 = r.height / 2
+	r.consoleY = int16(r.height / 2)
+
+	slidingDistance := r.height - r.consoleH_2
+	r.slideDown = clingon.NewSlideDownAnimation(500*1e6, float64(slidingDistance))
+	r.slideUp = clingon.NewSlideUpAnimation(500*1e6, float64(slidingDistance))
+
+	cli.SetRenderer(r.cliSurface.(*clingon.SDLRenderer))
 }
 
 func (r *SDLRenderer) loop() {
-	evtLoop := r.app.NewEventLoop()
+	r.evtLoop = r.app.NewEventLoop()
 	for {
 		select {
-		case <-evtLoop.Pause:
-			cli.Pause(true)
-			evtLoop.Pause <- 0
+		case <-r.evtLoop.Pause:
+			r.evtLoop.Pause <- 0
 
-		case <-evtLoop.Terminate:
+		case <-r.evtLoop.Terminate:
 			// Terminate this Go routine
 			if app.Verbose {
-				app.PrintfMsg("SDL renderer event loop: exit")
+				app.PrintfMsg("Frontend SDL renderer event loop: exit")
 			}
-			evtLoop.Terminate <- 0
+			r.evtLoop.Terminate <- 0
 			return
-		case value := <-slideDown.ValueCh():
+		case value := <-r.slideDown.ValueCh():
 			r.consoleY = int16(r.consoleH_2) + int16(value)
 			r.render(nil, nil)
-		case value := <-slideUp.ValueCh():
+		case value := <-r.slideUp.ValueCh():
 			r.consoleY = int16(r.consoleH_2) + int16(value)
 			r.render(nil, nil)
-		case <-slideDown.FinishedCh():
+		case <-r.slideDown.FinishedCh():
 			r.toggling = false
-		case <-slideUp.FinishedCh():
+		case <-r.slideUp.FinishedCh():
 			r.toggling = false
+		case newAccessorCmd := <-r.cliSurfaceCh:
+			r.cliSurface = newAccessorCmd.surface
+			newAccessorCmd.done <- true
+			r.blitAll()
+		case newAccessorCmd := <-r.speccySurfaceCh:
+			r.speccySurface = newAccessorCmd.surface
+			newAccessorCmd.done <- true
+			r.blitAll()
+		case newAccessorCmd := <-r.appSurfaceCh:
+			r.appSurface = newAccessorCmd.surface
+			newAccessorCmd.done <- true
+			r.blitAll()
 		case cliRects := <-r.cliSurface.UpdatedRectsCh():
 			r.render(nil, cliRects)
 		case speccyRects := <-r.speccySurface.UpdatedRectsCh():
@@ -129,31 +256,49 @@ func (r *SDLRenderer) loop() {
 	}
 }
 
+func (r *SDLRenderer) blitAll() {
+	r.appSurface.GetSurface().Blit(nil, r.speccySurface.GetSurface(), nil)
+	r.appSurface.GetSurface().Blit(&sdl.Rect{0, int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), nil)
+	r.appSurface.GetSurface().Flip()
+}
+
 func (r *SDLRenderer) render(speccyRects, cliRects []sdl.Rect) {
 	if !r.toggling {
 		if cli.Paused() {
 			for _, rect := range speccyRects {
-				r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
-				r.appSurface.UpdateRect(int32(rect.X), int32(rect.Y), uint32(rect.W), uint32(rect.H))
+				r.appSurface.GetSurface().Blit(&rect, r.speccySurface.GetSurface(), &rect)
+				r.appSurface.GetSurface().UpdateRect(int32(rect.X), int32(rect.Y), uint32(rect.W), uint32(rect.H))
 			}
 		} else {
 			for _, rect := range speccyRects {
 				x, y, w, h := rect.X, rect.Y-int16(r.consoleY), rect.W, rect.H
-				r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
-				r.appSurface.Blit(&sdl.Rect{x, y + int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), &sdl.Rect{x, y, w, h})
+				r.appSurface.GetSurface().Blit(&rect, r.speccySurface.GetSurface(), &rect)
+				r.appSurface.GetSurface().Blit(&sdl.Rect{x, y + int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), &sdl.Rect{x, y, w, h})
 			}
 			for _, rect := range cliRects {
 				x, y, w, h := rect.X, rect.Y+int16(r.consoleY), rect.W, rect.H
-				r.appSurface.Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
-				r.appSurface.Blit(&sdl.Rect{rect.X, rect.Y + int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), &rect)
+				r.appSurface.GetSurface().Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
+				r.appSurface.GetSurface().Blit(&sdl.Rect{rect.X, rect.Y + int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), &rect)
 			}
-			r.appSurface.Flip()
+			r.appSurface.GetSurface().Flip()
 		}
 	} else {
-		r.appSurface.Blit(nil, r.speccySurface.GetSurface(), nil)
-		r.appSurface.Blit(&sdl.Rect{0, int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), nil)
-		r.appSurface.Flip()
+		r.blitAll()
 	}
+}
+
+func initCLI() {
+	cli = clingon.NewConsole(r.cliSurface.(*clingon.SDLRenderer), &interpreter.Interpreter{})
+	cli.Pause(true)
+	cli.Print(`
+GoSpeccy Command Line Interface (CLI)
+-------------------------------------
+Available keys:
+* F10 toggle/untoggle the CLI
+* Up/Down for history browsing
+* PagUp/PagDown for scrolling
+`)
+	cli.SetPrompt("gospeccy> ")
 }
 
 // A Go routine for processing SDL events.
@@ -212,18 +357,18 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 					if !r.toggling {
 						cli.Pause(!cli.Paused())
 						if cli.Paused() {
-							slideDown.Start()
+							r.slideDown.Start()
 						} else {
-							slideUp.Start()
+							r.slideUp.Start()
 						}
 					}
 					r.toggling = true
 				} else {
 					if !cli.Paused() {
 						if (keyName == "page up") && (e.Type == sdl.KEYDOWN) {
-							cliRenderer.ScrollCh() <- clingon.SCROLL_UP
+							r.cliSurface.(*clingon.SDLRenderer).ScrollCh() <- clingon.SCROLL_UP
 						} else if (keyName == "page down") && (e.Type == sdl.KEYDOWN) {
-							cliRenderer.ScrollCh() <- clingon.SCROLL_DOWN
+							r.cliSurface.(*clingon.SDLRenderer).ScrollCh() <- clingon.SCROLL_DOWN
 						} else if (keyName == "up") && (e.Type == sdl.KEYDOWN) {
 							cli.PutReadline(clingon.HISTORY_PREV)
 						} else if (keyName == "down") && (e.Type == sdl.KEYDOWN) {
@@ -285,10 +430,6 @@ func initApplication(verbose bool) {
 	app.Verbose = verbose
 }
 
-func initSDLRenderer() {
-	r = NewSDLRenderer(app)
-}
-
 // Create new emulator core
 func initEmulationCore(acceleratedLoad bool) (err os.Error) {
 	speccy, err = spectrum.NewSpectrum48k(app, spectrum.SystemRomPath("48.rom"))
@@ -309,68 +450,6 @@ func initSDLSubSystems() os.Error {
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 	sdl.EnableUNICODE(1)
 	return nil
-}
-
-func initDisplay(scale2x, fullscreen bool) {
-	var sdlMode uint32
-	if fullscreen {
-		sdlMode = sdl.FULLSCREEN
-		scale2x = true
-		sdl.ShowCursor(sdl.DISABLE)
-	} else {
-		sdlMode = 0
-	}
-	if scale2x {
-		r.width = spectrum.TotalScreenWidth * 2
-		r.height = spectrum.TotalScreenHeight * 2
-		r.consoleH_2 = spectrum.TotalScreenHeight
-
-		sdlScreen := spectrum.NewSDLScreen2x(app)
-		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
-		r.speccySurface = sdlScreen
-		initFont(12)
-	} else {
-		r.width = spectrum.TotalScreenWidth
-		r.height = spectrum.TotalScreenHeight
-		r.consoleH_2 = r.height / 2
-
-		sdlScreen := spectrum.NewSDLScreen(app)
-		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
-		r.speccySurface = sdlScreen
-		initFont(10)
-	}
-	r.fps = spectrum.DefaultFPS
-	r.consoleY = int16(r.height)
-	r.appSurface = sdl.SetVideoMode(int(r.width), int(r.height), 32, sdlMode)
-	slidingDistance := uint16(r.appSurface.H) - r.consoleH_2
-	slideDown = clingon.NewSlideDownAnimation(500*1e6, float64(slidingDistance))
-	slideUp = clingon.NewSlideUpAnimation(500*1e6, float64(slidingDistance))
-}
-
-func initFont(fontSize int) {
-	font = ttf.OpenFont("font/VeraMono.ttf", fontSize)
-
-	if font == nil {
-		panic(sdl.GetError())
-	}
-}
-
-func initCLI() {
-	// Initialize CLI
-	interpreter.Init(app, speccy, r)
-	cliRenderer = clingon.NewSDLRenderer(sdl.CreateRGBSurface(sdl.SRCALPHA, int(r.width), int(r.consoleH_2), 32, 0, 0, 0, 0), font)
-	cliRenderer.GetSurface().SetAlpha(sdl.SRCALPHA, 0xdd)
-	cli = clingon.NewConsole(cliRenderer, &interpreter.Interpreter{})
-	cli.Pause(true)
-	cli.Print(`
-Welcome to the GoSpeccy Command Line Interface (CLI)
-----------------------------------------------------
-Available keys:
-* F10 toggle/untoggle the CLI
-* PagUp/PagDown for scrolling
-`)
-	cli.SetPrompt("gospeccy> ")
-	r.cliSurface = cliRenderer
 }
 
 func main() {
@@ -409,7 +488,6 @@ func main() {
 	}
 
 	initApplication(*verbose)
-	initSDLRenderer()
 
 	// Install SIGTERM handler
 	{
@@ -437,14 +515,16 @@ func main() {
 
 		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
 		if <-n == 0 {
-			initDisplay(*scale2x, *fullscreen)
+			r = NewSDLRenderer(app, *scale2x, *fullscreen)
+
 		}
+
+		initCLI()
 
 		// Run startup scripts. The startup scripts may create a display/audio receiver.
 		{
 			fmt.Println("Hint: Press F10 to invoke the built-in console.")
 			fmt.Println("      Input an empty line in the console to display available commands.")
-			initCLI()
 			if app.TerminationInProgress() || closed(app.HasTerminated) {
 				goto quit
 			}
@@ -471,10 +551,12 @@ func main() {
 	go speccy.EmulatorLoop()
 
 	// Begin the application render loop
-	go r.loop()
+	//	go r.loop()
 
 	// Set the FPS
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
+
+	interpreter.Init(app, speccy, r)
 
 	// Process command line argument. Load the given program (if any)
 	if flag.Arg(0) != "" {

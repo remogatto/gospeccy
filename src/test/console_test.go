@@ -80,9 +80,9 @@ func (t *cliTestSuite) should_allow_loading_scripts() {
 	t.Equal(1, len(r.FindAllString(console.String(), -1)))
 }
 
-// func (t *cliTestSuite) should_allow_keypress_events() {
-// 	t.Pending()
-// }
+func (t *cliTestSuite) should_allow_keypress_events() {
+	t.Pending()
+}
 
 func TestConsoleFeatures(t *testing.T) {
 	pt.RunWithFormatter(

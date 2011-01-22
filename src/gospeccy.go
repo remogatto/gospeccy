@@ -75,6 +75,18 @@ type SDLRenderer struct {
 	slideDown, slideUp                            *clingon.Animation
 }
 
+type wrapSurface struct {
+	surface *sdl.Surface
+}
+
+func (s *wrapSurface) GetSurface() *sdl.Surface {
+	return s.surface
+}
+
+func (s *wrapSurface) UpdatedRectsCh() <-chan []sdl.Rect {
+	return nil
+}
+
 func width(scale2x, fullscreen bool) int {
 	if fullscreen {
 		scale2x = true
@@ -95,18 +107,6 @@ func height(scale2x, fullscreen bool) int {
 	return spectrum.TotalScreenHeight
 }
 
-type wrapSurface struct {
-	surface *sdl.Surface
-}
-
-func (s *wrapSurface) GetSurface() *sdl.Surface {
-	return s.surface
-}
-
-func (s *wrapSurface) UpdatedRectsCh() <-chan []sdl.Rect {
-	return nil
-}
-
 func newAppSurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
 	var sdlMode uint32
 	if fullscreen {
@@ -114,6 +114,7 @@ func newAppSurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
 		sdlMode = sdl.FULLSCREEN
 		sdl.ShowCursor(sdl.DISABLE)
 	} else {
+		sdl.ShowCursor(sdl.ENABLE)
 		sdlMode = sdl.SWSURFACE
 	}
 	return &wrapSurface{sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)}
@@ -144,7 +145,7 @@ func newCLISurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
 			height(scale2x, fullscreen)/2, 32, 0, 0, 0, 0),
 		newFont(scale2x, fullscreen),
 	)
-	cliSurface.GetSurface().SetAlpha(sdl.SRCALPHA, 0xee)
+	cliSurface.GetSurface().SetAlpha(sdl.SRCALPHA, 0xdd)
 	return cliSurface
 }
 
@@ -189,15 +190,15 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRen
 
 func (r *SDLRenderer) Resize(app *spectrum.Application, scale2x, fullscreen bool) {
 	done := make(chan bool)
-	r.speccySurfaceCh <- &newSurface{newSpeccySurface(app, fullscreen, scale2x), done}
+	r.appSurfaceCh <- &newSurface{newAppSurface(scale2x, fullscreen), done}
+	<-done
+
+	done = make(chan bool)
+	r.speccySurfaceCh <- &newSurface{newSpeccySurface(app, scale2x, fullscreen), done}
 	<-done
 
 	done = make(chan bool)
 	r.cliSurfaceCh <- &newSurface{newCLISurface(scale2x, fullscreen), done}
-	<-done
-
-	done = make(chan bool)
-	r.appSurfaceCh <- &newSurface{newAppSurface(scale2x, fullscreen), done}
 	<-done
 
 	r.width = width(scale2x, fullscreen)
@@ -237,14 +238,17 @@ func (r *SDLRenderer) loop() {
 		case <-r.slideUp.FinishedCh():
 			r.toggling = false
 		case newAccessorCmd := <-r.cliSurfaceCh:
+			r.cliSurface.GetSurface().Free()
 			r.cliSurface = newAccessorCmd.surface
 			newAccessorCmd.done <- true
 			r.blitAll()
 		case newAccessorCmd := <-r.speccySurfaceCh:
+			r.speccySurface.GetSurface().Free()
 			r.speccySurface = newAccessorCmd.surface
 			newAccessorCmd.done <- true
 			r.blitAll()
 		case newAccessorCmd := <-r.appSurfaceCh:
+			r.appSurface.GetSurface().Free()
 			r.appSurface = newAccessorCmd.surface
 			newAccessorCmd.done <- true
 			r.blitAll()

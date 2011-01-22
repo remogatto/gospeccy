@@ -215,6 +215,25 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 }
 
+// Signature: func fullscreen(enable bool)
+func wrapper_fullscreen(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() {
+		return
+	}
+	enable := in[0].(eval.BoolValue).Get(t)
+	if enable {
+		finished := make(chan byte)
+		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
+		<-finished
+		renderer.Resize(app, true, true)	
+	} else {
+		finished := make(chan byte)
+		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
+		<-finished
+		renderer.Resize(app, true, false)		
+	}
+}
+
 // Signature: func fps(n float32)
 func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
@@ -342,7 +361,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("help()")
 		help_vals.Push("This help")
 	}
-
 	{
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_exit, functionSignature)
@@ -350,7 +368,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("exit()")
 		help_vals.Push("Terminate this program")
 	}
-
 	{
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_reset, functionSignature)
@@ -358,7 +375,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("reset()")
 		help_vals.Push("Reset the emulated machine")
 	}
-
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_addSearchPath, functionSignature)
@@ -366,7 +382,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("addSearchPath(path string)")
 		help_vals.Push("Append a path to the list of paths searched when loading snapshots")
 	}
-
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
@@ -374,7 +389,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("load(path string)")
 		help_vals.Push("Load state from file (.SNA, .Z80, .Z80.ZIP, etc)")
 	}
-
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_save, functionSignature)
@@ -382,7 +396,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("save(path string)")
 		help_vals.Push("Save state to file (SNA format)")
 	}
-
 	{
 		var functionSignature func(uint)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_scale, functionSignature)
@@ -390,7 +403,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("scale(n uint)")
 		help_vals.Push("Change the display scale")
 	}
-
 	{
 		var functionSignature func(float32)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, functionSignature)
@@ -398,7 +410,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("fps(n float32)")
 		help_vals.Push("Change the display refresh frequency")
 	}
-
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_ulaAccuracy, functionSignature)
@@ -406,7 +417,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("ula_accuracy(accurateEmulation bool)")
 		help_vals.Push("Enable/disable accurate emulation of screen bitmap and screen attributes")
 	}
-
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_sound, functionSignature)
@@ -414,7 +424,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("sound(enable bool)")
 		help_vals.Push("Enable or disable sound")
 	}
-
 	{
 		var functionSignature func(uint)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wait, functionSignature)
@@ -422,7 +431,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("wait(milliseconds uint)")
 		help_vals.Push("Wait the specified amount of time before issuing the next command")
 	}
-
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_script, functionSignature)
@@ -430,7 +438,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("script(scriptName string)")
 		help_vals.Push("Load and evaluate the specified Go script")
 	}
-
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_optionalScript, functionSignature)
@@ -438,7 +445,6 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("optionalScript(scriptName string)")
 		help_vals.Push("Load (if found) and evaluate the specified Go script")
 	}
-
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_screenshot, functionSignature)
@@ -453,7 +459,13 @@ func defineFunctions(w *eval.World) {
 		help_keys.Push("puts(str string)")
 		help_vals.Push("Print the given string")
 	}
-
+	{
+		var functionSignature func(bool)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fullscreen, functionSignature)
+		w.DefineVar("fullscreen", funcType, funcValue)
+		help_keys.Push("fullscreen(enable bool)")
+		help_vals.Push("Fullscreen on/off")
+	}
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_acceleratedLoad, functionSignature)

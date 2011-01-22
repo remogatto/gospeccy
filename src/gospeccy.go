@@ -464,7 +464,7 @@ func main() {
 	help := flag.Bool("help", false, "Show usage")
 	scale2x := flag.Bool("2x", false, "2x display scaler")
 	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
-	fps := flag.Float("fps", spectrum.DefaultFPS, "Frames per second")
+	fps := flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
 	sound := flag.Bool("sound", true, "Enable or disable sound")
 	acceleratedLoad := flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
@@ -554,7 +554,7 @@ func main() {
 	//	go r.loop()
 
 	// Set the FPS
-	speccy.CommandChannel <- spectrum.Cmd_SetFPS{*fps}
+	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float32(*fps)}
 
 	interpreter.Init(app, speccy, r)
 

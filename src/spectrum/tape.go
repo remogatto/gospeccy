@@ -66,7 +66,7 @@ type TapeDrive struct {
 	leaderPulses, bitTime                 uint16
 	state, mask                           byte
 	startAcceleration                     bool
-	fpsBeforeAcceleration                 float
+	fpsBeforeAcceleration                 float32
 	loadComplete                          chan bool
 }
 

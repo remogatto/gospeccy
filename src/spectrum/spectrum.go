@@ -65,12 +65,12 @@ type Spectrum48k struct {
 	// The current display refresh frequency.
 	// The initial value if 'DefaultFPS'.
 	// It is always greater than 0.
-	currentFPS float
+	currentFPS float32
 
 	// A value received from this channel indicates the new display refresh frequency.
 	// By default, this channel initially receives the value 'DefaultFPS'.
-	FPS <-chan float
-	fps chan float
+	FPS <-chan float32
+	fps chan float32
 
 	// A value received from this channel indicates that the
 	// system ROM has been loaded. This applies to the standard
@@ -90,7 +90,7 @@ type Spectrum48k struct {
 	audioReceivers vector.Vector
 
 	// Register the state of FPS before accelerating tape loading
-	fpsBeforeAccelerating float
+	fpsBeforeAccelerating float32
 
 	app *Application
 }
@@ -114,7 +114,7 @@ type Cmd_CloseAllDisplays struct {
 	Finished chan<- byte
 }
 type Cmd_SetFPS struct {
-	NewFPS float
+	NewFPS float32
 }
 type Cmd_SetUlaEmulationAccuracy struct {
 	AccurateEmulation bool
@@ -186,7 +186,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	}
 
 	speccy.currentFPS = DefaultFPS
-	speccy.fps = make(chan float, 1)
+	speccy.fps = make(chan float32, 1)
 	speccy.FPS = speccy.fps
 	speccy.fps <- DefaultFPS
 
@@ -221,7 +221,7 @@ func (speccy *Spectrum48k) Close() {
 }
 
 // Set emulation speed in FPS
-func (speccy *Spectrum48k) SetFPS(newFPS float) {
+func (speccy *Spectrum48k) SetFPS(newFPS float32) {
 	if newFPS <= 1.0 {
 		newFPS = DefaultFPS
 	}
@@ -233,7 +233,7 @@ func (speccy *Spectrum48k) SetFPS(newFPS float) {
 }
 
 // Get current FPS
-func (speccy *Spectrum48k) GetCurrentFPS() float {
+func (speccy *Spectrum48k) GetCurrentFPS() float32 {
 	return speccy.currentFPS
 }
 

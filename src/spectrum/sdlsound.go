@@ -148,7 +148,7 @@ type SDLAudio struct {
 	virtualFreq uint
 
 	// Sum of fractions which were lost because of integer truncation
-	numSamples_cummulativeFraction float
+	numSamples_cummulativeFraction float32
 
 	// Array for storing samples. It is declared here in order
 	// to avoid repetitive allocation of this array in method 'render'.
@@ -235,11 +235,11 @@ func (audio *SDLAudio) bufferRemove() {
 		changedFreq := false
 		if audio.bufSize < BUFSIZE_IDEAL-2 {
 			// Prevent future buffer underruns
-			audio.virtualFreq = uint(float(audio.virtualFreq) * 1.0005)
+			audio.virtualFreq = uint(float32(audio.virtualFreq) * 1.0005)
 			changedFreq = true
 		} else if audio.bufSize > BUFSIZE_IDEAL+2 {
 			// Prevent future buffer overruns
-			audio.virtualFreq = uint(float(audio.virtualFreq) / 1.0005)
+			audio.virtualFreq = uint(float32(audio.virtualFreq) / 1.0005)
 			changedFreq = true
 		} else if audio.bufSize == BUFSIZE_IDEAL {
 			if audio.virtualFreq != audio.freq {
@@ -300,10 +300,10 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 	{
 		audio.mutex.Lock()
 
-		numSamples_float := float(audio.virtualFreq) / float(audioData.fps)
+		numSamples_float := float32(audio.virtualFreq) / audioData.fps
 		numSamples = uint(numSamples_float)
 
-		audio.numSamples_cummulativeFraction += numSamples_float - float(numSamples)
+		audio.numSamples_cummulativeFraction += numSamples_float - float32(numSamples)
 		if audio.numSamples_cummulativeFraction >= 1.0 {
 			numSamples += 1
 			audio.numSamples_cummulativeFraction -= 1.0
@@ -317,9 +317,9 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 		audio.mutex.Unlock()
 	}
 
-	var k float = float(numSamples) / TStatesPerFrame
+	var k float32 = float32(numSamples) / TStatesPerFrame
 
-	samples := make([]float, numSamples+1)
+	samples := make([]float32, numSamples+1)
 	for i := 0; i < numEvents-1; i++ {
 		start := events[i]
 
@@ -327,8 +327,8 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 			level := Audio16_Table[start.level]
 			end := events[i+1]
 
-			var position0 float = float(start.tstate) * k
-			var position1 float = float(end.tstate) * k
+			var position0 float32 = float32(start.tstate) * k
+			var position1 float32 = float32(end.tstate) * k
 
 			pos0 := uint(position0)
 			pos1 := uint(position1)
@@ -336,11 +336,11 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 			if pos0 == pos1 {
 				samples[pos0] += level * (position1 - position0)
 			} else {
-				samples[pos0] += level * (float(pos0+1) - position0)
+				samples[pos0] += level * (float32(pos0+1) - position0)
 				for p := pos0 + 1; p < pos1; p++ {
 					samples[p] = level
 				}
-				samples[pos1] += level * (position1 - float(pos1))
+				samples[pos1] += level * (position1 - float32(pos1))
 			}
 		}
 	}

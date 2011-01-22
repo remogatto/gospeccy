@@ -215,14 +215,14 @@ func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 }
 
-// Signature: func fps(n float)
+// Signature: func fps(n float32)
 func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
 		return
 	}
 
 	fps := in[0].(eval.FloatValue).Get(t)
-	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float(fps)}
+	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float32(fps)}
 }
 
 // Signature: func ula_accuracy(accurateEmulation bool)
@@ -392,10 +392,10 @@ func defineFunctions(w *eval.World) {
 	}
 
 	{
-		var functionSignature func(float)
+		var functionSignature func(float32)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, functionSignature)
 		w.DefineVar("fps", funcType, funcValue)
-		help_keys.Push("fps(n float)")
+		help_keys.Push("fps(n float32)")
 		help_vals.Push("Change the display refresh frequency")
 	}
 

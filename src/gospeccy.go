@@ -58,9 +58,9 @@ type SDLSurfaceAccessor interface {
 	GetSurface() *sdl.Surface
 }
 
-type newSurface struct {
-	surface SDLSurfaceAccessor
-	done    chan bool
+type newSurfaces struct {
+	surfaces []SDLSurfaceAccessor
+	done     chan bool
 }
 
 type SDLRenderer struct {
@@ -69,7 +69,7 @@ type SDLRenderer struct {
 	consoleW, consoleH, consoleH_2, width, height int
 	appSurface, speccySurface, cliSurface         SDLSurfaceAccessor
 	toggling                                      bool
-	appSurfaceCh, cliSurfaceCh, speccySurfaceCh   chan *newSurface
+	newSurfacesCh                                 chan *newSurfaces
 	evtLoop                                       *spectrum.EventLoop
 	animationDuration                             int64
 	slideDown, slideUp                            *clingon.Animation
@@ -169,17 +169,15 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRen
 	width := width(scale2x, fullscreen)
 	height := height(scale2x, fullscreen)
 	r := &SDLRenderer{
-		app:             app,
-		cliSurfaceCh:    make(chan *newSurface),
-		speccySurfaceCh: make(chan *newSurface),
-		appSurfaceCh:    make(chan *newSurface),
-		appSurface:      newAppSurface(scale2x, fullscreen),
-		cliSurface:      newCLISurface(scale2x, fullscreen),
-		speccySurface:   newSpeccySurface(app, scale2x, fullscreen),
-		width:           width,
-		height:          height,
-		consoleH_2:      height / 2,
-		consoleY:        int16(height),
+		app:           app,
+		newSurfacesCh: make(chan *newSurfaces),
+		appSurface:    newAppSurface(scale2x, fullscreen),
+		cliSurface:    newCLISurface(scale2x, fullscreen),
+		speccySurface: newSpeccySurface(app, scale2x, fullscreen),
+		width:         width,
+		height:        height,
+		consoleH_2:    height / 2,
+		consoleY:      int16(height),
 	}
 	slidingDistance := height - r.consoleH_2
 	r.slideDown = clingon.NewSlideDownAnimation(500*1e6, float64(slidingDistance))
@@ -189,27 +187,22 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRen
 }
 
 func (r *SDLRenderer) Resize(app *spectrum.Application, scale2x, fullscreen bool) {
+	cli.Pause(true)
 	done := make(chan bool)
-	r.appSurfaceCh <- &newSurface{newAppSurface(scale2x, fullscreen), done}
+	r.newSurfacesCh <- &newSurfaces{[]SDLSurfaceAccessor{
+		newAppSurface(scale2x, fullscreen),
+		newSpeccySurface(app, scale2x, fullscreen),
+		newCLISurface(scale2x, fullscreen),
+	},
+		done}
 	<-done
-
-	done = make(chan bool)
-	r.speccySurfaceCh <- &newSurface{newSpeccySurface(app, scale2x, fullscreen), done}
-	<-done
-
-	done = make(chan bool)
-	r.cliSurfaceCh <- &newSurface{newCLISurface(scale2x, fullscreen), done}
-	<-done
-
 	r.width = width(scale2x, fullscreen)
 	r.height = height(scale2x, fullscreen)
 	r.consoleH_2 = r.height / 2
 	r.consoleY = int16(r.height / 2)
-
 	slidingDistance := r.height - r.consoleH_2
 	r.slideDown = clingon.NewSlideDownAnimation(500*1e6, float64(slidingDistance))
 	r.slideUp = clingon.NewSlideUpAnimation(500*1e6, float64(slidingDistance))
-
 	cli.SetRenderer(r.cliSurface.(*clingon.SDLRenderer))
 }
 
@@ -237,20 +230,14 @@ func (r *SDLRenderer) loop() {
 			r.toggling = false
 		case <-r.slideUp.FinishedCh():
 			r.toggling = false
-		case newAccessorCmd := <-r.cliSurfaceCh:
-			r.cliSurface.GetSurface().Free()
-			r.cliSurface = newAccessorCmd.surface
-			newAccessorCmd.done <- true
-			r.blitAll()
-		case newAccessorCmd := <-r.speccySurfaceCh:
-			r.speccySurface.GetSurface().Free()
-			r.speccySurface = newAccessorCmd.surface
-			newAccessorCmd.done <- true
-			r.blitAll()
-		case newAccessorCmd := <-r.appSurfaceCh:
+		case newSurfaces := <-r.newSurfacesCh:
 			r.appSurface.GetSurface().Free()
-			r.appSurface = newAccessorCmd.surface
-			newAccessorCmd.done <- true
+			r.speccySurface.GetSurface().Free()
+			r.cliSurface.GetSurface().Free()
+			r.appSurface = newSurfaces.surfaces[0]
+			r.speccySurface = newSurfaces.surfaces[1]
+			r.cliSurface = newSurfaces.surfaces[2]
+			newSurfaces.done <- true
 			r.blitAll()
 		case cliRects := <-r.cliSurface.UpdatedRectsCh():
 			r.render(nil, cliRects)
@@ -520,7 +507,6 @@ func main() {
 		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
 		if <-n == 0 {
 			r = NewSDLRenderer(app, *scale2x, *fullscreen)
-
 		}
 
 		initCLI()

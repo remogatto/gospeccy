@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"os"
 	"⚛sdl"
+	"⚛sdl/ttf"
 	"time"
 	"unsafe"
 )
@@ -38,6 +39,16 @@ func init() {
 	actualVersion := sdl.GoSdlVersion()
 	if actualVersion != expectedVersion {
 		fmt.Fprintf(os.Stderr, "Invalid SDL bindings version: expected \"%s\", got \"%s\"\n",
+					expectedVersion, actualVersion)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	const expectedVersion = "⚛SDL TTF bindings 1.0"
+	actualVersion := ttf.GoSdlVersion()
+	if actualVersion != expectedVersion {
+		fmt.Fprintf(os.Stderr, "Invalid SDL font bindings version: expected \"%s\", got \"%s\"\n",
 					expectedVersion, actualVersion)
 		os.Exit(1)
 	}

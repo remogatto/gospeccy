@@ -117,7 +117,11 @@ func newAppSurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
 		sdl.ShowCursor(sdl.ENABLE)
 		sdlMode = sdl.SWSURFACE
 	}
-	return &wrapSurface{sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)}
+	surface := sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)
+	if app.Verbose {
+		app.PrintfMsg("video surface resolution: %dx%d", surface.W, surface.H)
+	}
+	return &wrapSurface{surface}
 }
 
 func newSpeccySurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfaceAccessor {
@@ -520,7 +524,6 @@ func main() {
 		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
 		if <-n == 0 {
 			r = NewSDLRenderer(app, *scale2x, *fullscreen)
-
 		}
 
 		initCLI()

@@ -225,12 +225,12 @@ func wrapper_fullscreen(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		finished := make(chan byte)
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
-		renderer.Resize(app, true, true)	
+		renderer.Resize(app, true, true)
 	} else {
 		finished := make(chan byte)
 		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
 		<-finished
-		renderer.Resize(app, true, false)		
+		renderer.Resize(app, true, false)
 	}
 }
 

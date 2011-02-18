@@ -310,9 +310,7 @@ func (p *Ports) readPortInternal(address uint16, contend bool) byte {
 			return result & earBit
 		}
 	} else if (address & 0x00e0) == 0x0000 {
-		// Kempston joystick: treat this as attached but
-		// unused (for the benefit of Manic Miner)
-		result = 0x00
+		result &= p.speccy.Joystick.GetState()
 	} else {
 		// Unassigned port
 		result = 0xff

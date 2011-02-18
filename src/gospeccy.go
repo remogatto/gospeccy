@@ -39,6 +39,8 @@ import (
 	"clingon"
 )
 
+const DEFAULT_JOYSTICK_ID = 0
+
 var (
 	// The application instance
 	app *spectrum.Application
@@ -51,6 +53,8 @@ var (
 
 	// The application renderer
 	r *SDLRenderer
+
+	joystick *sdl.Joystick
 )
 
 type SDLSurfaceAccessor interface {
@@ -297,7 +301,7 @@ Available keys:
 }
 
 // A Go routine for processing SDL events.
-func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseKeyboard bool) {
+func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseInput bool) {
 	app = evtLoop.App()
 
 	for {
@@ -321,10 +325,46 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 				}
 				app.RequestExit()
 
+			case sdl.JoyAxisEvent:
+				if verboseInput {
+					app.PrintfMsg("[Joystick] Axis: %d, Value: %d", e.Axis, e.Value)
+				}
+				if e.Axis == 0 {
+					if e.Value > 0 {
+						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_RIGHT)
+					} else if e.Value < 0 {
+						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_LEFT)
+					} else {
+						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_RIGHT)
+						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_LEFT)
+					}
+				} else if e.Axis ==1 {
+					if e.Value > 0 {
+						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_UP)
+					} else if e.Value < 0 {
+						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_DOWN)
+					} else {
+						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_UP)
+						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_DOWN)
+					}
+				}
+
+			case sdl.JoyButtonEvent:
+				if verboseInput {
+					app.PrintfMsg("[Joystick] Button: %d, State: %d", e.Button, e.State)
+				}
+				if e.Button == 0 {
+					if e.State > 0 {
+						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_FIRE)
+					} else {
+						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_FIRE)
+					}
+				}
+
 			case sdl.KeyboardEvent:
 				keyName := sdl.GetKeyName(sdl.Key(e.Keysym.Sym))
 
-				if verboseKeyboard {
+				if verboseInput {
 					app.PrintfMsg("\n")
 					app.PrintfMsg("%v: %v", e.Keysym.Sym, ": ", keyName)
 
@@ -435,12 +475,26 @@ func initEmulationCore(acceleratedLoad bool) (err os.Error) {
 }
 
 func initSDLSubSystems() os.Error {
-	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
+	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO|sdl.INIT_JOYSTICK) != 0 {
 		return os.NewError(sdl.GetError())
 	}
-
 	if ttf.Init() != 0 {
 		return os.NewError(sdl.GetError())
+	}
+	if sdl.NumJoysticks() > 0 {
+		// Open joystick
+		joystick = sdl.JoystickOpen(DEFAULT_JOYSTICK_ID)
+		if joystick != nil {
+			if app.Verbose {
+				app.PrintfMsg("Opened Joystick %d", DEFAULT_JOYSTICK_ID)
+				app.PrintfMsg("Name: %s", sdl.JoystickName(DEFAULT_JOYSTICK_ID))
+				app.PrintfMsg("Number of Axes: %d", joystick.NumAxes())
+				app.PrintfMsg("Number of Buttons: %d", joystick.NumButtons())
+				app.PrintfMsg("Number of Balls: %d", joystick.NumBalls())
+			}
+		} else {
+			return os.NewError("Couldn't open Joystick!")
+		}
 	}
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
 	sdl.EnableUNICODE(1)
@@ -463,7 +517,7 @@ func main() {
 	sound := flag.Bool("sound", true, "Enable or disable sound")
 	acceleratedLoad := flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
-	verboseKeyboard := flag.Bool("verbose-keyboard", false, "Enable debugging messages (keyboard events)")
+	verboseInput := flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
 
 	{
 		flag.Usage = func() {
@@ -539,7 +593,7 @@ func main() {
 	}
 
 	// Start the SDL event loop
-	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseKeyboard)
+	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseInput)
 
 	// Begin speccy emulation
 	go speccy.EmulatorLoop()

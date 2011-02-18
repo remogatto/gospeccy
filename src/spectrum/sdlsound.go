@@ -40,7 +40,12 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 			// Remove all enqueued AudioData objects
 			removed := true
 			for removed {
-				_, removed = <-audio.playback
+				select {
+				case <-audio.playback:
+					removed = true
+				default: 
+					removed = false
+				}
 			}
 
 			audio.mutex.Lock()
@@ -81,7 +86,9 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 		case audioData := <-audioDataChannel:
 			if audioData != nil {
 				audio.bufferAdd()
-				audio.playback <- audioData
+				if !closed(audio.playback) {
+					audio.playback <- audioData
+				}
 			} else {
 				// Prevent [any future message sent to 'audio.data'] to block the sender.
 				// We have to replace 'audioDataChannel' with a new dummy channel,

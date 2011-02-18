@@ -284,14 +284,14 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 
 	displayData.completionTime_orNil = completionTime_orNil
 	displayChannel := display.displayReceiver.getDisplayDataChannel()
-	nonBlockingSend := displayChannel <- displayData
 
-	if nonBlockingSend {
+	select {
+	case displayChannel <- displayData:
 		if display.lastFrame == nil {
 			display.lastFrame = new(uint)
 		}
 		*(display.lastFrame) = ula.frame
-	} else {
+	default:
 		// Nothing was sent over the 'displayChannel', because the send would block.
 		// Avoiding the blocking allows the CPU emulation to proceed when the next tick arrives,
 		// instead of waiting for the display backend to receive the previous frame.

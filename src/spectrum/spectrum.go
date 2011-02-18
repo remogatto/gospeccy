@@ -56,6 +56,7 @@ type Spectrum48k struct {
 	Memory    MemoryAccessor
 	ula       *ULA
 	Keyboard  *Keyboard
+	Joystick  *Joystick
 	tapeDrive *TapeDrive
 
 	Ports PortAccessor
@@ -153,6 +154,7 @@ type Cmd_CheckSystemROMLoaded struct{}
 func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
+	joystick := NewJoystick()
 	ports := NewPorts()
 	z80 := NewZ80(memory, ports)
 	ula := NewULA()
@@ -164,6 +166,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 		Memory:         memory,
 		ula:            ula,
 		Keyboard:       keyboard,
+		Joystick:       joystick,
 		Ports:          ports,
 		romPath:        romPath,
 		displays:       vector.Vector{},
@@ -174,6 +177,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 
 	memory.init(speccy)
 	keyboard.init(speccy)
+	joystick.init(speccy)
 	z80.init(speccy)
 	ula.init(speccy)
 	ports.init(speccy)

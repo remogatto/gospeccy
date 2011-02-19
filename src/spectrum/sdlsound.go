@@ -33,18 +33,18 @@ func init() {
 // Forward 'AudioData' objects from 'audio.data' to 'audio.playback'
 func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 	audioDataChannel := audio.data
+	playback_closed := false
 
 	for {
 		select {
 		case <-evtLoop.Pause:
 			// Remove all enqueued AudioData objects
-			removed := true
-			for removed {
+		loop:
+			for {
 				select {
 				case <-audio.playback:
-					removed = true
-				default: 
-					removed = false
+				default:
+					break loop
 				}
 			}
 
@@ -61,6 +61,7 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 			audio.mutex.Unlock()
 
 			close(audio.playback)
+			playback_closed = true
 
 			<-audio.playbackLoopFinished
 
@@ -85,18 +86,19 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 
 		case audioData := <-audioDataChannel:
 			if audioData != nil {
-				audio.bufferAdd()
-				if !closed(audio.playback) {
+				if !playback_closed {
+					audio.bufferAdd()
 					audio.playback <- audioData
 				}
 			} else {
-				// Prevent [any future message sent to 'audio.data'] to block the sender.
-				// We have to replace 'audioDataChannel' with a new dummy channel,
-				// because the next iteration of this for-loop would cause a run-time error
-				// since select on a closed channel isn't a legal operation.
+				// Prevent any future sends via the 'audio.data' channel
 				close(audio.data)
-				audioDataChannel = make(chan *AudioData)
 
+				// Replace 'audioDataChannel' with nil,
+				// so that future executions of the 'select' statement ignore the "<-audioDataChannel" case
+				audioDataChannel = nil
+
+				// Go to the '<-evtLoop.Pause' case
 				evtLoop.Delete()
 			}
 		}

@@ -57,7 +57,7 @@ don't forget to fork and send patches, of course ;)
 * Complete Zilog Z80 emulation
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
 * Beeper support
-* Initial support for Kempston Joystick
+* Initial support for Kempston joysticks
 * An interactive console interface
 * Snapshot support: SNA, Z80 formats (48k versions)
 * Tape support (TAP format)

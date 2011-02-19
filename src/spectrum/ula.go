@@ -284,7 +284,14 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 
 	displayData.completionTime_orNil = completionTime_orNil
 	displayChannel := display.displayReceiver.getDisplayDataChannel()
-	nonBlockingSend := displayChannel <- displayData
+
+	var nonBlockingSend bool
+	select {
+	case displayChannel <- displayData:
+		nonBlockingSend = true
+	default:
+		nonBlockingSend = false
+	}
 
 	if nonBlockingSend {
 		if display.lastFrame == nil {

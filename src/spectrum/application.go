@@ -322,10 +322,13 @@ func (out *stdoutMessageOutput) PrintfMsg(format string, a ...interface{}) {
 // ==============
 
 func Drain(ticker *time.Ticker) {
-	var haveMessage bool
-	_, haveMessage = <-ticker.C
-	for haveMessage {
-		_, haveMessage = <-ticker.C
+loop:
+	for {
+		select {
+		case <-ticker.C:
+		default:
+			break loop
+		}
 	}
 }
 

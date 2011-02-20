@@ -58,7 +58,7 @@ don't forget to fork and send patches, of course ;)
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
 * Beeper support
 * Initial support for Kempston joysticks
-* An interactive console interface
+* An interactive on-screen console interface based on [clingon](http://github.com/remogatto/clingon)
 * Snapshot support: SNA, Z80 formats (48k versions)
 * Tape support (TAP format)
 * Accelerated tape loading

@@ -2,17 +2,16 @@ package interpreter
 
 import (
 	"bytes"
-	//	"⚛sdl"
-	"spectrum"
-	"spectrum/formats"
 	"clingon"
+	"container/vector"
 	"exp/eval"
 	"fmt"
+	"go/token"
 	"io/ioutil"
 	"os"
-	"container/vector"
+	"spectrum"
+	"spectrum/formats"
 	"time"
-	"go/token"
 )
 
 // ==============
@@ -23,6 +22,7 @@ import (
 // so there is no need for controlling concurrent access via a sync.Mutex
 var (
 	app                 *spectrum.Application
+	cmdLineArg          string // The 1st non-flag command-line argument, or empty string
 	speccy              *spectrum.Spectrum48k
 	renderer            spectrum.Renderer
 	w                   *eval.World
@@ -44,8 +44,8 @@ func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
 		err = i.run(w, "", "help()")
 		console.Print(buffer.String())
 		return err
-
 	}
+
 	err = i.run(w, "", command)
 	console.Print(buffer.String())
 	return err
@@ -93,7 +93,7 @@ func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	for i := 0; i < help_keys.Len(); i++ {
-		fmt.Fprintf(buffer, "    %s", help_keys[i])
+		fmt.Fprintf(buffer, "  %s", help_keys[i])
 		for j := len(help_keys[i]); j < maxKeyLen; j++ {
 			fmt.Fprintf(buffer, " ")
 		}
@@ -124,7 +124,7 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() {
 		return
 	}
-	speccy.CommandChannel <- spectrum.Cmd_Reset{make(chan bool, 1)}
+	speccy.CommandChannel <- spectrum.Cmd_Reset{nil}
 }
 
 // Signature: func addSearchPath(path string)
@@ -151,9 +151,9 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	if _, isTAP := program.(*formats.TAP); isTAP {
-		romLoaded := make(chan bool, 1)
+		romLoaded := make(chan (<-chan bool))
 		speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
-		<-romLoaded
+		<-(<-romLoaded)
 	}
 
 	errChan := make(chan os.Error)
@@ -164,6 +164,11 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		fmt.Fprintf(buffer, "%s\n", err)
 		return
 	}
+}
+
+// Signature: func cmdLineArg() string
+func wrapper_cmdLineArg(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	out[0].(eval.StringValue).Set(t, cmdLineArg)
 }
 
 // Signature: func save(path string)
@@ -241,7 +246,7 @@ func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	fps := in[0].(eval.FloatValue).Get(t)
-	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float32(fps)}
+	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float32(fps), nil}
 }
 
 // Signature: func ula_accuracy(accurateEmulation bool)
@@ -380,7 +385,14 @@ func defineFunctions(w *eval.World) {
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_addSearchPath, functionSignature)
 		w.DefineVar("addSearchPath", funcType, funcValue)
 		help_keys.Push("addSearchPath(path string)")
-		help_vals.Push("Append a path to the list of paths searched when loading snapshots")
+		help_vals.Push("Append to the paths searched when loading snapshots")
+	}
+	{
+		var functionSignature func() string
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_cmdLineArg, functionSignature)
+		w.DefineVar("cmdLineArg", funcType, funcValue)
+		help_keys.Push("cmdLineArg() string)")
+		help_vals.Push("The 1st non-flag command-line argument, or an empty string")
 	}
 	{
 		var functionSignature func(string)
@@ -401,21 +413,21 @@ func defineFunctions(w *eval.World) {
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_scale, functionSignature)
 		w.DefineVar("scale", funcType, funcValue)
 		help_keys.Push("scale(n uint)")
-		help_vals.Push("Change the display scale")
+		help_vals.Push("Change the display scale (1 or 2)")
 	}
 	{
 		var functionSignature func(float32)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, functionSignature)
 		w.DefineVar("fps", funcType, funcValue)
 		help_keys.Push("fps(n float32)")
-		help_vals.Push("Change the display refresh frequency")
+		help_vals.Push("Change the display refresh frequency (0=default FPS)")
 	}
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_ulaAccuracy, functionSignature)
-		w.DefineVar("ula_accuracy", funcType, funcValue)
-		help_keys.Push("ula_accuracy(accurateEmulation bool)")
-		help_vals.Push("Enable/disable accurate emulation of screen bitmap and screen attributes")
+		w.DefineVar("ula", funcType, funcValue)
+		help_keys.Push("ula(accurateEmulation bool)")
+		help_vals.Push("Enable/disable accurate ULA emulation")
 	}
 	{
 		var functionSignature func(bool)
@@ -429,7 +441,7 @@ func defineFunctions(w *eval.World) {
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wait, functionSignature)
 		w.DefineVar("wait", funcType, funcValue)
 		help_keys.Push("wait(milliseconds uint)")
-		help_vals.Push("Wait the specified amount of time before issuing the next command")
+		help_vals.Push("Wait before executing the next command")
 	}
 	{
 		var functionSignature func(string)
@@ -497,11 +509,12 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	return nil
 }
 
-func Init(_app *spectrum.Application, _speccy *spectrum.Spectrum48k, _renderer spectrum.Renderer) {
-	app = nil
+func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spectrum48k, _renderer spectrum.Renderer) {
 	app = _app
+	cmdLineArg = _cmdLineArg
 	speccy = _speccy
 	renderer = _renderer
+
 	if w == nil {
 		w = eval.NewWorld()
 		defineFunctions(w)

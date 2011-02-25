@@ -63,8 +63,14 @@ func (keyboard *Keyboard) init(speccy *Spectrum48k) {
 	go keyboard.commandLoop()
 }
 
-func (keyboard *Keyboard) delayBetweenKeypress() {
+func (keyboard *Keyboard) delayAfterKeyDown() {
+	// Sleep for 1 frame
 	time.Sleep(1e9 / int64(keyboard.speccy.GetCurrentFPS()))
+}
+
+func (keyboard *Keyboard) delayAfterKeyUp() {
+	// Sleep for 10 frames
+	time.Sleep(10 * 1e9 / int64(keyboard.speccy.GetCurrentFPS()))
 }
 
 func (keyboard *Keyboard) commandLoop() {
@@ -86,38 +92,34 @@ func (keyboard *Keyboard) commandLoop() {
 		case untyped_cmd := <-keyboard.CommandChannel:
 			switch cmd := untyped_cmd.(type) {
 			case Cmd_KeyPress:
-				keyboard.delayBetweenKeypress()
-				keyboard.delayBetweenKeypress()
 				keyboard.KeyDown(cmd.logicalKeyCode)
-				keyboard.delayBetweenKeypress()
+				keyboard.delayAfterKeyDown()
 				keyboard.KeyUp(cmd.logicalKeyCode)
-				keyboard.delayBetweenKeypress()
-				keyboard.delayBetweenKeypress()
+				keyboard.delayAfterKeyUp()
 				cmd.done <- true
 
 			case Cmd_SendLoad:
 				keyboard.KeyDown(KEY_J)
-				keyboard.delayBetweenKeypress()
+				keyboard.delayAfterKeyDown()
 				keyboard.KeyUp(KEY_J)
+				keyboard.delayAfterKeyUp()
 
 				keyboard.KeyDown(KEY_SymbolShift)
+				{
+					keyboard.KeyDown(KEY_P)
+					keyboard.delayAfterKeyDown()
+					keyboard.KeyUp(KEY_P)
+					keyboard.delayAfterKeyUp()
 
-				keyboard.KeyDown(KEY_P)
-				keyboard.delayBetweenKeypress()
-				keyboard.KeyUp(KEY_P)
-
-				time.Sleep(1e9)
-
-				keyboard.KeyDown(KEY_P)
-				keyboard.delayBetweenKeypress()
-				keyboard.KeyUp(KEY_P)
-
-				keyboard.delayBetweenKeypress()
-
+					keyboard.KeyDown(KEY_P)
+					keyboard.delayAfterKeyDown()
+					keyboard.KeyUp(KEY_P)
+					keyboard.delayAfterKeyUp()
+				}
 				keyboard.KeyUp(KEY_SymbolShift)
 
 				keyboard.KeyDown(KEY_Enter)
-				keyboard.delayBetweenKeypress()
+				keyboard.delayAfterKeyDown()
 				keyboard.KeyUp(KEY_Enter)
 			}
 		}

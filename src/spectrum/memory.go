@@ -15,7 +15,7 @@ type MemoryAccessor interface {
 	contendWriteNoMreq_loop(addr uint16, time uint, count uint)
 
 	Read(addr uint16) byte
-	Write(addr uint16, value byte)
+	Write(addr uint16, value byte, protectROM bool)
 	Data() *[0x10000]byte
 
 	reset()
@@ -54,7 +54,9 @@ func (memory *Memory) writeByteInternal(address uint16, b byte) {
 		memory.speccy.ula.screenAttrWrite(address, memory.data[address], b)
 	}
 
-	memory.data[address] = b
+	if address >= 0x4000 {
+		memory.data[address] = b
+	}
 }
 
 func (memory *Memory) readByte(addr uint16) byte {
@@ -121,8 +123,10 @@ func (memory *Memory) Read(address uint16) byte {
 	return memory.data[address]
 }
 
-func (memory *Memory) Write(address uint16, value byte) {
-	memory.data[address] = value
+func (memory *Memory) Write(address uint16, value byte, protectROM bool) {
+	if (address >= 0x4000) || !protectROM {
+		memory.data[address] = value
+	}
 }
 
 func (memory *Memory) Data() *[0x10000]byte {

@@ -1,7 +1,6 @@
 package test
 
 import (
-	"os"
 	"io/ioutil"
 	"⚛sdl"
 	"⚛sdl/ttf"
@@ -163,13 +162,22 @@ func (t *cliTestSuite) before() {
 }
 
 func StartFullEmulation(cli bool) {
-	var err os.Error
-	app = spectrum.NewApplication()
-	speccy, err = spectrum.NewSpectrum48k(app, "testdata/48.rom")
-	speccy.TapeDrive().NotifyLoadComplete = true
-	if err != nil {
-		panic(err)
+	var rom [0x4000]byte
+	{
+		fileData, err := ioutil.ReadFile("testdata/48.rom")
+		if err != nil {
+			panic(err)
+		}
+		if len(fileData) != 0x4000 {
+			panic("invalid ROM file")
+		}
+
+		copy(rom[:], fileData)
 	}
+
+	app = spectrum.NewApplication()
+	speccy = spectrum.NewSpectrum48k(app, rom)
+	speccy.TapeDrive().NotifyLoadComplete = true
 	sdlScreen := spectrum.NewSDLScreen2x(app)
 	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 	if !cli {
@@ -182,8 +190,9 @@ func StartFullEmulation(cli bool) {
 		r = newRenderer(app, sdlScreen, cliRenderer)
 		r.consoleY = int16(r.height / 2)
 		interpreter.IgnoreStartupScript = true
-		interpreter.Init(app, speccy, r)
-		console = clingon.NewConsole(cliRenderer, &interpreter.Interpreter{})
+		interpreter.Init(app, "", speccy, r)
+		console = clingon.NewConsole(&interpreter.Interpreter{})
+		console.SetRenderer(cliRenderer)
 		console.SetPrompt("gospeccy> ")
 
 		console.Print(`
@@ -198,7 +207,6 @@ Welcome to the GoSpeccy CLI Testing Mode
 		app.PrintfMsg("%s", err)
 	}
 	go speccy.EmulatorLoop()
-	<-speccy.ROMLoaded()
 }
 
 func loadSnapshot(filename string) formats.Snapshot {

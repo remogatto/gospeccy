@@ -250,9 +250,7 @@ func (z80 *Z80) loadSnapshot(s formats.Snapshot) os.Error {
 	z80.ports.writePortInternal(0xfe, ula.Border&0x07, /*contend*/ false)
 
 	// Populate memory
-	for i := 0; i < 0xc000; i++ {
-		z80.memory.Data()[i+0x4000] = mem[i]
-	}
+	copy(z80.memory.Data()[0x4000:], mem[:])
 
 	z80.tstates = cpu.Tstate
 
@@ -296,9 +294,7 @@ func (z80 *Z80) MakeSnapshot() *formats.FullSnapshot {
 	s.Ula.Border = z80.speccy.ula.getBorderColor() & 0x07
 
 	// Memory
-	for i := 0; i < 0xc000; i++ {
-		s.Mem[i] = z80.memory.Data()[i+0x4000]
-	}
+	copy(s.Mem[:], z80.memory.Data()[0x4000:])
 
 	return &s
 }
@@ -658,7 +654,7 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 	return 0
 }
 
-func (z80 *Z80) doOpcodes() {
+func (z80 *Z80) doOpcodes(shouldPlayTheTape bool) {
 	var ttid_start int
 	if z80.perfCounter_hostCpuInstr != nil {
 		ttid_start = z80.perfCounter_hostCpuInstr.Gettid()
@@ -676,6 +672,12 @@ func (z80 *Z80) doOpcodes() {
 
 	// Main instruction emulation loop
 	{
+		var readFromTape bool = (z80.readFromTape && shouldPlayTheTape)
+
+		if !readFromTape {
+			z80.speccy.tapeDrive.decelerate()
+		}
+
 		for (z80.tstates < z80.eventNextEvent) && !z80.halted {
 			z80.memory.contendRead(z80.pc, 4)
 			opcode := z80.memory.readByteInternal(z80.pc)
@@ -687,12 +689,20 @@ func (z80 *Z80) doOpcodes() {
 
 			opcodesMap[opcode](z80)
 
-			if z80.speccy.Cpu.readFromTape {
-				z80.speccy.tapeDrive.doPlay()
+			if readFromTape {
+				endOfBlock := z80.speccy.tapeDrive.doPlay()
+				if endOfBlock {
+					readFromTape = false
+					z80.speccy.shouldPlayTheTape = 0
+					z80.speccy.tapeDrive.decelerate()
+				}
 			}
 		}
 
 		if z80.halted {
+			z80.speccy.shouldPlayTheTape = 0
+			z80.speccy.tapeDrive.decelerate()
+
 			// Repeat emulating the HALT instruction until 'z80.eventNextEvent'
 			for z80.tstates < z80.eventNextEvent {
 				z80.memory.contendRead(z80.pc, 4)

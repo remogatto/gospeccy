@@ -39,7 +39,7 @@ func init() {
 	actualVersion := sdl.GoSdlVersion()
 	if actualVersion != expectedVersion {
 		fmt.Fprintf(os.Stderr, "Invalid SDL bindings version: expected \"%s\", got \"%s\"\n",
-					expectedVersion, actualVersion)
+			expectedVersion, actualVersion)
 		os.Exit(1)
 	}
 }
@@ -49,7 +49,7 @@ func init() {
 	actualVersion := ttf.GoSdlVersion()
 	if actualVersion != expectedVersion {
 		fmt.Fprintf(os.Stderr, "Invalid SDL font bindings version: expected \"%s\", got \"%s\"\n",
-					expectedVersion, actualVersion)
+			expectedVersion, actualVersion)
 		os.Exit(1)
 	}
 }
@@ -87,7 +87,7 @@ func (s SDLSurface) addrXY(x, y uint) uintptr {
 }
 
 func newSDLSurface(app *Application, w, h int) *SDLSurface {
-	surface := sdl.CreateRGBSurface(sdl.SWSURFACE, w, h, 32, 0, 0 ,0, 0)
+	surface := sdl.CreateRGBSurface(sdl.SWSURFACE, w, h, 32, 0, 0, 0, 0)
 	if surface == nil {
 		app.PrintfMsg("%s", sdl.GetError())
 		app.RequestExit()
@@ -111,10 +111,12 @@ func NewSDLSurface(app *Application) *SDLSurface {
 // ==============================
 
 func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, renderer screen_renderer_t) {
-	var screen *DisplayData
+	terminating := false
+
 	for {
 		select {
 		case <-evtLoop.Pause:
+			terminating = true
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:
@@ -125,9 +127,11 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, ren
 			evtLoop.Terminate <- 0
 			return
 
-		case screen = <-screenChannel:
+		case screen := <-screenChannel:
 			if screen != nil {
-				renderer.render(screen)
+				if !terminating {
+					renderer.render(screen)
+				}
 			} else {
 				evtLoop.Delete()
 			}
@@ -161,11 +165,11 @@ type screen_renderer_t interface {
 
 func NewSDLScreen(app *Application) *SDLScreen {
 	SDL_screen := &SDLScreen{
-	screenChannel:   make(chan *DisplayData),
-	screenSurface:   NewSDLSurface(app),
-	unscaledDisplay: newUnscaledDisplay(),
-	updatedRectsCh: make(chan []sdl.Rect),
-	app:             app,
+		screenChannel:   make(chan *DisplayData),
+		screenSurface:   NewSDLSurface(app),
+		unscaledDisplay: newUnscaledDisplay(),
+		updatedRectsCh:  make(chan []sdl.Rect),
+		app:             app,
 	}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
@@ -185,6 +189,7 @@ func (display *SDLScreen) GetSurface() *sdl.Surface {
 func (display *SDLScreen) getDisplayDataChannel() chan<- *DisplayData {
 	return display.screenChannel
 }
+
 func (display *SDLScreen) close() {
 	display.screenChannel <- nil
 }
@@ -233,7 +238,9 @@ type SDLScreen2x struct {
 	// The whole screen, borders included.
 	// Initially nil.
 	screenSurface *SDLSurface
+
 	unscaledDisplay *UnscaledDisplay
+
 	updatedRectsCh chan []sdl.Rect
 
 	app *Application
@@ -241,11 +248,11 @@ type SDLScreen2x struct {
 
 func NewSDLScreen2x(app *Application) *SDLScreen2x {
 	SDL_screen := &SDLScreen2x{
-	screenChannel:   make(chan *DisplayData),
-	screenSurface:   NewSDLSurface2x(app),
-	unscaledDisplay: newUnscaledDisplay(),
-	updatedRectsCh: make(chan []sdl.Rect),
-	app:             app,
+		screenChannel:   make(chan *DisplayData),
+		screenSurface:   NewSDLSurface2x(app),
+		unscaledDisplay: newUnscaledDisplay(),
+		updatedRectsCh:  make(chan []sdl.Rect),
+		app:             app,
 	}
 
 	go screenRenderLoop(app.NewEventLoop(), SDL_screen.screenChannel, SDL_screen)
@@ -295,9 +302,9 @@ func (display *SDLScreen2x) render(screen *DisplayData) {
 
 				// Fill a 2x2 rectangle
 				*(*uint32)(unsafe.Pointer(addr)) = color
-				*(*uint32)(unsafe.Pointer(addr+bpp)) = color
-				*(*uint32)(unsafe.Pointer(addr+pitch)) = color
-				*(*uint32)(unsafe.Pointer(addr+pitch+bpp)) = color
+				*(*uint32)(unsafe.Pointer(addr + bpp)) = color
+				*(*uint32)(unsafe.Pointer(addr + pitch)) = color
+				*(*uint32)(unsafe.Pointer(addr + pitch + bpp)) = color
 
 				addr += bpp2
 			}
@@ -322,7 +329,7 @@ func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale ui
 	//   This function does NOT make use of 'surface.UpdateRects',
 	//   although in theory that would be much more efficient than 'surface.UpdateRect'.
 	//   The reason is that using multiple rectangles makes SDL send *multiple*
-	//   messages the X server, thus causing serious visual artifacting.
+	//   messages to the X server, thus causing serious visual artifacting.
 	//   For example, the Overscan demo by Busy Soft looks really bad
 	//   if 'surface.UpdateRects' is used.
 	//

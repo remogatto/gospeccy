@@ -36,7 +36,7 @@ type PortAccessor interface {
 	reset()
 
 	frame_begin()
-	frame_end()
+	frame_end() FrameStatusOfPorts
 
 	// Returns a pointer to a linked-linked list of border events.
 	// The difference between [the T-state of the 1st event] and [the T-state of the last event]
@@ -51,6 +51,10 @@ type PortAccessor interface {
 	//
 	// If the result is non-nil, the length of the returned list is at least 2.
 	getBeeperEvents_orNil() *BeeperEvent
+}
+
+type FrameStatusOfPorts struct {
+	shouldPlayTheTape bool
 }
 
 
@@ -131,7 +135,15 @@ type Ports struct {
 
 	beeperLevel  byte
 	beeperEvents *BeeperEvent
+
+	// Number of supposed reads from tapedrive port.
+	// This counter is reset to 0 at the beginning of each frame.
+	tapeReadCount uint
 }
+
+// If 'tapeReadCount' is equal to or above this threshold,
+// the program running within the emulated machine probably wants to read data from the tape
+const tapeReadCount_tapeAccessThreshold = 400
 
 
 func NewPorts() *Ports {
@@ -186,10 +198,10 @@ func (a *BorderEvent_Array) Set(i int, e Event) {
 
 
 func (p *Ports) frame_begin() {
-	// Empty
+	p.tapeReadCount = 0
 }
 
-func (p *Ports) frame_end() {
+func (p *Ports) frame_end() FrameStatusOfPorts {
 	// Border events
 	{
 		// Extract all events overflowing the frame
@@ -255,6 +267,10 @@ func (p *Ports) frame_end() {
 			p.beeperEvents = &BeeperEvent{(overflow[i].tstate - TStatesPerFrame), overflow[i].level, p.beeperEvents}
 		}
 	}
+
+	return FrameStatusOfPorts{
+		shouldPlayTheTape: (p.tapeReadCount >= tapeReadCount_tapeAccessThreshold),
+	}
 }
 
 func (p *Ports) getBorderEvents_orNil() *BorderEvent {
@@ -305,9 +321,12 @@ func (p *Ports) readPortInternal(address uint16, contend bool) byte {
 				result &= p.speccy.Keyboard.GetKeyState(row)
 			}
 		}
-		if p.speccy.Cpu.readFromTape {
+
+		// Read tape
+		if p.speccy.Cpu.readFromTape && (address == 0x7ffe) {
+			p.tapeReadCount++
 			earBit := p.speccy.tapeDrive.getEarBit()
-			return result & earBit
+			result &= earBit
 		}
 	} else if (address & 0x00e0) == 0x0000 {
 		result &= p.speccy.Joystick.GetState()
@@ -345,9 +364,9 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 		newBeeperLevel := (b & 0x18) >> 3
 		if p.speccy.Cpu.readFromTape && !p.speccy.tapeDrive.AcceleratedLoad {
 			if p.speccy.tapeDrive.earBit == 0xff {
-				newBeeperLevel = 3
+				newBeeperLevel |= 2
 			} else {
-				newBeeperLevel = 1
+				newBeeperLevel &^= 2
 			}
 		}
 		if p.beeperLevel != newBeeperLevel {

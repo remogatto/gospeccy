@@ -26,11 +26,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"spectrum/formats"
-	"fmt"
-	"io/ioutil"
-	"os"
 	"container/vector"
+	"os"
+	"spectrum/formats"
+	"sync"
 	"time"
 )
 
@@ -61,28 +60,25 @@ type Spectrum48k struct {
 
 	Ports PortAccessor
 
-	romPath string
+	rom [0x4000]byte
 
 	// The current display refresh frequency.
-	// The initial value if 'DefaultFPS'.
+	// The initial value is 'DefaultFPS'.
 	// It is always greater than 0.
 	currentFPS float32
+	currentFPS_mutex sync.Mutex // To respect the Go memory model
 
 	// A value received from this channel indicates the new display refresh frequency.
-	// By default, this channel initially receives the value 'DefaultFPS'.
-	FPS <-chan float32
-	fps chan float32
+	fpsCh chan float32
 
-	// A value received from this channel indicates that the
-	// system ROM has been loaded. This applies to the standard
-	// 48k ROM but probably doesn't work with custom ROMs.
-	systemROMLoaded chan bool
+	// This buffered channel (if not nil) will receive at most one value.
+	// The value 'true' sent through this channel indicates that the system ROM has been loaded.
+	// The value 'false' sent through this channel indicates that the detection process did not finish.
+	// The detection works with standard 48k ROM but probably doesn't work with custom ROMs.
+	systemROMLoaded_orNil chan bool
 
 	CommandChannel chan<- interface{}
 	commandChannel <-chan interface{}
-
-	// True if the system ROM has been loaded
-	romNotYetLoaded bool
 
 	// A vector of '*DisplayInfo', initially empty
 	displays vector.Vector
@@ -93,12 +89,19 @@ type Spectrum48k struct {
 	// Register the state of FPS before accelerating tape loading
 	fpsBeforeAccelerating float32
 
+	// The value is non-zero if a couple of the most recent frames
+	// executed instructions which appeared to be reading from the tape
+	shouldPlayTheTape int
+
 	app *Application
 }
 
 type Cmd_Reset struct {
-	// This channel will receive true when the system ROM has been loaded
-	SystemROMLoaded chan bool
+	// This channel will receive [a channel X which will receive 'true'
+	// when it is detected that the system ROM is loaded].
+	// The channel X will receive 'false' if the emulated machine is reset before
+	// the detection process ends.
+	SystemROMLoaded_orNil chan<- <-chan bool
 }
 type Cmd_RenderFrame struct {
 	// This channel (if not nil) will receive the time when the WHOLE rendering finished.
@@ -116,6 +119,7 @@ type Cmd_CloseAllDisplays struct {
 }
 type Cmd_SetFPS struct {
 	NewFPS float32
+	OldFPS_orNil chan<- float32
 }
 type Cmd_SetUlaEmulationAccuracy struct {
 	AccurateEmulation bool
@@ -148,10 +152,9 @@ type Cmd_MakeVideoMemoryDump struct {
 type Cmd_KeyboardReadState struct {
 	Chan chan rowState
 }
-type Cmd_CheckSystemROMLoaded struct{}
 
 // Create a new speccy object.
-func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
+func NewSpectrum48k(app *Application, rom [0x4000]byte) *Spectrum48k {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
 	joystick := NewJoystick()
@@ -168,7 +171,7 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 		Keyboard:       keyboard,
 		Joystick:       joystick,
 		Ports:          ports,
-		romPath:        romPath,
+		rom:            rom,
 		displays:       vector.Vector{},
 		audioReceivers: vector.Vector{},
 		app:            app,
@@ -183,27 +186,18 @@ func NewSpectrum48k(app *Application, romPath string) (*Spectrum48k, os.Error) {
 	ports.init(speccy)
 	tapeDrive.init(speccy)
 
-	err := speccy.reset(make(chan bool))
-
-	if err != nil {
-		return nil, err
-	}
+	speccy.reset(nil)
 
 	speccy.currentFPS = DefaultFPS
-	speccy.fps = make(chan float32, 1)
-	speccy.FPS = speccy.fps
-	speccy.fps <- DefaultFPS
+	speccy.fpsCh = make(chan float32, 1)
+	speccy.fpsCh <- DefaultFPS
 
 	commandChannel := make(chan interface{})
 	speccy.CommandChannel = commandChannel
 	speccy.commandChannel = commandChannel
 	go commandLoop(speccy)
 
-	return speccy, nil
-}
-
-func (speccy *Spectrum48k) ROMLoaded() chan bool {
-	return speccy.systemROMLoaded
+	return speccy
 }
 
 // Turn off the machine
@@ -224,21 +218,12 @@ func (speccy *Spectrum48k) Close() {
 	}
 }
 
-// Set emulation speed in FPS
-func (speccy *Spectrum48k) SetFPS(newFPS float32) {
-	if newFPS <= 1.0 {
-		newFPS = DefaultFPS
-	}
-
-	if newFPS != speccy.currentFPS {
-		speccy.currentFPS = newFPS
-		speccy.fps <- newFPS
-	}
-}
-
 // Get current FPS
 func (speccy *Spectrum48k) GetCurrentFPS() float32 {
-	return speccy.currentFPS
+	speccy.currentFPS_mutex.Lock()
+	fps := speccy.currentFPS
+	speccy.currentFPS_mutex.Unlock()
+	return fps
 }
 
 // Load a program (tape or snapshot)
@@ -267,14 +252,13 @@ func (speccy *Spectrum48k) TapeDrive() *TapeDrive {
 // Load the tape file with given filename
 func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
 	tap, err := formats.NewTAPFromFile(filename)
-
 	if err != nil {
 		return err
 	}
 
 	speccy.loadTape(tap)
 
-	return err
+	return nil
 }
 
 // Set accelerated tape load on/off
@@ -282,12 +266,13 @@ func (speccy *Spectrum48k) EnableAcceleratedLoad(enable bool) {
 	speccy.tapeDrive.AcceleratedLoad = enable
 }
 
-// Start the main emulation loop
+// The main emulation loop.
+// This function has to run in a goroutine.
 func (speccy *Spectrum48k) EmulatorLoop() {
 	evtLoop := speccy.app.NewEventLoop()
 	app := evtLoop.App()
 
-	fps := <-speccy.FPS
+	fps := <-speccy.fpsCh
 	ticker := time.NewTicker(int64(1e9 / fps))
 
 	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
@@ -309,7 +294,6 @@ func (speccy *Spectrum48k) EmulatorLoop() {
 		case <-evtLoop.Pause:
 			ticker.Stop()
 			Drain(ticker)
-			close(speccy.ROMLoaded())
 			evtLoop.Pause <- 0
 
 		case <-evtLoop.Terminate:
@@ -323,10 +307,8 @@ func (speccy *Spectrum48k) EmulatorLoop() {
 		case <-ticker.C:
 			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
 			speccy.CommandChannel <- Cmd_RenderFrame{}
-			// Check if the system ROM is loaded
-			speccy.CommandChannel <- Cmd_CheckSystemROMLoaded{}
 
-		case FPS_new := <-speccy.FPS:
+		case FPS_new := <-speccy.fpsCh:
 			if (FPS_new != fps) && (FPS_new > 0) {
 				if app.Verbose {
 					app.PrintfMsg("setting FPS to %f", FPS_new)
@@ -345,6 +327,13 @@ func commandLoop(speccy *Spectrum48k) {
 	for {
 		select {
 		case <-evtLoop.Pause:
+			// Unblock the goroutine that is waiting for the end of ROM initialization
+			if speccy.systemROMLoaded_orNil != nil {
+				// Note: This is a buffered channel, so the send won't block
+				speccy.systemROMLoaded_orNil <- false
+				speccy.systemROMLoaded_orNil = nil
+			}
+
 			speccy.Close()
 			evtLoop.Pause <- 0
 
@@ -359,20 +348,18 @@ func commandLoop(speccy *Spectrum48k) {
 		case untyped_cmd := <-speccy.commandChannel:
 			switch cmd := untyped_cmd.(type) {
 			case Cmd_Reset:
-				speccy.reset(cmd.SystemROMLoaded)
+				speccy.reset(cmd.SystemROMLoaded_orNil)
 
 			case Cmd_RenderFrame:
-				speccy.renderFrame(cmd.CompletionTime_orNil)
-
-			case Cmd_CheckSystemROMLoaded:
-				// Ugly hack to check whenever the
-				// system ROM has been loaded after a
-				// reset. I bet this won't work with
-				// custom ROMs.
-				if speccy.Cpu.PC() == 0x10ac && speccy.romNotYetLoaded {
-					speccy.systemROMLoaded <- true
-					speccy.romNotYetLoaded = false
+				// Ugly hack to check whenever the system ROM has been loaded after a reset.
+				// I bet this won't work with custom ROMs.
+				if (speccy.Cpu.PC() == 0x10ac) && (speccy.systemROMLoaded_orNil != nil) {
+					// Note: This is a buffered channel, so the send won't block
+					speccy.systemROMLoaded_orNil <- true
+					speccy.systemROMLoaded_orNil = nil
 				}
+
+				speccy.renderFrame(cmd.CompletionTime_orNil)
 
 			case Cmd_GetNumDisplayReceivers:
 				cmd.N <- uint(speccy.displays.Len())
@@ -387,7 +374,24 @@ func commandLoop(speccy *Spectrum48k) {
 				}()
 
 			case Cmd_SetFPS:
-				speccy.SetFPS(cmd.NewFPS)
+				if cmd.OldFPS_orNil != nil {
+					cmd.OldFPS_orNil <- speccy.currentFPS
+				}
+
+				newFPS := cmd.NewFPS
+				if newFPS <= 1.0 {
+					newFPS = DefaultFPS
+				}
+
+				if newFPS != speccy.currentFPS {
+					speccy.currentFPS_mutex.Lock()
+					speccy.currentFPS = newFPS
+					speccy.currentFPS_mutex.Unlock()
+
+					go func(){
+						speccy.fpsCh <- newFPS
+					}()
+				}
 
 			case Cmd_SetUlaEmulationAccuracy:
 				speccy.ula.setEmulationAccuracy(cmd.AccurateEmulation)
@@ -445,31 +449,25 @@ func commandLoop(speccy *Spectrum48k) {
 	}
 }
 
-func (speccy *Spectrum48k) reset(systemROMLoaded chan bool) os.Error {
+func (speccy *Spectrum48k) reset(systemROMLoaded_orNil chan<- <-chan bool) os.Error {
 	speccy.Cpu.reset()
 	speccy.Memory.reset()
 	speccy.ula.reset()
 	speccy.Keyboard.reset()
 	speccy.Ports.reset()
 
-	speccy.romNotYetLoaded = true
-
-	speccy.systemROMLoaded = systemROMLoaded
-
-	// Load the first 16k of memory with the ROM image
-	{
-		rom48k, err := ioutil.ReadFile(speccy.romPath)
-		if err != nil {
-			return err
-		}
-		if len(rom48k) != 0x4000 {
-			return os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", speccy.romPath))
-		}
-
-		for address, b := range rom48k {
-			speccy.Memory.Write(uint16(address), b)
-		}
+	if speccy.systemROMLoaded_orNil != nil {
+		speccy.systemROMLoaded_orNil <- false
+		speccy.systemROMLoaded_orNil = nil
 	}
+	if systemROMLoaded_orNil != nil {
+		// Create a buffered channel and send it to the goroutine which requested the reset
+		speccy.systemROMLoaded_orNil = make(chan bool, 1)
+		systemROMLoaded_orNil <- speccy.systemROMLoaded_orNil
+	}
+
+	// Copy the ROM image into the first 16k of memory
+	copy(speccy.Memory.Data()[0:0x4000], speccy.rom[:])
 
 	return nil
 }
@@ -524,7 +522,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Cpu.tstates = (speccy.Cpu.tstates % TStatesPerFrame)
 	speccy.Cpu.interrupt()
 	speccy.Cpu.eventNextEvent = TStatesPerFrame
-	speccy.Cpu.doOpcodes()
+	speccy.Cpu.doOpcodes(speccy.shouldPlayTheTape > 0)
 
 	// Send display data to display backend(s)
 	{
@@ -553,19 +551,24 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 		}
 	}
 
-	speccy.Ports.frame_end()
+	portFrameStatus := speccy.Ports.frame_end()
+
+	if portFrameStatus.shouldPlayTheTape {
+		speccy.shouldPlayTheTape = 75
+	} else {
+		if speccy.shouldPlayTheTape > 0 {
+			speccy.shouldPlayTheTape--
+		}
+	}
 }
 
 
 // Initializes state from the specified snapshot.
 // Returns nil on success.
 func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
-	err := speccy.reset(make(chan bool))
-	if err != nil {
-		return err
-	}
+	speccy.reset(nil)
 
-	err = speccy.Cpu.loadSnapshot(s)
+	err := speccy.Cpu.loadSnapshot(s)
 	if err != nil {
 		return err
 	}
@@ -573,7 +576,7 @@ func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
 	return nil
 }
 
-// Load the given tape. Returns nil on success.
+// Load the given tape
 func (speccy *Spectrum48k) loadTape(tap *formats.TAP) {
 	speccy.tapeDrive.Insert(NewTape(tap))
 	speccy.tapeDrive.Stop()

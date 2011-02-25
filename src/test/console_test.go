@@ -52,7 +52,6 @@ func (t *cliTestSuite) should_honor_convention_over_configuration_when_loading_s
 
 func (t *cliTestSuite) should_reset_speccy() {
 	console.PutCommand("reset()")
-	<-speccy.ROMLoaded()
 	t.True(screenEqualTo("testdata/system_rom_loaded.sna"))
 }
 

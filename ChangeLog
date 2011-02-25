@@ -15,9 +15,6 @@
 
 	* Add system/blackbox tests (see src/test)
 
-	* No need to put a new-line character at the end of a Go
-	script (obsoleted by the last Go release)
-
 	* Add puts() function to the console Test script() console
 	function
 

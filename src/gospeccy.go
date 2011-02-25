@@ -182,9 +182,9 @@ func newFont(scale2x, fullscreen bool) *ttf.Font {
 		scale2x = true
 	}
 	if scale2x {
-		font = ttf.OpenFont("font/VeraMono.ttf", 12)
+		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 12)
 	} else {
-		font = ttf.OpenFont("font/VeraMono.ttf", 10)
+		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 10)
 	}
 	if font == nil {
 		panic(sdl.GetError())

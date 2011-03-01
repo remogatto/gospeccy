@@ -11,6 +11,7 @@ import (
 	"os"
 	"spectrum"
 	"spectrum/formats"
+	"strings"
 	"time"
 )
 
@@ -26,7 +27,7 @@ var (
 	speccy              *spectrum.Spectrum48k
 	renderer            spectrum.Renderer
 	w                   *eval.World
-	buffer              *bytes.Buffer
+	buffer              *bytes.Buffer // Stores the output of executed script-functions
 	IgnoreStartupScript = false
 )
 
@@ -38,15 +39,13 @@ const (
 type Interpreter struct{}
 
 func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
-	var err os.Error
-	buffer = bytes.NewBufferString("")
 	if command == "" {
-		err = i.run(w, "", "help()")
-		console.Print(buffer.String())
-		return err
+		command = "help()"
 	}
 
-	err = i.run(w, "", command)
+	buffer = bytes.NewBufferString("")
+
+	err := i.run(w, "", command)
 	console.Print(buffer.String())
 	return err
 }
@@ -492,7 +491,7 @@ func defineFunctions(w *eval.World) {
 func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	var i Interpreter
 	fileName := scriptName + ".go"
-	data, err := ioutil.ReadFile(spectrum.ScriptPath(fileName))
+	scriptData, err := ioutil.ReadFile(spectrum.ScriptPath(fileName))
 	if err != nil {
 		if !optional {
 			return err
@@ -501,10 +500,27 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 		}
 	}
 
-	var buf bytes.Buffer
-
-	buf.Write(data)
-	i.run(w, fileName, buf.String())
+	parentalBuffer := buffer
+	buffer = bytes.NewBufferString("")
+	{
+		var script bytes.Buffer
+		script.Write(scriptData)
+		i.run(w, fileName, script.String())
+	}
+	if parentalBuffer != nil {
+		// Append 'buffer' to the parental buffer
+		buffer.WriteTo(parentalBuffer)
+	} else {
+		// No parental buffer: send 'buffer' to the terminal
+		s := buffer.String()
+		if len(s) > 0 {
+			fmt.Printf("%s", s)
+			if !strings.HasSuffix(s, "\n") {
+				fmt.Println()
+			}
+		}
+	}
+	buffer = parentalBuffer
 
 	return nil
 }

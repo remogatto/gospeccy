@@ -5,13 +5,14 @@
  * except for usages in immoral contexts.
  */
 
-package spectrum
+package output
 
 import (
 	"fmt"
 	"os"
 	"⚛sdl"
 	sdl_audio "⚛sdl/audio"
+	"spectrum"
 	"sync"
 )
 
@@ -31,7 +32,7 @@ func init() {
 // ======================
 
 // Forward 'AudioData' objects from 'audio.data' to 'audio.playback'
-func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
+func forwarderLoop(evtLoop *spectrum.EventLoop, audio *SDLAudio) {
 	audioDataChannel := audio.data
 	playback_closed := false
 
@@ -105,7 +106,7 @@ func forwarderLoop(evtLoop *EventLoop, audio *SDLAudio) {
 	}
 }
 
-func playbackLoop(app *Application, audio *SDLAudio) {
+func playbackLoop(app *spectrum.Application, audio *SDLAudio) {
 	for audioData := range audio.playback {
 		audio.bufferRemove()
 		audio.render(audioData)
@@ -130,11 +131,11 @@ const BUFSIZE_IDEAL = 3
 
 type SDLAudio struct {
 	// Synchronous Go channel for receiving 'AudioData' objects
-	data chan *AudioData
+	data chan *spectrum.AudioData
 
 	// A buffer with a capacity for multiple 'AudioData' objects.
 	// The number of enqueued messages hovers around 'BUFSIZE_IDEAL'.
-	playback chan *AudioData
+	playback chan *spectrum.AudioData
 
 	// A channel for properly synchronizing the audio shutdown procedure
 	playbackLoopFinished  chan byte
@@ -168,7 +169,7 @@ type SDLAudio struct {
 
 var sdlAudio_instance *SDLAudio = nil
 
-func NewSDLAudio(app *Application) (*SDLAudio, os.Error) {
+func NewSDLAudio(app *spectrum.Application) (*SDLAudio, os.Error) {
 	// Open SDL audio
 	var spec sdl_audio.AudioSpec
 	{
@@ -185,8 +186,8 @@ func NewSDLAudio(app *Application) (*SDLAudio, os.Error) {
 	}
 
 	audio := &SDLAudio{
-		data:                  make(chan *AudioData),
-		playback:              make(chan *AudioData, 2*BUFSIZE_IDEAL), // Use a buffered Go channel
+		data:                  make(chan *spectrum.AudioData),
+		playback:              make(chan *spectrum.AudioData, 2*BUFSIZE_IDEAL), // Use a buffered Go channel
 		playbackLoopFinished:  make(chan byte),
 		forwarderLoopFinished: nil,
 		sdlAudioUnpaused:      false,
@@ -202,11 +203,11 @@ func NewSDLAudio(app *Application) (*SDLAudio, os.Error) {
 }
 
 // Implement AudioReceiver
-func (audio *SDLAudio) getAudioDataChannel() chan<- *AudioData {
+func (audio *SDLAudio) GetAudioDataChannel() chan<- *spectrum.AudioData {
 	return audio.data
 }
 
-func (audio *SDLAudio) close() {
+func (audio *SDLAudio) Close() {
 	audio.mutex.Lock()
 	audio.forwarderLoopFinished = make(chan byte)
 	audio.mutex.Unlock()
@@ -278,28 +279,28 @@ func (a *simplifiedBeeperEvent_array_t) Init(n int) {
 	a.events = make([]simplifiedBeeperEvent_t, n)
 }
 
-func (a *simplifiedBeeperEvent_array_t) Set(i int, _e Event) {
-	e := _e.(*BeeperEvent)
-	a.events[i] = simplifiedBeeperEvent_t{e.tstate, e.level}
+func (a *simplifiedBeeperEvent_array_t) Set(i int, _e spectrum.Event) {
+	e := _e.(*spectrum.BeeperEvent)
+	a.events[i] = simplifiedBeeperEvent_t{e.TState, e.Level}
 }
 
 
-func (audio *SDLAudio) render(audioData *AudioData) {
+func (audio *SDLAudio) render(audioData *spectrum.AudioData) {
 	var events []simplifiedBeeperEvent_t
 
-	if audioData.beeperEvents_orNil != nil {
-		var lastEvent *BeeperEvent = audioData.beeperEvents_orNil
-		assert(lastEvent.tstate == TStatesPerFrame)
+	if audioData.BeeperEvents_orNil != nil {
+		var lastEvent *spectrum.BeeperEvent = audioData.BeeperEvents_orNil
+		spectrum.Assert(lastEvent.TState == spectrum.TStatesPerFrame)
 
 		// Put the events in an array, sorted by T-state value in ascending order
 		events_array := &simplifiedBeeperEvent_array_t{}
-		EventListToArray_Ascending(lastEvent, events_array, nil)
+		spectrum.EventListToArray_Ascending(lastEvent, events_array, nil)
 
 		events = events_array.events
 	} else {
 		events = make([]simplifiedBeeperEvent_t, 2)
 		events[0] = simplifiedBeeperEvent_t{tstate: 0, level: 0}
-		events[1] = simplifiedBeeperEvent_t{tstate: TStatesPerFrame, level: 0}
+		events[1] = simplifiedBeeperEvent_t{tstate: spectrum.TStatesPerFrame, level: 0}
 	}
 
 	numEvents := len(events)
@@ -309,7 +310,7 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 	{
 		audio.mutex.Lock()
 
-		numSamples_float := float32(audio.virtualFreq) / audioData.fps
+		numSamples_float := float32(audio.virtualFreq) / audioData.FPS
 		numSamples = uint(numSamples_float)
 
 		audio.numSamples_cummulativeFraction += numSamples_float - float32(numSamples)
@@ -326,14 +327,14 @@ func (audio *SDLAudio) render(audioData *AudioData) {
 		audio.mutex.Unlock()
 	}
 
-	var k float32 = float32(numSamples) / TStatesPerFrame
+	var k float32 = float32(numSamples) / spectrum.TStatesPerFrame
 
 	samples := make([]float32, numSamples+1)
 	for i := 0; i < numEvents-1; i++ {
 		start := events[i]
 
 		if start.level > 0 {
-			level := Audio16_Table[start.level]
+			level := spectrum.Audio16_Table[start.level]
 			end := events[i+1]
 
 			var position0 float32 = float32(start.tstate) * k

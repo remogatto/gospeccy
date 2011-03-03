@@ -30,6 +30,7 @@ import (
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
+	"spectrum/output"
 	"⚛sdl"
 	"⚛sdl/ttf"
 	"fmt"
@@ -153,11 +154,11 @@ func newSpeccySurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSu
 		scale2x = true
 	}
 	if scale2x {
-		sdlScreen := spectrum.NewSDLScreen2x(app)
+		sdlScreen := output.NewSDLScreen2x(app)
 		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 		speccySurface = sdlScreen
 	} else {
-		sdlScreen := spectrum.NewSDLScreen(app)
+		sdlScreen := output.NewSDLScreen(app)
 		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 		speccySurface = sdlScreen
 	}
@@ -742,7 +743,7 @@ func main() {
 		speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
 		numAudioReceivers := <-n
 		if *sound && (numAudioReceivers == 0) {
-			audio, err := spectrum.NewSDLAudio(app)
+			audio, err := output.NewSDLAudio(app)
 			if err == nil {
 				speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 			} else {

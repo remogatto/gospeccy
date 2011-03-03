@@ -61,24 +61,24 @@ type FrameStatusOfPorts struct {
 type BorderEvent struct {
 	// The moment when the border color was changed.
 	// It is the number of T-states since the beginning of the frame.
-	tstate uint
+	TState uint
 
 	// The new border color
-	color byte
+	Color byte
 
 	// Previous event, if any.
-	// Constraint: (tstate >= previous_orNil.tstate)
-	previous_orNil *BorderEvent
+	// Constraint: (tstate >= Previous_orNil.TState)
+	Previous_orNil *BorderEvent
 }
 
-func (e *BorderEvent) TState() uint {
-	return e.tstate
+func (e *BorderEvent) GetTState() uint {
+	return e.TState
 }
 
-func (e *BorderEvent) Previous_orNil() Event {
+func (e *BorderEvent) GetPrevious_orNil() Event {
 	var ret Event
-	if e.previous_orNil != nil {
-		ret = e.previous_orNil
+	if e.Previous_orNil != nil {
+		ret = e.Previous_orNil
 	}
 	return ret
 }
@@ -91,10 +91,10 @@ func (e1 *BorderEvent) Equals(e2 *BorderEvent) bool {
 	} else if (e1 == nil) || (e2 == nil) {
 		res = false
 	} else {
-		if (e1.tstate != e2.tstate) || (e1.color != e2.color) {
+		if (e1.TState != e2.TState) || (e1.Color != e2.Color) {
 			res = false
 		} else {
-			res = e1.previous_orNil.Equals(e2.previous_orNil)
+			res = e1.Previous_orNil.Equals(e2.Previous_orNil)
 		}
 	}
 
@@ -105,24 +105,24 @@ func (e1 *BorderEvent) Equals(e2 *BorderEvent) bool {
 type BeeperEvent struct {
 	// The moment when the beeper-event occurred.
 	// It is the number of T-states since the beginning of the frame.
-	tstate uint
+	TState uint
 
 	// The beeper level (0 .. MAX_AUDIO_LEVEL)
-	level byte
+	Level byte
 
 	// Previous event, if any.
-	// Constraint: (tstate >= previous_orNil.tstate)
-	previous_orNil *BeeperEvent
+	// Constraint: (tstate >= Previous_orNil.TState)
+	Previous_orNil *BeeperEvent
 }
 
-func (e *BeeperEvent) TState() uint {
-	return e.tstate
+func (e *BeeperEvent) GetTState() uint {
+	return e.TState
 }
 
-func (e *BeeperEvent) Previous_orNil() Event {
+func (e *BeeperEvent) GetPrevious_orNil() Event {
 	var ret Event
-	if e.previous_orNil != nil {
-		ret = e.previous_orNil
+	if e.Previous_orNil != nil {
+		ret = e.Previous_orNil
 	}
 	return ret
 }
@@ -149,7 +149,7 @@ const tapeReadCount_tapeAccessThreshold = 400
 func NewPorts() *Ports {
 	p := &Ports{}
 	p.beeperLevel = 0
-	p.beeperEvents = &BeeperEvent{tstate: 0, level: p.beeperLevel, previous_orNil: nil}
+	p.beeperEvents = &BeeperEvent{TState: 0, Level: p.beeperLevel, Previous_orNil: nil}
 
 	return p
 }
@@ -159,17 +159,17 @@ func (p *Ports) init(speccy *Spectrum48k) {
 }
 
 func (p *Ports) reset() {
-	p.borderEvents = &BorderEvent{tstate: 0, color: p.speccy.ula.getBorderColor(), previous_orNil: nil}
+	p.borderEvents = &BorderEvent{TState: 0, Color: p.speccy.ula.getBorderColor(), Previous_orNil: nil}
 
 	p.beeperLevel = 0
-	p.beeperEvents = &BeeperEvent{tstate: 0, level: p.beeperLevel, previous_orNil: nil}
+	p.beeperEvents = &BeeperEvent{TState: 0, Level: p.beeperLevel, Previous_orNil: nil}
 }
 
 
 type Cmp_TStatesPerFrame struct{}
 
 func (Cmp_TStatesPerFrame) isTrue(e Event) bool {
-	return (e.TState() >= TStatesPerFrame)
+	return (e.GetTState() >= TStatesPerFrame)
 }
 
 type BeeperEvent_Array struct {
@@ -214,24 +214,24 @@ func (p *Ports) frame_end() FrameStatusOfPorts {
 		var colorAtTState0 byte
 		if n == 0 {
 			colorAtTState0 = p.speccy.ula.getBorderColor()
-		} else if overflow[0].tstate == TStatesPerFrame {
-			colorAtTState0 = overflow[0].color
+		} else if overflow[0].TState == TStatesPerFrame {
+			colorAtTState0 = overflow[0].Color
 		} else {
-			// Note: The fact that (n>0) and (overflow[0].tstate >= TStatesPerFrame) and
+			// Note: The fact that (n>0) and (overflow[0].TState >= TStatesPerFrame) and
 			// (there always exists an event with T-state value equal to 0)
-			// implies that (overflow[0].previous_orNil != nil).
-			colorAtTState0 = overflow[0].previous_orNil.color
+			// implies that (overflow[0].Previous_orNil != nil).
+			colorAtTState0 = overflow[0].Previous_orNil.Color
 		}
 
-		if (n > 0) && (overflow[0].tstate == TStatesPerFrame) {
+		if (n > 0) && (overflow[0].TState == TStatesPerFrame) {
 			p.borderEvents = nil
 		} else {
-			p.borderEvents = &BorderEvent{tstate: 0, color: colorAtTState0, previous_orNil: nil}
+			p.borderEvents = &BorderEvent{TState: 0, Color: colorAtTState0, Previous_orNil: nil}
 		}
 
 		// Replay the overflowing events
 		for i := 0; i < n; i++ {
-			p.borderEvents = &BorderEvent{(overflow[i].tstate - TStatesPerFrame), overflow[i].color, p.borderEvents}
+			p.borderEvents = &BorderEvent{(overflow[i].TState - TStatesPerFrame), overflow[i].Color, p.borderEvents}
 		}
 	}
 
@@ -247,24 +247,24 @@ func (p *Ports) frame_end() FrameStatusOfPorts {
 		var levelAtTState0 byte
 		if n == 0 {
 			levelAtTState0 = p.beeperLevel
-		} else if overflow[0].tstate == TStatesPerFrame {
-			levelAtTState0 = overflow[0].level
+		} else if overflow[0].TState == TStatesPerFrame {
+			levelAtTState0 = overflow[0].Level
 		} else {
-			// Note: The fact that (n>0) and (overflow[0].tstate >= TStatesPerFrame) and
+			// Note: The fact that (n>0) and (overflow[0].TState >= TStatesPerFrame) and
 			// (there always exists an event with T-state value equal to 0)
-			// implies that (overflow[0].previous_orNil != nil).
-			levelAtTState0 = overflow[0].previous_orNil.level
+			// implies that (overflow[0].Previous_orNil != nil).
+			levelAtTState0 = overflow[0].Previous_orNil.Level
 		}
 
-		if (n > 0) && (overflow[0].tstate == TStatesPerFrame) {
+		if (n > 0) && (overflow[0].TState == TStatesPerFrame) {
 			p.beeperEvents = nil
 		} else {
-			p.beeperEvents = &BeeperEvent{tstate: 0, level: levelAtTState0, previous_orNil: nil}
+			p.beeperEvents = &BeeperEvent{TState: 0, Level: levelAtTState0, Previous_orNil: nil}
 		}
 
 		// Replay the overflowing events
 		for i := 0; i < n; i++ {
-			p.beeperEvents = &BeeperEvent{(overflow[i].tstate - TStatesPerFrame), overflow[i].level, p.beeperEvents}
+			p.beeperEvents = &BeeperEvent{(overflow[i].TState - TStatesPerFrame), overflow[i].Level, p.beeperEvents}
 		}
 	}
 
@@ -276,12 +276,12 @@ func (p *Ports) frame_end() FrameStatusOfPorts {
 func (p *Ports) getBorderEvents_orNil() *BorderEvent {
 	lastEvent := p.borderEvents
 
-	for lastEvent.tstate > TStatesPerFrame {
-		lastEvent = lastEvent.previous_orNil
+	for lastEvent.TState > TStatesPerFrame {
+		lastEvent = lastEvent.Previous_orNil
 	}
 
-	if lastEvent.tstate < TStatesPerFrame {
-		lastEvent = &BorderEvent{TStatesPerFrame, lastEvent.color, lastEvent}
+	if lastEvent.TState < TStatesPerFrame {
+		lastEvent = &BorderEvent{TStatesPerFrame, lastEvent.Color, lastEvent}
 	}
 
 	return lastEvent
@@ -290,12 +290,12 @@ func (p *Ports) getBorderEvents_orNil() *BorderEvent {
 func (p *Ports) getBeeperEvents_orNil() *BeeperEvent {
 	lastEvent := p.beeperEvents
 
-	for lastEvent.tstate > TStatesPerFrame {
-		lastEvent = lastEvent.previous_orNil
+	for lastEvent.TState > TStatesPerFrame {
+		lastEvent = lastEvent.Previous_orNil
 	}
 
-	if lastEvent.tstate < TStatesPerFrame {
-		lastEvent = &BeeperEvent{TStatesPerFrame, lastEvent.level, lastEvent}
+	if lastEvent.TState < TStatesPerFrame {
+		lastEvent = &BeeperEvent{TStatesPerFrame, lastEvent.Level, lastEvent}
 	}
 
 	return lastEvent
@@ -353,8 +353,8 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 		// Modify the border only if it really changed
 		if p.speccy.ula.getBorderColor() != color {
 			p.speccy.ula.setBorderColor(color)
-			if p.borderEvents.tstate == p.speccy.Cpu.tstates {
-				p.borderEvents.color = color
+			if p.borderEvents.TState == p.speccy.Cpu.tstates {
+				p.borderEvents.Color = color
 			} else {
 				p.borderEvents = &BorderEvent{p.speccy.Cpu.tstates, color, p.borderEvents}
 			}
@@ -371,8 +371,8 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 		}
 		if p.beeperLevel != newBeeperLevel {
 			p.beeperLevel = newBeeperLevel
-			if p.beeperEvents.tstate == p.speccy.Cpu.tstates {
-				p.beeperEvents.level = newBeeperLevel
+			if p.beeperEvents.TState == p.speccy.Cpu.tstates {
+				p.beeperEvents.Level = newBeeperLevel
 			} else {
 				p.beeperEvents = &BeeperEvent{p.speccy.Cpu.tstates, newBeeperLevel, p.beeperEvents}
 			}

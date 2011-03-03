@@ -487,7 +487,7 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 	}
 
 	for i, d := range displays {
-		d.(*DisplayInfo).displayReceiver.close()
+		d.(*DisplayInfo).displayReceiver.Close()
 		if speccy.app.Verbose {
 			speccy.app.PrintfMsg("display #%d: %d missed frames", i, d.(*DisplayInfo).numMissedFrames)
 		}
@@ -506,7 +506,7 @@ func (speccy *Spectrum48k) closeAllAudioReceivers() {
 	}
 
 	for _, r := range audioReceivers {
-		r.(AudioReceiver).close()
+		r.(AudioReceiver).Close()
 	}
 }
 
@@ -542,12 +542,12 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	// Send audio data to audio backend(s)
 	{
 		audioData := AudioData{
-			fps:                speccy.currentFPS,
-			beeperEvents_orNil: speccy.Ports.getBeeperEvents_orNil(),
+			FPS:                speccy.currentFPS,
+			BeeperEvents_orNil: speccy.Ports.getBeeperEvents_orNil(),
 		}
 
 		for _, audioReceiver := range speccy.audioReceivers {
-			audioReceiver.(AudioReceiver).getAudioDataChannel() <- &audioData
+			audioReceiver.(AudioReceiver).GetAudioDataChannel() <- &audioData
 		}
 	}
 

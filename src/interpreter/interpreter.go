@@ -11,6 +11,7 @@ import (
 	"os"
 	"spectrum"
 	"spectrum/formats"
+	"spectrum/output"
 	"strings"
 	"time"
 )
@@ -267,7 +268,7 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	enable := in[0].(eval.BoolValue).Get(t)
 
 	if enable {
-		audio, err := spectrum.NewSDLAudio(app)
+		audio, err := output.NewSDLAudio(app)
 		if err == nil {
 			finished := make(chan byte)
 			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}

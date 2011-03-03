@@ -11,9 +11,9 @@ package spectrum
 // from the Z80 CPU emulation core to an audio device.
 type AudioData struct {
 	// The FPS (frames per second) value that applies to this AudioData object
-	fps float32
+	FPS float32
 
-	beeperEvents_orNil *BeeperEvent
+	BeeperEvents_orNil *BeeperEvent
 }
 
 const MAX_AUDIO_LEVEL = 3
@@ -43,7 +43,7 @@ var Voltage_Issue3 = [4]float32{
 }
 
 // A table for converting the "audio level" to a 16-bit signed value.
-// Note: The code in file "sdlsound.go" assumes that 'Audio16_Table[0]' equals to zero.
+// Note: Users of this table can assume that 'Audio16_Table[0]' equals to zero.
 var Audio16_Table = [4]float32{
 	0,
 	0x7fff * (Voltage_Issue2[1] - Voltage_Issue2[0]) / (Voltage_Issue2[3] - Voltage_Issue2[0]),
@@ -54,8 +54,8 @@ var Audio16_Table = [4]float32{
 
 // Interface to an audio device awaiting audio data
 type AudioReceiver interface {
-	getAudioDataChannel() chan<- *AudioData
+	GetAudioDataChannel() chan<- *AudioData
 
 	// Closes the audio device associated with this AudioReceiver
-	close()
+	Close()
 }

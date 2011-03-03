@@ -65,7 +65,7 @@ type Spectrum48k struct {
 	// The current display refresh frequency.
 	// The initial value is 'DefaultFPS'.
 	// It is always greater than 0.
-	currentFPS float32
+	currentFPS       float32
 	currentFPS_mutex sync.Mutex // To respect the Go memory model
 
 	// A value received from this channel indicates the new display refresh frequency.
@@ -104,7 +104,15 @@ type Cmd_Reset struct {
 	SystemROMLoaded_orNil chan<- <-chan bool
 }
 type Cmd_RenderFrame struct {
-	// This channel (if not nil) will receive the time when the WHOLE rendering finished.
+	// This channel (if not nil) will receive the real time when the rendering finished.
+	//
+	// If the list of host-machine displays is empty, the time only includes the emulation.
+	// If the list of host-machine displays is non-empty, the time also includes host-machine
+	// rendering. The sent time represents the moment of when the screen data reached
+	// the host-machine display. On Linux this usually means: the moment right after
+	// all pixels have been sent to the X server.
+	// If there are multiple displays, the time includes the 1st display only.
+	//
 	// The time is obtained via a call to time.Nanoseconds().
 	CompletionTime_orNil chan<- int64
 }
@@ -118,7 +126,7 @@ type Cmd_CloseAllDisplays struct {
 	Finished chan<- byte
 }
 type Cmd_SetFPS struct {
-	NewFPS float32
+	NewFPS       float32
 	OldFPS_orNil chan<- float32
 }
 type Cmd_SetUlaEmulationAccuracy struct {
@@ -227,7 +235,7 @@ func (speccy *Spectrum48k) GetCurrentFPS() float32 {
 }
 
 // Load a program (tape or snapshot)
-func (speccy *Spectrum48k) Load(program interface{}) os.Error {
+func (speccy *Spectrum48k) load(program interface{}) os.Error {
 	var err os.Error
 
 	switch program := program.(type) {
@@ -247,18 +255,6 @@ func (speccy *Spectrum48k) Load(program interface{}) os.Error {
 // Return the TapeDrive instance
 func (speccy *Spectrum48k) TapeDrive() *TapeDrive {
 	return speccy.tapeDrive
-}
-
-// Load the tape file with given filename
-func (speccy *Spectrum48k) LoadTape(filename string) os.Error {
-	tap, err := formats.NewTAPFromFile(filename)
-	if err != nil {
-		return err
-	}
-
-	speccy.loadTape(tap)
-
-	return nil
 }
 
 // Set accelerated tape load on/off
@@ -388,7 +384,7 @@ func commandLoop(speccy *Spectrum48k) {
 					speccy.currentFPS = newFPS
 					speccy.currentFPS_mutex.Unlock()
 
-					go func(){
+					go func() {
 						speccy.fpsCh <- newFPS
 					}()
 				}
@@ -432,7 +428,7 @@ func commandLoop(speccy *Spectrum48k) {
 					}
 				}
 
-				err := speccy.Load(cmd.Program)
+				err := speccy.load(cmd.Program)
 
 				if cmd.ErrChan != nil {
 					cmd.ErrChan <- err
@@ -525,7 +521,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Cpu.doOpcodes(speccy.shouldPlayTheTape > 0)
 
 	// Send display data to display backend(s)
-	{
+	if speccy.displays.Len() > 0 {
 		firstDisplay := true
 		for _, display := range speccy.displays {
 			var tm chan<- int64
@@ -536,6 +532,10 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 			}
 			speccy.ula.sendScreenToDisplay(display.(*DisplayInfo), tm)
 			firstDisplay = false
+		}
+	} else {
+		if completionTime_orNil != nil {
+			completionTime_orNil <- time.Nanoseconds()
 		}
 	}
 

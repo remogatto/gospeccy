@@ -182,9 +182,9 @@ func newFont(scale2x, fullscreen bool) *ttf.Font {
 		scale2x = true
 	}
 	if scale2x {
-		font = ttf.OpenFont("font/VeraMono.ttf", 12)
+		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 12)
 	} else {
-		font = ttf.OpenFont("font/VeraMono.ttf", 10)
+		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 10)
 	}
 	if font == nil {
 		panic(sdl.GetError())
@@ -499,16 +499,8 @@ func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, ver
 
 				if verboseInput {
 					app.PrintfMsg("\n")
-					app.PrintfMsg("%v: %v", e.Keysym.Sym, ": ", keyName)
-
-					app.PrintfMsg("%04x ", e.Type)
-
-					for i := 0; i < len(e.Pad0); i++ {
-						app.PrintfMsg("%02x ", e.Pad0[i])
-					}
-					app.PrintfMsg("\n")
-
-					app.PrintfMsg("Type: %02x Which: %02x State: %02x Pad: %02x\n", e.Type, e.Which, e.State, e.Pad0[0])
+					app.PrintfMsg("%v: %v", e.Keysym.Sym, keyName)
+					app.PrintfMsg("Type: %02x Which: %02x State: %02x\n", e.Type, e.Which, e.State)
 					app.PrintfMsg("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", e.Keysym.Scancode, e.Keysym.Sym, e.Keysym.Mod, e.Keysym.Unicode)
 				}
 

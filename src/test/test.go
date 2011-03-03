@@ -26,25 +26,26 @@ type SDLSurfaceAccessor interface {
 }
 
 type renderer struct {
-	app                       *spectrum.Application
-	appSurface                *sdl.Surface
-	speccySurface, cliSurface SDLSurfaceAccessor
-	width, height             int
-	consoleY                  int16
+	app              *spectrum.Application
+	appSurface       *sdl.Surface
+	speccySurface    SDLSurfaceAccessor
+	cliSurface_orNil *clingon.SDLRenderer
+	width, height    int
+	consoleY         int16
 }
 
-func newRenderer(app *spectrum.Application, speccySurface, cliSurface SDLSurfaceAccessor) *renderer {
+func newRenderer(app *spectrum.Application, speccySurface SDLSurfaceAccessor, cliSurface_orNil *clingon.SDLRenderer) *renderer {
 	width := spectrum.TotalScreenWidth * 2
 	height := spectrum.TotalScreenHeight * 2
 	r := &renderer{
-		app:           app,
-		appSurface:    sdl.SetVideoMode(width, height, 32, 0),
-		speccySurface: speccySurface,
-		cliSurface:    cliSurface,
-		width:         width,
-		height:        height,
+		app:              app,
+		appSurface:       sdl.SetVideoMode(width, height, 32, 0),
+		speccySurface:    speccySurface,
+		cliSurface_orNil: cliSurface_orNil,
+		width:            width,
+		height:           height,
 	}
-	if cliSurface != nil {
+	if cliSurface_orNil != nil {
 		go r.loopWithCLI(app.NewEventLoop())
 	} else {
 		go r.loop(app.NewEventLoop())
@@ -59,30 +60,64 @@ func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
 	for _, rect := range speccyRects {
 		x, y, w, h := rect.X, rect.Y-int16(r.consoleY), rect.W, rect.H
 		r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
-		if r.cliSurface != nil {
-			r.appSurface.Blit(&sdl.Rect{x, rect.Y, 0, 0}, r.cliSurface.GetSurface(), &sdl.Rect{x, y, w, h})
+		if r.cliSurface_orNil != nil {
+			r.appSurface.Blit(&sdl.Rect{x, rect.Y, 0, 0}, r.cliSurface_orNil.GetSurface(), &sdl.Rect{x, y, w, h})
 		}
 	}
 	for _, rect := range cliRects {
 		x, y, w, h := rect.X, rect.Y+int16(r.consoleY), rect.W, rect.H
 		r.appSurface.Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
-		r.appSurface.Blit(&sdl.Rect{rect.X, rect.Y + int16(r.consoleY), 0, 0}, r.cliSurface.GetSurface(), &rect)
+		r.appSurface.Blit(&sdl.Rect{rect.X, rect.Y + int16(r.consoleY), 0, 0}, r.cliSurface_orNil.GetSurface(), &rect)
 	}
 	r.appSurface.Flip()
 }
 
+// Synchronously destroy the CLI renderer
+func (r *renderer) destroyCliRenderer() {
+	if r.cliSurface_orNil != nil {
+		cliSurface := r.cliSurface_orNil
+		r.cliSurface_orNil = nil
+
+		console.SetRenderer(nil)
+
+		go func() {
+			for r := range cliSurface.UpdatedRectsCh() {
+				if r == nil {
+					//if app.Verbose {
+					//	app.PrintfMsg("command-line renderer: end of the stream of update-rectangles")
+					//}
+					break
+				}
+			}
+		}()
+
+		done := make(chan bool)
+		cliSurface.EventCh() <- clingon.Cmd_Terminate{done}
+		<-done
+
+		cliSurface.GetSurface().Free()
+		// Note: 'font' is a global variable, it cannot be freed
+	}
+}
+
 func (r *renderer) loopWithCLI(evtLoop *spectrum.EventLoop) {
+	var cliSurface_updatedRectsCh_orNil <-chan []sdl.Rect = r.cliSurface_orNil.UpdatedRectsCh()
+
 	go func() {
 		for {
 			select {
 			case <-evtLoop.Pause:
+				r.destroyCliRenderer()
 				evtLoop.Pause <- 0
+
 			case <-evtLoop.Terminate:
 				evtLoop.Terminate <- 0
 				return
+
 			case speccyRects := <-r.speccySurface.UpdatedRectsCh():
 				r.render(speccyRects, nil)
-			case cliRects := <-r.cliSurface.UpdatedRectsCh():
+
+			case cliRects := <-cliSurface_updatedRectsCh_orNil:
 				r.render(nil, cliRects)
 			}
 		}
@@ -95,9 +130,11 @@ func (r *renderer) loop(evtLoop *spectrum.EventLoop) {
 			select {
 			case <-evtLoop.Pause:
 				evtLoop.Pause <- 0
+
 			case <-evtLoop.Terminate:
 				evtLoop.Terminate <- 0
 				return
+
 			case speccyRects := <-r.speccySurface.UpdatedRectsCh():
 				r.render(speccyRects, nil)
 			}
@@ -150,6 +187,7 @@ func (t *cliTestSuite) beforeAll() {
 }
 
 func (t *cliTestSuite) afterAll() {
+	font.Close()
 	t.t.afterAll()
 }
 

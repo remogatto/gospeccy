@@ -70,7 +70,7 @@ type TapeDrive struct {
 	fpsBeforeAcceleration                 float32
 	loadComplete                          chan bool
 
-	mutex                                 sync.RWMutex
+	mutex sync.RWMutex
 }
 
 func NewTapeDrive() *TapeDrive {

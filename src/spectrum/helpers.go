@@ -76,8 +76,8 @@ func appendCustomSearchPaths(paths *vector.StringVector) {
 	customSearchPaths_mutex.RUnlock()
 }
 
-// Return a valid path for the named snapshot,
-// or the original filename of the search fails.
+// Return a valid path for the specified snapshot,
+// or the original filename if the search fails.
 //
 // The search is performed in this order:
 // 1. ./
@@ -96,8 +96,8 @@ func SnaPath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
-// Return a valid path for the named tape file,
-// or the original filename of the search fails.
+// Return a valid path for the specified tape file,
+// or the original filename if the search fails.
 //
 // The search is performed in this order:
 // 1. ./
@@ -116,8 +116,8 @@ func TapePath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
-// Return a valid path for the named zip file,
-// or the original filename of the search fails.
+// Return a valid path for the specified zip file,
+// or the original filename if the search fails.
 //
 // The search is performed in this order:
 // 1. ./
@@ -137,7 +137,7 @@ func ZipPath(fileName string) string {
 }
 
 // Return a valid path for the file based on its extension,
-// or the original filename of the search fails.
+// or the original filename if the search fails.
 func ProgramPath(fileName string) string {
 	ext := strings.ToLower(path.Ext(fileName))
 
@@ -156,7 +156,7 @@ func ProgramPath(fileName string) string {
 }
 
 // Returns a valid path for the 48k system ROM,
-// or the original filename of the search fails.
+// or the original filename if the search fails.
 //
 // The search is performed in this order:
 // 1. ./roms/48.rom
@@ -178,8 +178,8 @@ func SystemRomPath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
-// Return a valid path for the named script,
-// or the original filename of the search fails.
+// Return a valid path for the specified script,
+// or the original filename if the search fails.
 //
 // The search is performed in this order:
 // 1. ./scripts/
@@ -190,6 +190,29 @@ func ScriptPath(fileName string) string {
 		currDir = "scripts"
 		userDir = path.Join(DefaultUserDir, "scripts")
 		distDir = path.Join(distDir, "scripts")
+	)
+
+	var paths vector.StringVector
+	paths.Push(currDir)
+	paths.Push(userDir)
+	paths.Push(distDir)
+	appendCustomSearchPaths(&paths)
+
+	return searchForValidPath(paths, fileName)
+}
+
+// Return a valid path for the specified font file,
+// or the original filename if the search fails.
+//
+// The search is performed in this order:
+// 1. ./fonts/
+// 2. $HOME/.gospeccy/fonts/
+// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/fonts/
+func FontPath(fileName string) string {
+	var (
+		currDir = "fonts"
+		userDir = path.Join(DefaultUserDir, "fonts")
+		distDir = path.Join(distDir, "fonts")
 	)
 
 	var paths vector.StringVector

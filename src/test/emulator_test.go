@@ -1,16 +1,21 @@
 package test
 
 import (
-	"time"
+	"os"
+	"prettytest"
 	"spectrum"
 	"spectrum/formats"
 	"testing"
-	"prettytest"
+	"time"
 )
 
 // System ROM
 
 func (t *testSuite) should_load_system_ROM() {
+	romLoaded := make(chan (<-chan bool))
+	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+	<-(<-romLoaded)
+
 	t.True(screenEqualTo("testdata/system_rom_loaded.sna"))
 }
 
@@ -53,8 +58,18 @@ func (t *testSuite) should_respond_to_keypress_sequence() {
 // // Tapedrive
 
 func (t *testSuite) should_load_tapes_using_ROM_routine() {
-	err := speccy.LoadTape("testdata/hello.tap")
+	filename := "testdata/hello.tap"
+	tap, err := formats.NewTAPFromFile(filename)
 	t.Nil(err)
+
+	// Reset
+	romLoaded := make(chan (<-chan bool))
+	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+	<-(<-romLoaded)
+
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, tap, errChan}
+	t.Nil(<-errChan)
 
 	<-speccy.TapeDrive().LoadComplete()
 
@@ -62,10 +77,21 @@ func (t *testSuite) should_load_tapes_using_ROM_routine() {
 }
 
 func (t *testSuite) should_support_accelerated_loading() {
+	filename := "testdata/hello.tap"
+	tap, err := formats.NewTAPFromFile(filename)
+	t.Nil(err)
+
+	// Reset
+	romLoaded := make(chan (<-chan bool))
+	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+	<-(<-romLoaded)
+
 	start := time.Nanoseconds()
 	speccy.TapeDrive().AcceleratedLoad = true
-	err := speccy.LoadTape("testdata/hello.tap")
-	t.Nil(err)
+
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, tap, errChan}
+	t.Nil(<-errChan)
 
 	<-speccy.TapeDrive().LoadComplete()
 
@@ -76,31 +102,42 @@ func (t *testSuite) should_support_accelerated_loading() {
 // // Formats
 
 func (t *testSuite) should_support_SNA_format() {
-	program, err := formats.ReadProgram("testdata/hello.sna")
+	filename := "testdata/hello.sna"
+	snapshot, err := formats.ReadProgram(filename)
 	t.Nil(err)
 
-	err = speccy.Load(program)
-	t.Nil(err)
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, snapshot, errChan}
+	t.Nil(<-errChan)
 
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
 func (t *testSuite) should_support_Z80_format() {
-	program, err := formats.ReadProgram("testdata/hello.z80")
+	filename := "testdata/hello.z80"
+	snapshot, err := formats.ReadProgram(filename)
 	t.Nil(err)
 
-	err = speccy.Load(program)
-	t.Nil(err)
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, snapshot, errChan}
+	t.Nil(<-errChan)
 
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
 func (t *testSuite) should_support_TAP_format() {
-	program, err := formats.ReadProgram("testdata/hello.tap")
+	filename := "testdata/hello.tap"
+	tap, err := formats.NewTAPFromFile(filename)
 	t.Nil(err)
 
-	err = speccy.Load(program)
-	t.Nil(err)
+	// Reset
+	romLoaded := make(chan (<-chan bool))
+	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+	<-(<-romLoaded)
+
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, tap, errChan}
+	t.Nil(<-errChan)
 
 	<-speccy.TapeDrive().LoadComplete()
 

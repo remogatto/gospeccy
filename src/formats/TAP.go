@@ -1,16 +1,16 @@
 package formats
 
 import (
-	"os"
-	"io/ioutil"
 	"container/vector"
+	"os"
 )
 
 const (
-	TAP_FILE_PROGRAM = iota
-	TAP_FILE_NUMBER
-	TAP_FILE_CHARACTER_ARRAY
-	TAP_FILE_CODE
+	TAP_FILE_PROGRAM         = 0
+	TAP_FILE_NUMBER_ARRAY    = 1
+	TAP_FILE_CHARACTER_ARRAY = 2
+	TAP_FILE_CODE            = 3
+
 	TAP_BLOCK_HEADER = 0x00
 	TAP_BLOCK_DATA   = 0xff
 )
@@ -20,27 +20,31 @@ func joinBytes(h, l byte) uint16 {
 }
 
 func checksum(data []byte) bool {
-	exp := data[len(data)-1]
 	sum := byte(0)
-	for _, v := range data[0 : len(data)-1] {
+	for _, v := range data {
 		sum ^= v
 	}
-	return exp == sum
+	return sum == 0
 }
 
 type tapBlock interface {
-	blockType() byte
-	checksum() bool
-	Len() int
+	BlockType() byte // Usually returns TAP_BLOCK_HEADER or TAP_BLOCK_DATA
+	Len() int        // Same as 'len(Data())'
 	Data() []byte
+	checksum() bool
 }
+
 
 type tapBlockHeader struct {
 	data       []byte
-	tapType    byte
+	tapType    byte // Usually, the value is one of TAP_FILE_*
 	filename   string
 	length     uint16
 	par1, par2 uint16
+}
+
+func (header *tapBlockHeader) BlockType() byte {
+	return header.data[0]
 }
 
 func (header *tapBlockHeader) Len() int {
@@ -51,15 +55,16 @@ func (header *tapBlockHeader) Data() []byte {
 	return header.data
 }
 
-func (header *tapBlockHeader) blockType() byte {
-	return header.data[0]
-}
-
 func (header *tapBlockHeader) checksum() bool {
 	return checksum(header.data)
 }
 
+
 type tapBlockData []byte
+
+func (data tapBlockData) BlockType() byte {
+	return data[0]
+}
 
 func (data tapBlockData) Len() int {
 	return len(data)
@@ -69,38 +74,25 @@ func (data tapBlockData) Data() []byte {
 	return data
 }
 
-func (data tapBlockData) blockType() byte {
-	return data[0]
-}
-
 func (data tapBlockData) checksum() bool {
 	return checksum(data)
 }
 
+
 type TAP struct {
 	data   []byte
-	blocks *vector.Vector
+	blocks vector.Vector
 }
 
-func NewTAP() *TAP {
-	return &TAP{}
-}
+func NewTAP(data []byte) (*TAP, os.Error) {
+	tap := &TAP{}
 
-func NewTAPFromFile(filename string) (*TAP, os.Error) {
-	data, err := ioutil.ReadFile(filename)
-
+	err := tap.read(data)
 	if err != nil {
 		return nil, err
 	}
 
-	tap := NewTAP()
-	_, err = tap.Read(data)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tap, err
+	return tap, nil
 }
 
 func (tap *TAP) Len() uint {
@@ -115,9 +107,8 @@ func (tap *TAP) GetBlock(pos int) tapBlock {
 	return tap.blocks.At(pos).(tapBlock)
 }
 
-func (tap *TAP) readBlockHeader(data []byte) tapBlock {
-	tap.blocks.Push(new(tapBlockHeader))
-	header := tap.blocks.Last().(*tapBlockHeader)
+func readBlock_header(data []byte) *tapBlockHeader {
+	header := new(tapBlockHeader)
 
 	header.data = data
 	header.tapType = data[1]
@@ -129,61 +120,68 @@ func (tap *TAP) readBlockHeader(data []byte) tapBlock {
 	return header
 }
 
-func (tap *TAP) readBlockData(data []byte) tapBlock {
-	tap.blocks.Push(tapBlockData(data))
-	return tap.blocks.Last().(tapBlockData)
+func readBlock_data(data []byte) tapBlockData {
+	return tapBlockData(data)
 }
 
-func (tap *TAP) readBlock(data []byte) (block tapBlock, err os.Error) {
-	if data[0] == 0x00 {
-		block = tap.readBlockHeader(data)
+func (tap *TAP) readBlock(data []byte) (tapBlock, os.Error) {
+	var block tapBlock
+	if data[0] == TAP_BLOCK_HEADER {
+		block = readBlock_header(data)
 	} else {
-		block = tap.readBlockData(data)
+		block = readBlock_data(data)
 	}
+
 	if !block.checksum() {
-		err = os.NewError("Checksum failed")
+		return nil, os.NewError("checksum failed")
 	}
-	return
+
+	return block, nil
 }
 
-func (tap *TAP) Read(data []byte) (n int, err os.Error) {
-	var (
-		length, blockLength uint
-		pos, nextPos        uint
-	)
-
-	if len(data) == 0 {
-		err = os.NewError("No TAP data to read!")
-		return
+func (tap *TAP) read(data []byte) os.Error {
+	length := uint(len(data))
+	if length == 0 {
+		return os.NewError("no TAP data to read")
 	}
 
-	tap.blocks = new(vector.Vector)
-	length = uint(len(data))
+	pos := uint(0)
+	for pos != length {
+		if !(pos+1 <= length) {
+			return os.NewError("invalid TAP data")
+		}
 
-	for pos = 0; pos < length; pos += nextPos {
-		blockLength = uint(joinBytes(data[pos+1], data[pos]))
-
+		blockLength := uint(joinBytes(data[pos+1], data[pos]))
 		if blockLength == 0 {
-			err = os.NewError("Block size can't be 0")
-			n = int(pos)
-			return
+			return os.NewError("block size can't be 0")
 		}
 
 		pos += 2
-		_, err = tap.readBlock(data[pos : pos+blockLength])
-		nextPos = blockLength
-		n += int(blockLength) + 2
+
+		if !(pos+blockLength <= length) {
+			return os.NewError("invalid TAP data")
+		}
+
+		block, err := tap.readBlock(data[pos : pos+blockLength])
+		if err != nil {
+			return err
+		}
+
+		tap.blocks.Push(block)
+		pos += blockLength
 	}
 
 	tap.data = make([]byte, len(data)-(tap.blocks.Len()*2))
-	var c = 0
-
-	for _, blk := range *tap.blocks {
+	c := 0
+	for _, blk := range tap.blocks {
 		for _, v := range blk.(tapBlock).Data() {
 			tap.data[c] = v
 			c++
 		}
 	}
+	if c != len(tap.data) {
+		panic("assertion failed")
+	}
 
-	return
+	return nil
 }

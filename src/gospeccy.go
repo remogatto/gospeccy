@@ -94,9 +94,16 @@ type SDLRenderer struct {
 	toggling                      bool
 	appSurfaceCh, speccySurfaceCh chan cmd_newSurface
 	cliSurfaceCh                  chan cmd_newCliSurface
-	evtLoop                       *spectrum.EventLoop
 
 	sliderCh chan cmd_newSlider
+}
+
+// Passed to interpreter.Init()
+type DummyRenderer struct {
+	scale2x    *bool
+	fullscreen *bool
+
+	sound *bool
 }
 
 type wrapSurface struct {
@@ -215,7 +222,11 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRen
 	return r
 }
 
-func (r *SDLRenderer) Resize(app *spectrum.Application, scale2x, fullscreen bool) {
+func (r *SDLRenderer) ResizeVideo(scale2x, fullscreen bool) {
+	finished := make(chan byte)
+	speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
+	<-finished
+
 	if r.scale2x != scale2x {
 		if scale2x {
 			// 1x --> 2x
@@ -246,6 +257,37 @@ func (r *SDLRenderer) Resize(app *spectrum.Application, scale2x, fullscreen bool
 		r.cliSurfaceCh <- cmd_newCliSurface{newCLISurface(scale2x, fullscreen), done}
 		<-done
 	}
+}
+
+func (r *SDLRenderer) EnableSound(enable bool) {
+	if enable {
+		audio, err := output.NewSDLAudio(app)
+		if err == nil {
+			finished := make(chan byte)
+			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
+			<-finished
+
+			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
+		} else {
+			app.PrintfMsg("%s", err)
+			return
+		}
+	} else {
+		finished := make(chan byte)
+		speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
+		<-finished
+	}
+}
+
+func (r *DummyRenderer) ResizeVideo(scale2x, fullscreen bool) {
+	// Overwrite the command-line settings
+	*r.scale2x = scale2x
+	*r.fullscreen = fullscreen
+}
+
+func (r *DummyRenderer) EnableSound(enable bool) {
+	// Overwrite the command-line settings
+	*r.sound = enable
 }
 
 // Synchronously destroy the CLI renderer
@@ -281,10 +323,11 @@ func (r *SDLRenderer) loop() {
 	var sliderValueCh_orNil <-chan float64 = nil
 	var sliderFinishedCh_orNil <-chan bool = nil
 
-	r.evtLoop = r.app.NewEventLoop()
+	evtLoop := r.app.NewEventLoop()
+
 	for {
 		select {
-		case <-r.evtLoop.Pause:
+		case <-evtLoop.Pause:
 			if slider_orNil != nil {
 				slider_orNil.Terminate()
 				<-sliderFinishedCh_orNil
@@ -298,14 +341,14 @@ func (r *SDLRenderer) loop() {
 			r.destroyCliRenderer()
 			cliSurface_updatedRectsCh_orNil = nil
 
-			r.evtLoop.Pause <- 0
+			evtLoop.Pause <- 0
 
-		case <-r.evtLoop.Terminate:
+		case <-evtLoop.Terminate:
 			// Terminate this Go routine
 			if app.Verbose {
 				app.PrintfMsg("frontend SDL renderer event loop: exit")
 			}
-			r.evtLoop.Terminate <- 0
+			evtLoop.Terminate <- 0
 			return
 
 		case cmd := <-r.sliderCh:
@@ -433,8 +476,8 @@ Available keys:
 }
 
 // A Go routine for processing SDL events.
-func sdlEventLoop(evtLoop *spectrum.EventLoop, speccy *spectrum.Spectrum48k, verboseInput bool) {
-	app = evtLoop.App()
+func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verboseInput bool) {
+	evtLoop := app.NewEventLoop()
 
 	consoleIsVisible := false
 
@@ -705,10 +748,44 @@ func main() {
 		spectrum.InstallSignalHandler(&handler)
 	}
 
+	SDL_initialized := false
+
 	if err := initEmulationCore(*acceleratedLoad); err != nil {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()
 		goto quit
+	}
+
+	// Run startup scripts.
+	// The startup scripts may change the display settings or enable/disable the audio.
+	// They may also terminate the program.
+	{
+		dummyRenderer := DummyRenderer{
+			scale2x:    scale2x,
+			fullscreen: fullscreen,
+			sound:      sound,
+		}
+		interpreter.Init(app, flag.Arg(0), speccy, &dummyRenderer)
+
+		if app.TerminationInProgress() || app.Terminated() {
+			goto quit
+		}
+	}
+
+	// Optional: Read and categorize the contents
+	//           of the file specified on the command-line
+	var program_orNil interface{} = nil
+	if flag.Arg(0) != "" {
+		file := flag.Arg(0)
+		path := spectrum.ProgramPath(file)
+
+		var err os.Error
+		program_orNil, err = formats.ReadProgram(path)
+		if err != nil {
+			app.PrintfMsg("read %s: %s", file, err)
+			app.RequestExit()
+			goto quit
+		}
 	}
 
 	// SDL subsystems init
@@ -716,6 +793,8 @@ func main() {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()
 		goto quit
+	} else {
+		SDL_initialized = true
 	}
 
 	{
@@ -726,18 +805,10 @@ func main() {
 		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
 		if <-n == 0 {
 			r = NewSDLRenderer(app, *scale2x, *fullscreen)
+			interpreter.SetUI(r)
 		}
 
 		initCLI()
-
-		// Run startup scripts. The startup scripts may create a display/audio receiver.
-		{
-			fmt.Println("Hint: Press F10 to invoke the built-in console.")
-			fmt.Println("      Input an empty line in the console to display available commands.")
-			if app.TerminationInProgress() || closed(app.HasTerminated) {
-				goto quit
-			}
-		}
 
 		// Setup the audio
 		speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
@@ -753,7 +824,7 @@ func main() {
 	}
 
 	// Start the SDL event loop
-	go sdlEventLoop(app.NewEventLoop(), speccy, *verboseInput)
+	go sdlEventLoop(app, speccy, *verboseInput)
 
 	// Begin speccy emulation
 	go speccy.EmulatorLoop()
@@ -761,20 +832,10 @@ func main() {
 	// Set the FPS
 	speccy.CommandChannel <- spectrum.Cmd_SetFPS{float32(*fps), nil}
 
-	interpreter.Init(app, flag.Arg(0), speccy, r)
-
-	// Process command line argument. Load the given program (if any)
-	if flag.Arg(0) != "" {
+	// Optional: Load the program specified on the command-line
+	if program_orNil != nil {
+		program := program_orNil
 		file := flag.Arg(0)
-
-		path := spectrum.ProgramPath(file)
-
-		program, err := formats.ReadProgram(path)
-		if err != nil {
-			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
-		}
 
 		if _, isTAP := program.(*formats.TAP); isTAP {
 			romLoaded := make(chan (<-chan bool))
@@ -784,7 +845,7 @@ func main() {
 
 		errChan := make(chan os.Error)
 		speccy.CommandChannel <- spectrum.Cmd_Load{file, program, errChan}
-		err = <-errChan
+		err := <-errChan
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			app.RequestExit()
@@ -792,9 +853,16 @@ func main() {
 		}
 	}
 
+	hint := ""
+	hint += "Hint: Press F10 to invoke the built-in console.\n"
+	hint += "      Input an empty line in the console to display available commands.\n"
+	fmt.Print(hint)
+
 quit:
 	<-app.HasTerminated
-	sdl.Quit()
+	if SDL_initialized {
+		sdl.Quit()
+	}
 
 	if app.Verbose {
 		app.PrintfMsg("GC: %d garbage collections, %f ms total pause time",

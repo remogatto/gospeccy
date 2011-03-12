@@ -178,9 +178,7 @@ func readZIP(filePath string) (interface{}, os.Error) {
 	}
 
 	if embeddedFile_format.Format == FORMAT_TAP {
-		tap := NewTAP()
-		_, err = tap.Read(data)
-		return tap, err
+		return NewTAP(data)
 	}
 
 	return SnapshotData(data).Decode(embeddedFile_format.Format)
@@ -209,9 +207,7 @@ func ReadProgram(filePath string) (interface{}, os.Error) {
 	}
 
 	if format.Format == FORMAT_TAP {
-		tap := NewTAP()
-		_, err = tap.Read(data)
-		return tap, err
+		return NewTAP(data)
 	}
 
 	return SnapshotData(data).Decode(format.Format)

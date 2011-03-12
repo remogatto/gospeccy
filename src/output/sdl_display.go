@@ -563,14 +563,15 @@ var bitmap_unpack_table [1 << 8][8]uint
 
 func init() {
 	for a := uint(0); a < (1 << 8); a++ {
-		bitmap_unpack_table[a][0] = (a >> 7) & 1
-		bitmap_unpack_table[a][1] = (a >> 6) & 1
-		bitmap_unpack_table[a][2] = (a >> 5) & 1
-		bitmap_unpack_table[a][3] = (a >> 4) & 1
-		bitmap_unpack_table[a][4] = (a >> 3) & 1
-		bitmap_unpack_table[a][5] = (a >> 2) & 1
-		bitmap_unpack_table[a][6] = (a >> 1) & 1
-		bitmap_unpack_table[a][7] = (a >> 0) & 1
+		bitmap_unpack_table_a := &bitmap_unpack_table[a]
+		bitmap_unpack_table_a[0] = (a >> 7) & 1
+		bitmap_unpack_table_a[1] = (a >> 6) & 1
+		bitmap_unpack_table_a[2] = (a >> 5) & 1
+		bitmap_unpack_table_a[3] = (a >> 4) & 1
+		bitmap_unpack_table_a[4] = (a >> 3) & 1
+		bitmap_unpack_table_a[5] = (a >> 2) & 1
+		bitmap_unpack_table_a[6] = (a >> 1) & 1
+		bitmap_unpack_table_a[7] = (a >> 0) & 1
 	}
 }
 

@@ -54,7 +54,14 @@ func newRenderer(app *spectrum.Application, speccySurface SDLSurfaceAccessor, cl
 	return r
 }
 
-func (r *renderer) Resize(app *spectrum.Application, fullscreen, scale2x bool) {
+// Implement 'interpreter.UserInterfaceSettings'
+func (r *renderer) ResizeVideo(scale2x, fullscreen bool) {
+	// Empty
+}
+
+// Implement 'interpreter.UserInterfaceSettings'
+func (r *renderer) EnableSound(enable bool) {
+	// Empty
 }
 
 func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {

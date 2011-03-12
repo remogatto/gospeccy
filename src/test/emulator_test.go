@@ -1,6 +1,7 @@
 package test
 
 import (
+	"io/ioutil"
 	"os"
 	"prettytest"
 	"spectrum"
@@ -59,7 +60,9 @@ func (t *testSuite) should_respond_to_keypress_sequence() {
 
 func (t *testSuite) should_load_tapes_using_ROM_routine() {
 	filename := "testdata/hello.tap"
-	tap, err := formats.NewTAPFromFile(filename)
+	data, err := ioutil.ReadFile(filename)
+	t.Nil(err)
+	tap, err := formats.NewTAP(data)
 	t.Nil(err)
 
 	// Reset
@@ -78,7 +81,9 @@ func (t *testSuite) should_load_tapes_using_ROM_routine() {
 
 func (t *testSuite) should_support_accelerated_loading() {
 	filename := "testdata/hello.tap"
-	tap, err := formats.NewTAPFromFile(filename)
+	data, err := ioutil.ReadFile(filename)
+	t.Nil(err)
+	tap, err := formats.NewTAP(data)
 	t.Nil(err)
 
 	// Reset
@@ -127,7 +132,9 @@ func (t *testSuite) should_support_Z80_format() {
 
 func (t *testSuite) should_support_TAP_format() {
 	filename := "testdata/hello.tap"
-	tap, err := formats.NewTAPFromFile(filename)
+	data, err := ioutil.ReadFile(filename)
+	t.Nil(err)
+	tap, err := formats.NewTAP(data)
 	t.Nil(err)
 
 	// Reset

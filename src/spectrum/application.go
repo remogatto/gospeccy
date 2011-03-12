@@ -22,6 +22,7 @@ type Application struct {
 	eventLoops vector.Vector
 
 	terminationInProgress bool
+	terminated            bool
 
 	mutex sync.Mutex
 
@@ -128,19 +129,33 @@ func appGoroutine(app *Application) {
 
 	app.mutex.Lock()
 	app.terminationInProgress = false
+	app.terminated = true
 	app.mutex.Unlock()
 }
 
-func (app *Application) addEventLoop(e *EventLoop) {
+// Returns whether the operation succeeded.
+// False is returned if the application has already terminated.
+func (app *Application) addEventLoop(e *EventLoop) bool {
 	app.mutex.Lock()
+
+	if app.terminated {
+		// Fail
+		app.mutex.Unlock()
+		return false
+	}
+
+	// At this point: The application is running,
+	//                or it is in the process of being terminated.
+
 	app.eventLoops.Push(e)
 	app.mutex.Unlock()
+	return true
 }
 
 func (app *Application) RequestExit() {
 	app.mutex.Lock()
 	{
-		if app.terminationInProgress {
+		if app.terminationInProgress || app.terminated {
 			app.mutex.Unlock()
 			return
 		}
@@ -154,6 +169,13 @@ func (app *Application) RequestExit() {
 func (app *Application) TerminationInProgress() bool {
 	app.mutex.Lock()
 	a := app.terminationInProgress
+	app.mutex.Unlock()
+	return a
+}
+
+func (app *Application) Terminated() bool {
+	app.mutex.Lock()
+	a := app.terminated
 	app.mutex.Unlock()
 	return a
 }
@@ -215,16 +237,39 @@ type EventLoop struct {
 }
 
 func (app *Application) NewEventLoop() *EventLoop {
-	if closed(app.exitApp) {
-		panic("cannot create a new event-loop because the application has been terminated")
-	}
-
 	// By default fill the event name with the caller name.
 	pc, _, _, _ := runtime.Caller(1)
 	name := runtime.FuncForPC(pc).Name()
 
 	e := &EventLoop{app: app, Name: name, Pause: make(chan byte), Terminate: make(chan byte)}
-	app.addEventLoop(e)
+	ok := app.addEventLoop(e)
+
+	if !ok {
+		// Pause and terminate
+		go func() {
+			if app.VerboseShutdown {
+				app.PrintfMsg("application has terminated before %s was created", e.Name)
+				app.PrintfMsg("sending pause message to %s", e.Name)
+			}
+			// Request the event-loop to pause, and wait until it actually pauses
+			e.Pause <- 0
+			<-e.Pause
+			if app.VerboseShutdown {
+				app.PrintfMsg("%s is now paused", e.Name)
+			}
+
+			if app.VerboseShutdown {
+				app.PrintfMsg("sending terminate message to %s", e.Name)
+			}
+			// Request the event-loop to terminate, and wait until it actually terminates
+			e.Terminate <- 0
+			<-e.Terminate
+			if app.VerboseShutdown {
+				app.PrintfMsg("%s has terminated", e.Name)
+			}
+		}()
+	}
+
 	return e
 }
 

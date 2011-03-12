@@ -2,10 +2,10 @@
 
 GoSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
 interesting fact is that it is written in [Go](http://golang.org) and - AFAIK - it's the
-first Spectrum/Z80 emulator coded with the new language designed by
+first and only 8-bit machine emulator coded with the new language designed by
 certain well known Google employees. Last but not least, GoSpeccy is Free Software.
 
-There are a lot of ZX Spectrum emulators around so, why reinventing
+There are a lot of ZX Spectrum emulators around - so why reinvent
 the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord)
 reasons and then because it was a great learning experience about emulators
 and Go. In addition, thanks to the fundamental contribution of
@@ -70,7 +70,7 @@ don't forget to fork and send patches, of course ;)
 
 On Ubuntu Linux you'll need to install the following packages:
 
-    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev libreadline6-dev git-core
+    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev git-core
 
 GoSpeccy is using the GOAM build tool. To install it:
 
@@ -94,6 +94,8 @@ The following dependencies are installed automatically:
 
 * [⚛Go-SDL](http://github.com/0xe2-0x9a-0x9b/Go-SDL)
 * [⚛Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
+* [clingon](http://github.com/remogatto/clingon")
+* [prettytest](http://github.com/remogatto/prettytest")
 
 To make the screen bigger try the "-2x" command line option,
 or type "scale(2)" in the interactive console.
@@ -108,7 +110,8 @@ To try the classic Hello World try to press the following keys:
 
 And see your shining new ZX Spectrum 48k responding :)
 
-For a nice picture of the speccy keyboard layout visit this [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
+For a nice picture of the speccy keyboard layout visit this
+[page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
 
 To load a program simply run:
 
@@ -126,7 +129,7 @@ run:
 
     ./gospeccy -2x snapshots/Syntax09nF.z80
 
-For more, try searching the Internet find some ZX Spectrum 48k
+For more, try searching the Internet for ZX Spectrum 48k
 games and demos in Z80 and TAP format. For example:
 
 * [World of spectrum](http://www.worldofspectrum.org/archive.html)
@@ -135,20 +138,21 @@ games and demos in Z80 and TAP format. For example:
 
 # Key bindings
 
-    Host computer   Zx Spectrum
+    Host computer   ZX Spectrum
     ---------------------------
     CTRL            SYMBOL SHIFT
     LEFT SHIFT      CAPS SHIFT
     [a-z0-9]        [A-Z0-9]
     SPACE           SPACE
 
-For more info about keybindings see <tt>spectrum/keyboard.go</tt>
+For more info about key bindings see <tt>spectrum/keyboard.go</tt>
 
 # Proprietary games and system ROM
 
 Generally, games/programs are protected by copyright so none of them
 is included in GoSpeccy. BTW, you can find tons of games for the ZX
-Spectrum on the Internet. The 48k system ROM can be freely distributed so it's included in the GoSpeccy distribution.
+Spectrum on the Internet. The system ROM for Spectrum 48k can be freely
+distributed and so it's included in the GoSpeccy distribution.
 
 # Convention over Configuration
 

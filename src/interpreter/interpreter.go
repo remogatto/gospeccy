@@ -11,10 +11,15 @@ import (
 	"os"
 	"spectrum"
 	"spectrum/formats"
-	"spectrum/output"
 	"strings"
+	"sync"
 	"time"
 )
+
+type UserInterfaceSettings interface {
+	ResizeVideo(scale2x, fullscreen bool)
+	EnableSound(enable bool)
+}
 
 // ==============
 // Some variables
@@ -26,11 +31,17 @@ var (
 	app                 *spectrum.Application
 	cmdLineArg          string // The 1st non-flag command-line argument, or empty string
 	speccy              *spectrum.Spectrum48k
-	renderer            spectrum.Renderer
 	w                   *eval.World
 	buffer              *bytes.Buffer // Stores the output of executed script-functions
 	IgnoreStartupScript = false
 )
+
+// These variables are mutable. They require locking.
+var (
+	uiSettings UserInterfaceSettings
+)
+
+var mutex sync.Mutex
 
 const (
 	SCRIPT_DIRECTORY = "scripts"
@@ -71,7 +82,7 @@ func (i *Interpreter) run(w *eval.World, path_orEmpty string, sourceCode string)
 		return err
 	}
 
-	return err
+	return nil
 }
 
 // ================
@@ -113,7 +124,7 @@ func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	//   since it is potentially possible for the statement "sound(false)" to be hidden in a defer statement.
 	//   So, the best option (until somebody implements a better one) is to convert the problematic commands
 	//   into statements that are doing nothing while the application is in the process of being exited.
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 	app.RequestExit()
@@ -121,7 +132,7 @@ func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func reset()
 func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 	speccy.CommandChannel <- spectrum.Cmd_Reset{nil}
@@ -135,7 +146,7 @@ func wrapper_addSearchPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func load(path string)
 func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 
@@ -173,7 +184,7 @@ func wrapper_cmdLineArg(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func save(path string)
 func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 
@@ -202,46 +213,42 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func scale(n uint)
 func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 	n := in[0].(eval.UintValue).Get(t)
 	switch n {
 	case 1:
-		finished := make(chan byte)
-		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
-		<-finished
-		renderer.Resize(app, false, false)
+		mutex.Lock()
+		uiSettings.ResizeVideo(false, false)
+		mutex.Unlock()
 	case 2:
-		finished := make(chan byte)
-		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
-		<-finished
-		renderer.Resize(app, true, false)
+		mutex.Lock()
+		uiSettings.ResizeVideo(true, false)
+		mutex.Unlock()
 	}
 }
 
 // Signature: func fullscreen(enable bool)
 func wrapper_fullscreen(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 	enable := in[0].(eval.BoolValue).Get(t)
 	if enable {
-		finished := make(chan byte)
-		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
-		<-finished
-		renderer.Resize(app, true, true)
+		mutex.Lock()
+		uiSettings.ResizeVideo(true, true)
+		mutex.Unlock()
 	} else {
-		finished := make(chan byte)
-		speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
-		<-finished
-		renderer.Resize(app, true, false)
+		mutex.Lock()
+		uiSettings.ResizeVideo(true, false)
+		mutex.Unlock()
 	}
 }
 
 // Signature: func fps(n float32)
 func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 
@@ -251,7 +258,7 @@ func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func ula_accuracy(accurateEmulation bool)
 func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 
@@ -261,34 +268,20 @@ func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func sound(enable bool)
 func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 
 	enable := in[0].(eval.BoolValue).Get(t)
 
-	if enable {
-		audio, err := output.NewSDLAudio(app)
-		if err == nil {
-			finished := make(chan byte)
-			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
-			<-finished
-
-			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
-		} else {
-			fmt.Fprintf(buffer, "%s\n", err)
-			return
-		}
-	} else {
-		finished := make(chan byte)
-		speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
-		<-finished
-	}
+	mutex.Lock()
+	uiSettings.EnableSound(enable)
+	mutex.Unlock()
 }
 
 // Signature: func wait(milliseconds uint)
 func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 
@@ -320,7 +313,7 @@ func wrapper_optionalScript(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func screenshot(screenshotName string)
 func wrapper_screenshot(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() {
+	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
 
@@ -350,8 +343,12 @@ func wrapper_puts(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func acceleratedLoad(on bool)
 func wrapper_acceleratedLoad(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	value := in[0].(eval.BoolValue).Get(t)
-	speccy.EnableAcceleratedLoad(value)
+	if app.TerminationInProgress() || app.Terminated() {
+		return
+	}
+
+	enable := in[0].(eval.BoolValue).Get(t)
+	speccy.CommandChannel <- spectrum.Cmd_SetAcceleratedLoad{enable}
 }
 
 // ==============
@@ -526,11 +523,14 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	return nil
 }
 
-func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spectrum48k, _renderer spectrum.Renderer) {
+func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spectrum48k, _uiSettings UserInterfaceSettings) {
 	app = _app
 	cmdLineArg = _cmdLineArg
 	speccy = _speccy
-	renderer = _renderer
+
+	mutex.Lock()
+	uiSettings = _uiSettings
+	mutex.Unlock()
 
 	if w == nil {
 		w = eval.NewWorld()
@@ -546,6 +546,12 @@ func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spec
 			return
 		}
 	}
+}
+
+func SetUI(newUI UserInterfaceSettings) {
+	mutex.Lock()
+	uiSettings = newUI
+	mutex.Unlock()
 }
 
 // Lines below will be uncommented when/if the keypress console

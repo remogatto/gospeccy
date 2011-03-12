@@ -69,7 +69,7 @@ const (
 	BORDER_TOP    = ScreenBorderY
 	BORDER_BOTTOM = ScreenBorderY
 
-	// The T-state which corresponds to pixel (0,0) on the (SDL) surface.
+	// The T-state which corresponds to pixel (0,0) on the host-machine display.
 	// That pixel belongs to the border.
 	DISPLAY_START            = (FIRST_SCREEN_BYTE - TSTATES_PER_LINE*BORDER_TOP - ScreenBorderX/PIXELS_PER_TSTATE + BORDER_TSTATE_ADJUSTMENT)
 	BORDER_TSTATE_ADJUSTMENT = 2
@@ -84,7 +84,7 @@ func (color RGBA) value32() uint32 {
 	return (uint32(color.A) << 24) | (uint32(color.R) << 16) | (uint32(color.G) << 8) | uint32(color.B)
 }
 
-var palette [16]uint32 = [16]uint32{
+var Palette [16]uint32 = [16]uint32{
 	RGBA{000, 000, 000, 255}.value32(),
 	RGBA{000, 000, 192, 255}.value32(),
 	RGBA{192, 000, 000, 255}.value32(),
@@ -128,7 +128,7 @@ func xy_to_screenAddr(x, y uint8) uint16 {
 // The lower 4 bits define the paper, the higher 4 bits define the ink.
 // Note that the paper is in the *lower* half.
 // There is no flash bit.
-type attr_4bit byte
+type Attr_4bit byte
 
 // This is the primary structure for sending display changes
 // from the Z80 CPU emulation core to a rendering backend.
@@ -136,22 +136,22 @@ type attr_4bit byte
 //
 // The content of 'bitmap' and 'attr' corresponding to non-dirty regions is unspecified.
 type DisplayData struct {
-	bitmap [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
-	attr   [BytesPerLine * ScreenHeight]attr_4bit     // Linear y-coordinate
-	dirty  [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
+	Bitmap [BytesPerLine * ScreenHeight]byte          // Linear y-coordinate
+	Attr   [BytesPerLine * ScreenHeight]Attr_4bit     // Linear y-coordinate
+	Dirty  [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
 
-	borderEvents_orNil *BorderEvent
+	BorderEvents_orNil *BorderEvent
 
 	// From structure Cmd_RenderFrame
-	completionTime_orNil chan<- int64
+	CompletionTime_orNil chan<- int64
 }
 
 // Interface to a rendering backend awaiting display changes
 type DisplayReceiver interface {
-	getDisplayDataChannel() chan<- *DisplayData
+	GetDisplayDataChannel() chan<- *DisplayData
 
 	// Closes the display associated with this DisplayReceiver
-	close()
+	Close()
 }
 
 
@@ -170,8 +170,8 @@ func init() {
 
 func init() {
 	// Some sanity checks
-	assert(ScreenBorderX <= LINE_RIGHT_BORDER*PIXELS_PER_TSTATE)
-	assert(ScreenBorderY <= LINE_RIGHT_BORDER*PIXELS_PER_TSTATE)
-	assert(ScreenBorderY <= LINES_TOP)
-	assert(ScreenBorderY <= LINES_BOTTOM)
+	Assert(ScreenBorderX <= LINE_RIGHT_BORDER*PIXELS_PER_TSTATE)
+	Assert(ScreenBorderY <= LINE_RIGHT_BORDER*PIXELS_PER_TSTATE)
+	Assert(ScreenBorderY <= LINES_TOP)
+	Assert(ScreenBorderY <= LINES_BOTTOM)
 }

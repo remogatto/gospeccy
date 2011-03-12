@@ -14,15 +14,15 @@ var (
 )
 
 func (t *testSuite) testReadTAP() {
-	data, _ := ioutil.ReadFile(tapCodeFn)
-	tap := NewTAP()
-	n, err := tap.Read(data)
+	data, err := ioutil.ReadFile(tapCodeFn)
+	t.Nil(err)
+	tap, err := NewTAP(data)
+	t.Nil(err)
 
 	headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 	dataBlock := tap.blocks.At(1).(tapBlockData)
 
-	t.Nil(err)
-	t.Equal(27, n)
+	t.Equal(23, int(tap.Len()))
 
 	t.NotNil(headerBlock)
 	t.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
@@ -32,17 +32,15 @@ func (t *testSuite) testReadTAP() {
 }
 
 func (t *testSuite) testReadTAPError() {
-	tap := NewTAP()
-	_, err := tap.Read(nil)
+	_, err := NewTAP(nil)
 	t.NotNil(err)
 }
 
 // SAVE "ROM" CODE 0,2
 func (t *testSuite) testReadTAPCodeFile() {
-	data, _ := ioutil.ReadFile(tapCodeFn)
-	tap := NewTAP()
-	_, err := tap.Read(data)
-
+	data, err := ioutil.ReadFile(tapCodeFn)
+	t.Nil(err)
+	tap, err := NewTAP(data)
 	t.Nil(err)
 
 	if !t.Failed() {
@@ -63,10 +61,9 @@ func (t *testSuite) testReadTAPCodeFile() {
 // 10 PRINT "Hello World"
 // SAVE "HELLO"
 func (t *testSuite) testReadTAPProgramFile() {
-	data, _ := ioutil.ReadFile(tapProgramFn)
-	tap := NewTAP()
-	_, err := tap.Read(data)
-
+	data, err := ioutil.ReadFile(tapProgramFn)
+	t.Nil(err)
+	tap, err := NewTAP(data)
 	t.Nil(err)
 
 	if !t.Failed() {
@@ -96,10 +93,9 @@ func (t *testSuite) testReadTAPProgramFile() {
 }
 
 func (t *testSuite) testReadTAPWithCustomLoader() {
-	data, _ := ioutil.ReadFile("testdata/fire.tap")
-	tap := NewTAP()
-	_, err := tap.Read(data)
-
+	data, err := ioutil.ReadFile("testdata/fire.tap")
+	t.Nil(err)
+	tap, err := NewTAP(data)
 	t.Nil(err)
 
 	if !t.Failed() {
@@ -114,8 +110,11 @@ func (t *testSuite) testReadTAPWithCustomLoader() {
 }
 
 func (t *testSuite) testNewTAPFromFile() {
-	tap, err := NewTAPFromFile(tapCodeFn)
+	data, err := ioutil.ReadFile(tapCodeFn)
 	t.Nil(err)
+	tap, err := NewTAP(data)
+	t.Nil(err)
+
 	if !t.Failed() {
 		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
 		dataBlock := tap.blocks.At(1).(tapBlockData)
@@ -135,8 +134,7 @@ var tap *TAP
 
 func (t *testSuite) before() {
 	data, _ := ioutil.ReadFile(tapProgramFn)
-	tap = NewTAP()
-	tap.Read(data)
+	tap, _ = NewTAP(data)
 }
 
 func (t *testSuite) testTAPAt() {

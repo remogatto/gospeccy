@@ -175,10 +175,10 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 
 		// screen.dirty
 		if sendDiffOnly {
-			screen.dirty = ula.dirtyScreen
+			screen.Dirty = ula.dirtyScreen
 		} else {
 			for i := 0; i < ScreenWidth_Attr*ScreenHeight_Attr; i++ {
-				screen.dirty[i] = true
+				screen.Dirty[i] = true
 			}
 		}
 
@@ -186,9 +186,9 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 		var memory_data *[0x10000]byte = ula.speccy.Memory.Data()
 		ula_bitmap := &ula.bitmap
 		ula_attr := &ula.attr
-		screen_dirty := &screen.dirty
-		screen_bitmap := &screen.bitmap
-		screen_attr := &screen.attr
+		screen_dirty := &screen.Dirty
+		screen_bitmap := &screen.Bitmap
+		screen_attr := &screen.Attr
 		for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
 			attr_y8 := 8 * attr_y
 
@@ -257,7 +257,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 							ink, paper = paper, ink
 						}
 
-						screen_attr[linearY_ofs] = attr_4bit((ink << 4) | paper)
+						screen_attr[linearY_ofs] = Attr_4bit((ink << 4) | paper)
 
 						linearY_ofs += BytesPerLine
 					}
@@ -266,7 +266,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 		}
 
 		// screen.borderEvents
-		screen.borderEvents_orNil = ula.speccy.Ports.getBorderEvents_orNil()
+		screen.BorderEvents_orNil = ula.speccy.Ports.getBorderEvents_orNil()
 	}
 
 	return &screen
@@ -274,7 +274,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 
 func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil chan<- int64) {
 	displayData := ula.prepare(display)
-	displayData.completionTime_orNil = completionTime_orNil
+	displayData.CompletionTime_orNil = completionTime_orNil
 
 	if display.missedChanges != nil {
 		display.missedChanges.add(displayData)
@@ -282,8 +282,8 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 		display.missedChanges = nil
 	}
 
-	displayData.completionTime_orNil = completionTime_orNil
-	displayChannel := display.displayReceiver.getDisplayDataChannel()
+	displayData.CompletionTime_orNil = completionTime_orNil
+	displayChannel := display.displayReceiver.GetDisplayDataChannel()
 
 	var nonBlockingSend bool
 	select {
@@ -312,13 +312,13 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 // This modifies 'a' only, 'b' is left unchanged.
 // This is not a commutative operation, the order is significant.
 func (a *DisplayData) add(b *DisplayData) {
-	a_dirty := &a.dirty
-	a_bitmap := &a.bitmap
-	a_attr := &a.attr
+	a_dirty := &a.Dirty
+	a_bitmap := &a.Bitmap
+	a_attr := &a.Attr
 
-	b_dirty := &b.dirty
-	b_bitmap := &b.bitmap
-	b_attr := &b.attr
+	b_dirty := &b.Dirty
+	b_bitmap := &b.Bitmap
+	b_attr := &b.Attr
 
 	for attr_y := uint(0); attr_y < ScreenHeight_Attr; attr_y++ {
 		attr_y8 := 8 * attr_y
@@ -339,5 +339,5 @@ func (a *DisplayData) add(b *DisplayData) {
 		}
 	}
 
-	a.borderEvents_orNil = b.borderEvents_orNil
+	a.BorderEvents_orNil = b.BorderEvents_orNil
 }

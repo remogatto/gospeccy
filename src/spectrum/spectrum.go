@@ -157,11 +157,19 @@ type Cmd_MakeSnapshot struct {
 type Cmd_MakeVideoMemoryDump struct {
 	Chan chan<- []byte
 }
-type Cmd_KeyboardReadState struct {
-	Chan chan rowState
+type Cmd_SetAcceleratedLoad struct {
+	// Set accelerated tape load on/off
+	Enable bool
 }
 
-// Create a new speccy object.
+// Creates a new speccy object and starts its command-loop goroutine.
+//
+// The returned object's CommandChannel can be used to
+// configure the emulated machine before starting the emulation-loop
+// and also to configure the machine while the emulation-loop is running.
+//
+// To start the actual emulation-loop, create a separate goroutine for
+// running the object's EmulatorLoop function.
 func NewSpectrum48k(app *Application, rom [0x4000]byte) *Spectrum48k {
 	memory := NewMemory()
 	keyboard := NewKeyboard()
@@ -257,13 +265,10 @@ func (speccy *Spectrum48k) TapeDrive() *TapeDrive {
 	return speccy.tapeDrive
 }
 
-// Set accelerated tape load on/off
-func (speccy *Spectrum48k) EnableAcceleratedLoad(enable bool) {
-	speccy.tapeDrive.AcceleratedLoad = enable
-}
-
-// The main emulation loop.
-// This function has to run in a goroutine.
+// Sends 'Cmd_RenderFrame' commands to the 'speccy' object in regular intervals.
+// The interval depends on the value of FPS (frames per second).
+//
+// This function should run in a separate goroutine.
 func (speccy *Spectrum48k) EmulatorLoop() {
 	evtLoop := speccy.app.NewEventLoop()
 	app := evtLoop.App()
@@ -440,6 +445,9 @@ func commandLoop(speccy *Spectrum48k) {
 			case Cmd_MakeVideoMemoryDump:
 				cmd.Chan <- speccy.makeVideoMemoryDump()
 
+			case Cmd_SetAcceleratedLoad:
+				speccy.tapeDrive.AcceleratedLoad = cmd.Enable
+
 			}
 		}
 	}
@@ -487,7 +495,7 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 	}
 
 	for i, d := range displays {
-		d.(*DisplayInfo).displayReceiver.close()
+		d.(*DisplayInfo).displayReceiver.Close()
 		if speccy.app.Verbose {
 			speccy.app.PrintfMsg("display #%d: %d missed frames", i, d.(*DisplayInfo).numMissedFrames)
 		}
@@ -506,7 +514,7 @@ func (speccy *Spectrum48k) closeAllAudioReceivers() {
 	}
 
 	for _, r := range audioReceivers {
-		r.(AudioReceiver).close()
+		r.(AudioReceiver).Close()
 	}
 }
 
@@ -542,12 +550,12 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	// Send audio data to audio backend(s)
 	{
 		audioData := AudioData{
-			fps:                speccy.currentFPS,
-			beeperEvents_orNil: speccy.Ports.getBeeperEvents_orNil(),
+			FPS:                speccy.currentFPS,
+			BeeperEvents_orNil: speccy.Ports.getBeeperEvents_orNil(),
 		}
 
 		for _, audioReceiver := range speccy.audioReceivers {
-			audioReceiver.(AudioReceiver).getAudioDataChannel() <- &audioData
+			audioReceiver.(AudioReceiver).GetAudioDataChannel() <- &audioData
 		}
 	}
 

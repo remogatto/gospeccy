@@ -23,13 +23,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-package spectrum
+package output
 
 import (
 	"fmt"
 	"os"
 	"⚛sdl"
 	"⚛sdl/ttf"
+	"spectrum"
 	"time"
 	"unsafe"
 )
@@ -86,7 +87,7 @@ func (s SDLSurface) addrXY(x, y uint) uintptr {
 	return uintptr(unsafe.Pointer(pixels + offset))
 }
 
-func newSDLSurface(app *Application, w, h int) *SDLSurface {
+func newSDLSurface(app *spectrum.Application, w, h int) *SDLSurface {
 	surface := sdl.CreateRGBSurface(sdl.SWSURFACE, w, h, 32, 0, 0, 0, 0)
 	if surface == nil {
 		app.PrintfMsg("%s", sdl.GetError())
@@ -97,20 +98,20 @@ func newSDLSurface(app *Application, w, h int) *SDLSurface {
 }
 
 // Create an SDL surface suitable for a 2x scaled screen
-func NewSDLSurface2x(app *Application) *SDLSurface {
-	return newSDLSurface(app, 2*TotalScreenWidth, 2*TotalScreenHeight)
+func NewSDLSurface2x(app *spectrum.Application) *SDLSurface {
+	return newSDLSurface(app, 2*spectrum.TotalScreenWidth, 2*spectrum.TotalScreenHeight)
 }
 
 // Create an SDL surface suitable for an unscaled screen
-func NewSDLSurface(app *Application) *SDLSurface {
-	return newSDLSurface(app, TotalScreenWidth, TotalScreenHeight)
+func NewSDLSurface(app *spectrum.Application) *SDLSurface {
+	return newSDLSurface(app, spectrum.TotalScreenWidth, spectrum.TotalScreenHeight)
 }
 
 // ==============================
 // Screen render loop (goroutine)
 // ==============================
 
-func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, renderer screen_renderer_t) {
+func screenRenderLoop(evtLoop *spectrum.EventLoop, screenChannel <-chan *spectrum.DisplayData, renderer screen_renderer_t) {
 	terminating := false
 
 	for {
@@ -146,7 +147,7 @@ func screenRenderLoop(evtLoop *EventLoop, screenChannel <-chan *DisplayData, ren
 
 type SDLScreen struct {
 	// Channel for receiving display changes
-	screenChannel chan *DisplayData
+	screenChannel chan *spectrum.DisplayData
 
 	// The whole screen, borders included.
 	// Initially nil.
@@ -156,16 +157,16 @@ type SDLScreen struct {
 
 	updatedRectsCh chan []sdl.Rect
 
-	app *Application
+	app *spectrum.Application
 }
 
 type screen_renderer_t interface {
-	render(screen *DisplayData)
+	render(screen *spectrum.DisplayData)
 }
 
-func NewSDLScreen(app *Application) *SDLScreen {
+func NewSDLScreen(app *spectrum.Application) *SDLScreen {
 	SDL_screen := &SDLScreen{
-		screenChannel:   make(chan *DisplayData),
+		screenChannel:   make(chan *spectrum.DisplayData),
 		screenSurface:   NewSDLSurface(app),
 		unscaledDisplay: newUnscaledDisplay(),
 		updatedRectsCh:  make(chan []sdl.Rect),
@@ -186,16 +187,16 @@ func (display *SDLScreen) GetSurface() *sdl.Surface {
 }
 
 // Implement DisplayReceiver
-func (display *SDLScreen) getDisplayDataChannel() chan<- *DisplayData {
+func (display *SDLScreen) GetDisplayDataChannel() chan<- *spectrum.DisplayData {
 	return display.screenChannel
 }
 
-func (display *SDLScreen) close() {
+func (display *SDLScreen) Close() {
 	display.screenChannel <- nil
 }
 
 // Implement screen_renderer_t
-func (display *SDLScreen) render(screen *DisplayData) {
+func (display *SDLScreen) render(screen *spectrum.DisplayData) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen)
@@ -209,17 +210,17 @@ func (display *SDLScreen) render(screen *DisplayData) {
 		end_y := uint(r.Y) + uint(r.H)
 
 		for y := uint(r.Y); y < end_y; y++ {
-			wy := TotalScreenWidth * y
+			wy := spectrum.TotalScreenWidth * y
 			addr := surface.addrXY(uint(r.X), y)
 			for x := uint(r.X); x < end_x; x++ {
-				*(*uint32)(unsafe.Pointer(addr)) = palette[pixels[wy+x]]
+				*(*uint32)(unsafe.Pointer(addr)) = spectrum.Palette[pixels[wy+x]]
 				addr += uintptr(bpp)
 			}
 		}
 	}
 
-	if screen.completionTime_orNil != nil {
-		screen.completionTime_orNil <- time.Nanoseconds()
+	if screen.CompletionTime_orNil != nil {
+		screen.CompletionTime_orNil <- time.Nanoseconds()
 	}
 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, display.updatedRectsCh)
@@ -233,7 +234,7 @@ func (display *SDLScreen) render(screen *DisplayData) {
 
 type SDLScreen2x struct {
 	// Channel for receiving display changes
-	screenChannel chan *DisplayData
+	screenChannel chan *spectrum.DisplayData
 
 	// The whole screen, borders included.
 	// Initially nil.
@@ -243,12 +244,12 @@ type SDLScreen2x struct {
 
 	updatedRectsCh chan []sdl.Rect
 
-	app *Application
+	app *spectrum.Application
 }
 
-func NewSDLScreen2x(app *Application) *SDLScreen2x {
+func NewSDLScreen2x(app *spectrum.Application) *SDLScreen2x {
 	SDL_screen := &SDLScreen2x{
-		screenChannel:   make(chan *DisplayData),
+		screenChannel:   make(chan *spectrum.DisplayData),
 		screenSurface:   NewSDLSurface2x(app),
 		unscaledDisplay: newUnscaledDisplay(),
 		updatedRectsCh:  make(chan []sdl.Rect),
@@ -269,16 +270,16 @@ func (display *SDLScreen2x) GetSurface() *sdl.Surface {
 }
 
 // Implement DisplayReceiver
-func (display *SDLScreen2x) getDisplayDataChannel() chan<- *DisplayData {
+func (display *SDLScreen2x) GetDisplayDataChannel() chan<- *spectrum.DisplayData {
 	return display.screenChannel
 }
 
-func (display *SDLScreen2x) close() {
+func (display *SDLScreen2x) Close() {
 	display.screenChannel <- nil
 }
 
 // Implement screen_renderer_t
-func (display *SDLScreen2x) render(screen *DisplayData) {
+func (display *SDLScreen2x) render(screen *spectrum.DisplayData) {
 	unscaledDisplay := display.unscaledDisplay
 	unscaledDisplay.newFrame()
 	unscaledDisplay.render(screen)
@@ -295,10 +296,10 @@ func (display *SDLScreen2x) render(screen *DisplayData) {
 
 		for y := uint(r.Y); y < end_y; y++ {
 			addr := surface.addrXY(2*uint(r.X), 2*y)
-			wy := TotalScreenWidth * y
+			wy := spectrum.TotalScreenWidth * y
 
 			for x := uint(r.X); x < end_x; x++ {
-				color := palette[pixels[wy+x]]
+				color := spectrum.Palette[pixels[wy+x]]
 
 				// Fill a 2x2 rectangle
 				*(*uint32)(unsafe.Pointer(addr)) = color
@@ -311,8 +312,8 @@ func (display *SDLScreen2x) render(screen *DisplayData) {
 		}
 	}
 
-	if screen.completionTime_orNil != nil {
-		screen.completionTime_orNil <- time.Nanoseconds()
+	if screen.CompletionTime_orNil != nil {
+		screen.CompletionTime_orNil <- time.Nanoseconds()
 	}
 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, display.updatedRectsCh)
@@ -412,11 +413,11 @@ func (l *ListOfRects) add(x, y int, w, h uint) {
 func (l *ListOfRects) addBorder(scale uint) {
 	s := scale
 
-	const W = ScreenWidth
-	const H = ScreenHeight
-	const BW = ScreenBorderX
-	const BH = ScreenBorderY
-	const TW = TotalScreenWidth
+	const W = spectrum.ScreenWidth
+	const H = spectrum.ScreenHeight
+	const BW = spectrum.ScreenBorderX
+	const BH = spectrum.ScreenBorderY
+	const TW = spectrum.TotalScreenWidth
 
 	l.add( int(s*0)     , int(s*0)     , s*TW, s*BH )	// Top
 	l.add( int(s*0)     , int(s*(BH+H)), s*TW, s*BH )	// Bottom
@@ -430,11 +431,11 @@ func (l *ListOfRects) addBorder(scale uint) {
 // ===============
 
 type UnscaledDisplay struct {
-	pixels         [TotalScreenWidth * TotalScreenHeight]byte
+	pixels         [spectrum.TotalScreenWidth * spectrum.TotalScreenHeight]byte
 	changedRegions *ListOfRects
 
 	// This is the border which was rendered to 'pixels'
-	border_orNil *BorderEvent
+	border_orNil *spectrum.BorderEvent
 }
 
 func newUnscaledDisplay() *UnscaledDisplay {
@@ -451,26 +452,26 @@ func (disp *UnscaledDisplay) releaseMemory() {
 
 // Set pixels from (minx,y) to (maxx,y). Both bounds are inclusive.
 func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
-	wy := TotalScreenWidth * y
+	wy := spectrum.TotalScreenWidth * y
 	pixels := &disp.pixels
 
 	if !(minx <= maxx) {
 		return
 	}
 
-	if maxx >= TotalScreenWidth {
-		maxx = TotalScreenWidth - 1
+	if maxx >= spectrum.TotalScreenWidth {
+		maxx = spectrum.TotalScreenWidth - 1
 	}
 
-	if (y < ScreenBorderY) || (y >= TotalScreenHeight-ScreenBorderY) {
+	if (y < spectrum.ScreenBorderY) || (y >= spectrum.TotalScreenHeight-spectrum.ScreenBorderY) {
 		for x := minx; x <= maxx; x++ {
 			pixels[wy+x] = color
 		}
 	} else {
-		for x := minx; x < ScreenBorderX; x++ {
+		for x := minx; x < spectrum.ScreenBorderX; x++ {
 			pixels[wy+x] = color
 		}
-		for x := uint(TotalScreenWidth - ScreenBorderX); x <= maxx; x++ {
+		for x := uint(spectrum.TotalScreenWidth - spectrum.ScreenBorderX); x <= maxx; x++ {
 			pixels[wy+x] = color
 		}
 	}
@@ -478,7 +479,10 @@ func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
 
 // Render border in the interval [start,end)
 func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorderEvent_t, end *simplifiedBorderEvent_t) {
-	assert(start.tstate < end.tstate)
+	spectrum.Assert(start.tstate < end.tstate)
+
+	const DISPLAY_START = spectrum.DISPLAY_START
+	const TSTATES_PER_LINE = spectrum.TSTATES_PER_LINE
 
 	if start.tstate < DISPLAY_START {
 		start.tstate = DISPLAY_START
@@ -486,7 +490,7 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	if end.tstate-1 < DISPLAY_START {
 		return
 	}
-	if start.tstate >= DISPLAY_START+TotalScreenHeight*TSTATES_PER_LINE {
+	if start.tstate >= DISPLAY_START+spectrum.TotalScreenHeight*TSTATES_PER_LINE {
 		return
 	}
 
@@ -496,15 +500,15 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	start_x := (start.tstate - DISPLAY_START) % TSTATES_PER_LINE
 	end_x   := (end.tstate-1 - DISPLAY_START) % TSTATES_PER_LINE
 
-	start_x = (start_x << PIXELS_PER_TSTATE_LOG2) &^ 7
-	end_x = (end_x << PIXELS_PER_TSTATE_LOG2) &^ 7
+	start_x = (start_x << spectrum.PIXELS_PER_TSTATE_LOG2) &^ 7
+	end_x = (end_x << spectrum.PIXELS_PER_TSTATE_LOG2) &^ 7
 	end_x += 7
 
 	// Clip to visible screen area
 	{
-		if end_y >= TotalScreenHeight {
-			end_x = TotalScreenWidth - 1
-			end_y = TotalScreenHeight - 1
+		if end_y >= spectrum.TotalScreenHeight {
+			end_x = spectrum.TotalScreenWidth - 1
+			end_y = spectrum.TotalScreenHeight - 1
 		}
 	}
 
@@ -515,11 +519,11 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 		disp.scanlineFill(start_x, end_x, y, color)
 	} else {
 		// Top scanline (start_y)
-		disp.scanlineFill(start_x, TotalScreenWidth-1, start_y, color)
+		disp.scanlineFill(start_x, spectrum.TotalScreenWidth-1, start_y, color)
 
 		// Scanlines (start_y+1) ... (end_y-1)
 		for y := (start_y + 1); y < end_y; y++ {
-			disp.scanlineFill(0, TotalScreenWidth-1, y, color)
+			disp.scanlineFill(0, spectrum.TotalScreenWidth-1, y, color)
 		}
 
 		// Bottom scanline (end_y)
@@ -527,17 +531,17 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	}
 }
 
-func (disp *UnscaledDisplay) renderBorder(lastEvent_orNil *BorderEvent) {
+func (disp *UnscaledDisplay) renderBorder(lastEvent_orNil *spectrum.BorderEvent) {
 	if !disp.border_orNil.Equals(lastEvent_orNil) {
 		if lastEvent_orNil != nil {
 			lastEvent := lastEvent_orNil
-			assert(lastEvent.tstate == TStatesPerFrame)
+			spectrum.Assert(lastEvent.TState == spectrum.TStatesPerFrame)
 
 			// Put the events in an array, sorted by T-state value in ascending order
 			var events []simplifiedBorderEvent_t
 			{
 				events_array := &simplifiedBorderEvent_array_t{}
-				EventListToArray_Ascending(lastEvent, events_array, nil)
+				spectrum.EventListToArray_Ascending(lastEvent, events_array, nil)
 				events = events_array.events
 			}
 
@@ -559,42 +563,43 @@ var bitmap_unpack_table [1 << 8][8]uint
 
 func init() {
 	for a := uint(0); a < (1 << 8); a++ {
-		bitmap_unpack_table[a][0] = (a >> 7) & 1
-		bitmap_unpack_table[a][1] = (a >> 6) & 1
-		bitmap_unpack_table[a][2] = (a >> 5) & 1
-		bitmap_unpack_table[a][3] = (a >> 4) & 1
-		bitmap_unpack_table[a][4] = (a >> 3) & 1
-		bitmap_unpack_table[a][5] = (a >> 2) & 1
-		bitmap_unpack_table[a][6] = (a >> 1) & 1
-		bitmap_unpack_table[a][7] = (a >> 0) & 1
+		bitmap_unpack_table_a := &bitmap_unpack_table[a]
+		bitmap_unpack_table_a[0] = (a >> 7) & 1
+		bitmap_unpack_table_a[1] = (a >> 6) & 1
+		bitmap_unpack_table_a[2] = (a >> 5) & 1
+		bitmap_unpack_table_a[3] = (a >> 4) & 1
+		bitmap_unpack_table_a[4] = (a >> 3) & 1
+		bitmap_unpack_table_a[5] = (a >> 2) & 1
+		bitmap_unpack_table_a[6] = (a >> 1) & 1
+		bitmap_unpack_table_a[7] = (a >> 0) & 1
 	}
 }
 
-func (disp *UnscaledDisplay) render(screen *DisplayData) {
-	const X0 = ScreenBorderX
-	const Y0 = ScreenBorderY
+func (disp *UnscaledDisplay) render(screen *spectrum.DisplayData) {
+	const X0 = spectrum.ScreenBorderX
+	const Y0 = spectrum.ScreenBorderY
 
-	screen_dirty := &screen.dirty
-	screen_attr := &screen.attr
-	screen_bitmap := &screen.bitmap
+	screen_dirty := &screen.Dirty
+	screen_attr := &screen.Attr
+	screen_bitmap := &screen.Bitmap
 
 	pixels := &disp.pixels
 
 	var attr_x, attr_y uint
-	for attr_y = 0; attr_y < ScreenHeight_Attr; attr_y++ {
+	for attr_y = 0; attr_y < spectrum.ScreenHeight_Attr; attr_y++ {
 		dst_Y0 := Y0 + 8*attr_y
-		attr_wy := ScreenWidth_Attr * attr_y
+		attr_wy := spectrum.ScreenWidth_Attr * attr_y
 
-		for attr_x = 0; attr_x < ScreenWidth_Attr; attr_x++ {
+		for attr_x = 0; attr_x < spectrum.ScreenWidth_Attr; attr_x++ {
 			if screen_dirty[attr_wy+attr_x] {
 				dst_X0 := X0 + 8*attr_x
 
 				var y       uint = 0
-				var src_ofs uint = ((8 * attr_y) << BytesPerLine_log2) + attr_x
-				var dst_ofs uint = TotalScreenWidth*(dst_Y0+y) + dst_X0
+				var src_ofs uint = ((8 * attr_y) << spectrum.BytesPerLine_log2) + attr_x
+				var dst_ofs uint = spectrum.TotalScreenWidth*(dst_Y0+y) + dst_X0
 				for y < 8 {
 					// Paper is in the lower 4 bits, ink is in the higher 4 bits
-					var paperInk attr_4bit = screen_attr[src_ofs]
+					var paperInk spectrum.Attr_4bit = screen_attr[src_ofs]
 					paperInk_array := [2]uint8{uint8(paperInk) & 0xf, (uint8(paperInk) >> 4) & 0xf}
 
 					var value          byte     = screen_bitmap[src_ofs]
@@ -606,8 +611,8 @@ func (disp *UnscaledDisplay) render(screen *DisplayData) {
 					}
 
 					y += 1
-					src_ofs += BytesPerLine
-					dst_ofs += TotalScreenWidth
+					src_ofs += spectrum.BytesPerLine
+					dst_ofs += spectrum.TotalScreenWidth
 				}
 
 				disp.changedRegions.add(int(dst_X0), int(dst_Y0), 8, 8)
@@ -615,7 +620,7 @@ func (disp *UnscaledDisplay) render(screen *DisplayData) {
 		}
 	}
 
-	disp.renderBorder(screen.borderEvents_orNil)
+	disp.renderBorder(screen.BorderEvents_orNil)
 }
 
 
@@ -636,7 +641,7 @@ func (a *simplifiedBorderEvent_array_t) Init(n int) {
 	a.events = make([]simplifiedBorderEvent_t, n)
 }
 
-func (a *simplifiedBorderEvent_array_t) Set(i int, _e Event) {
-	e := _e.(*BorderEvent)
-	a.events[i] = simplifiedBorderEvent_t{e.tstate, e.color}
+func (a *simplifiedBorderEvent_array_t) Set(i int, _e spectrum.Event) {
+	e := _e.(*spectrum.BorderEvent)
+	a.events[i] = simplifiedBorderEvent_t{e.TState, e.Color}
 }

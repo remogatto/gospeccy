@@ -226,7 +226,7 @@ func FontPath(fileName string) string {
 
 
 // Panic if condition is false
-func assert(condition bool) {
+func Assert(condition bool) {
 	if !condition {
 		panic("internal error")
 	}

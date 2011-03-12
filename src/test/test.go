@@ -9,6 +9,7 @@ import (
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
+	"spectrum/output"
 )
 
 var (
@@ -53,7 +54,14 @@ func newRenderer(app *spectrum.Application, speccySurface SDLSurfaceAccessor, cl
 	return r
 }
 
-func (r *renderer) Resize(app *spectrum.Application, fullscreen, scale2x bool) {
+// Implement 'interpreter.UserInterfaceSettings'
+func (r *renderer) ResizeVideo(scale2x, fullscreen bool) {
+	// Empty
+}
+
+// Implement 'interpreter.UserInterfaceSettings'
+func (r *renderer) EnableSound(enable bool) {
+	// Empty
 }
 
 func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
@@ -216,7 +224,7 @@ func StartFullEmulation(cli bool) {
 	app = spectrum.NewApplication()
 	speccy = spectrum.NewSpectrum48k(app, rom)
 	speccy.TapeDrive().NotifyLoadComplete = true
-	sdlScreen := spectrum.NewSDLScreen2x(app)
+	sdlScreen := output.NewSDLScreen2x(app)
 	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 	if !cli {
 		r = newRenderer(app, sdlScreen, nil)
@@ -238,7 +246,7 @@ Welcome to the GoSpeccy CLI Testing Mode
 ----------------------------------------
 `)
 	}
-	audio, err := spectrum.NewSDLAudio(app)
+	audio, err := output.NewSDLAudio(app)
 	if err == nil {
 		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 	} else {

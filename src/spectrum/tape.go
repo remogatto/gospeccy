@@ -42,10 +42,16 @@ func NewTape(tap *formats.TAP) *Tape {
 
 func NewTapeFromFile(filename string) (*Tape, os.Error) {
 	data, err := ioutil.ReadFile(filename)
-	tap := formats.NewTAP()
-	_, err = tap.Read(data)
-	tape := &Tape{tap}
-	return tape, err
+	if err != nil {
+		return nil, err
+	}
+
+	tap, err := formats.NewTAP(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Tape{tap}, nil
 }
 
 func (tape *Tape) At(pos uint) byte {
@@ -154,9 +160,10 @@ func (tapeDrive *TapeDrive) doPlay() (endOfBlock bool) {
 
 	switch tapeDrive.state {
 	case TAPE_DRIVE_START:
-		tapeDrive.currBlockLen = tapeDrive.tape.tap.GetBlock(tapeDrive.currBlockId).Len()
+		currBlock := tapeDrive.tape.tap.GetBlock(tapeDrive.currBlockId)
+		tapeDrive.currBlockLen = currBlock.Len()
 
-		if tapeDrive.currBlockId == 0 {
+		if currBlock.BlockType() == formats.TAP_BLOCK_HEADER {
 			tapeDrive.leaderPulses = TAPE_HEADER_LEADER_PULSES
 		} else {
 			tapeDrive.leaderPulses = TAPE_DATA_LEADER_PULSES

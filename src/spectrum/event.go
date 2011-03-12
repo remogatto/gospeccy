@@ -3,13 +3,13 @@ package spectrum
 // Element of a linked-list of events
 type Event interface {
 	// Returns the T-state when this event occurred
-	TState() uint
+	GetTState() uint
 
 	// Returns an 'Event' of the same type as this 'Event',
 	// or nil if this is the last element in the linked-list.
 	//
 	// Constraint: (T-state of the previous event) < (T-state of this event)
-	Previous_orNil() Event
+	GetPrevious_orNil() Event
 }
 
 type EventCondition interface {
@@ -26,11 +26,11 @@ func EventListLength(head Event, cond EventCondition) int {
 	n := 0
 
 	if cond != nil {
-		for e := head; (e != nil) && cond.isTrue(e); e = e.Previous_orNil() {
+		for e := head; (e != nil) && cond.isTrue(e); e = e.GetPrevious_orNil() {
 			n++
 		}
 	} else {
-		for e := head; e != nil; e = e.Previous_orNil() {
+		for e := head; e != nil; e = e.GetPrevious_orNil() {
 			n++
 		}
 	}
@@ -58,7 +58,7 @@ func EventListToArray_Ascending(head Event, array EventArray, cond EventConditio
 		array.Set(i, e)
 
 		i = i - 1
-		e = e.Previous_orNil()
+		e = e.GetPrevious_orNil()
 	}
 
 }

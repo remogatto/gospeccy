@@ -26,7 +26,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"container/vector"
 	"os"
 	"spectrum/formats"
 	"sync"
@@ -80,11 +79,11 @@ type Spectrum48k struct {
 	CommandChannel chan<- interface{}
 	commandChannel <-chan interface{}
 
-	// A vector of '*DisplayInfo', initially empty
-	displays vector.Vector
+	// List of displays, initially empty
+	displays []*DisplayInfo
 
-	// A vector of 'AudioReceiver', initially empty
-	audioReceivers vector.Vector
+	// List of audio receivers, initially empty
+	audioReceivers []AudioReceiver
 
 	// Register the state of FPS before accelerating tape loading
 	fpsBeforeAccelerating float32
@@ -188,8 +187,8 @@ func NewSpectrum48k(app *Application, rom [0x4000]byte) *Spectrum48k {
 		Joystick:       joystick,
 		Ports:          ports,
 		rom:            rom,
-		displays:       vector.Vector{},
-		audioReceivers: vector.Vector{},
+		displays:       make([]*DisplayInfo, 0),
+		audioReceivers: make([]AudioReceiver, 0),
 		app:            app,
 		tapeDrive:      tapeDrive,
 	}
@@ -229,7 +228,7 @@ func (speccy *Spectrum48k) Close() {
 		}
 
 		for i, display := range speccy.displays {
-			speccy.app.PrintfMsg("display #%d: %d missed frames", i, display.(*DisplayInfo).numMissedFrames)
+			speccy.app.PrintfMsg("display #%d: %d missed frames", i, display.numMissedFrames)
 		}
 	}
 }
@@ -363,7 +362,7 @@ func commandLoop(speccy *Spectrum48k) {
 				speccy.renderFrame(cmd.CompletionTime_orNil)
 
 			case Cmd_GetNumDisplayReceivers:
-				cmd.N <- uint(speccy.displays.Len())
+				cmd.N <- uint(len(speccy.displays))
 
 			case Cmd_AddDisplay:
 				speccy.addDisplay(cmd.Display)
@@ -398,7 +397,7 @@ func commandLoop(speccy *Spectrum48k) {
 				speccy.ula.setEmulationAccuracy(cmd.AccurateEmulation)
 
 			case Cmd_GetNumAudioReceivers:
-				cmd.N <- uint(speccy.audioReceivers.Len())
+				cmd.N <- uint(len(speccy.audioReceivers))
 
 			case Cmd_AddAudioReceiver:
 				speccy.addAudioReceiver(cmd.Receiver)
@@ -484,37 +483,31 @@ func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
 		missedChanges:   nil,
 	}
 
-	speccy.displays.Push(d)
+	speccy.displays = append(speccy.displays, d)
 }
 
 func (speccy *Spectrum48k) closeAllDisplays() {
-	var displays vector.Vector
-	{
-		displays = speccy.displays
-		speccy.displays = vector.Vector{}
-	}
+	displays := speccy.displays
+	speccy.displays = make([]*DisplayInfo, 0)
 
 	for i, d := range displays {
-		d.(*DisplayInfo).displayReceiver.Close()
+		d.displayReceiver.Close()
 		if speccy.app.Verbose {
-			speccy.app.PrintfMsg("display #%d: %d missed frames", i, d.(*DisplayInfo).numMissedFrames)
+			speccy.app.PrintfMsg("display #%d: %d missed frames", i, d.numMissedFrames)
 		}
 	}
 }
 
 func (speccy *Spectrum48k) addAudioReceiver(receiver AudioReceiver) {
-	speccy.audioReceivers.Push(receiver)
+	speccy.audioReceivers = append(speccy.audioReceivers, receiver)
 }
 
 func (speccy *Spectrum48k) closeAllAudioReceivers() {
-	var audioReceivers vector.Vector
-	{
-		audioReceivers = speccy.audioReceivers
-		speccy.audioReceivers = vector.Vector{}
-	}
+	audioReceivers := speccy.audioReceivers
+	speccy.audioReceivers = make([]AudioReceiver, 0)
 
 	for _, r := range audioReceivers {
-		r.(AudioReceiver).Close()
+		r.Close()
 	}
 }
 
@@ -529,7 +522,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Cpu.doOpcodes(speccy.shouldPlayTheTape > 0)
 
 	// Send display data to display backend(s)
-	if speccy.displays.Len() > 0 {
+	if len(speccy.displays) > 0 {
 		firstDisplay := true
 		for _, display := range speccy.displays {
 			var tm chan<- int64
@@ -538,7 +531,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 			} else {
 				tm = nil
 			}
-			speccy.ula.sendScreenToDisplay(display.(*DisplayInfo), tm)
+			speccy.ula.sendScreenToDisplay(display, tm)
 			firstDisplay = false
 		}
 	} else {
@@ -548,14 +541,14 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	}
 
 	// Send audio data to audio backend(s)
-	{
+	if len(speccy.audioReceivers) > 0 {
 		audioData := AudioData{
 			FPS:                speccy.currentFPS,
 			BeeperEvents_orNil: speccy.Ports.getBeeperEvents_orNil(),
 		}
 
 		for _, audioReceiver := range speccy.audioReceivers {
-			audioReceiver.(AudioReceiver).GetAudioDataChannel() <- &audioData
+			audioReceiver.GetAudioDataChannel() <- &audioData
 		}
 	}
 

@@ -118,10 +118,10 @@ package spectrum
 
 // 	if r.flash {
 // 		inputScreen.frame = 0x10
-// 		inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
+// 		inputScreen.prepare(speccy.displays[0])
 // 	}
 
-// 	displayData := inputScreen.prepare(speccy.displays.At(0).(*DisplayInfo))
+// 	displayData := inputScreen.prepare(speccy.displays[0])
 
 // 	renderedSDLScreen.render(displayData)
 

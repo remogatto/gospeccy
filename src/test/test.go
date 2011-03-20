@@ -60,6 +60,11 @@ func (r *renderer) ResizeVideo(scale2x, fullscreen bool) {
 }
 
 // Implement 'interpreter.UserInterfaceSettings'
+func (r *renderer) ShowPaintedRegions(enable bool) {
+	// Empty
+}
+
+// Implement 'interpreter.UserInterfaceSettings'
 func (r *renderer) EnableSound(enable bool) {
 	// Empty
 }

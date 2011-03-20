@@ -1,7 +1,6 @@
 package spectrum
 
 import (
-	"container/vector"
 	"fmt"
 	"sync"
 	"time"
@@ -18,8 +17,7 @@ type Application struct {
 	exitApp       chan byte // If [this channel is closed] then [the whole application should terminate]
 	HasTerminated chan byte // This channel is closed after the whole application has terminated
 
-	// A vector of *EventLoop
-	eventLoops vector.Vector
+	eventLoops []*EventLoop
 
 	terminationInProgress bool
 	terminated            bool
@@ -38,7 +36,7 @@ func NewApplication() *Application {
 	app := &Application{
 		exitApp:       make(chan byte),
 		HasTerminated: make(chan byte),
-		eventLoops:    vector.Vector{},
+		eventLoops:    make([]*EventLoop, 0, 8),
 		CreationTime:  time.Nanoseconds(),
 		messageOutput: &stdoutMessageOutput{},
 	}
@@ -60,10 +58,10 @@ func appGoroutine(app *Application) {
 	// Cycle until there are no EventLoop objects.
 	// Usually, the body of this 'for' statement executes only once
 	for {
-		// Make a copy of the 'eventLoops' vector, then clear it
+		// Get the 'app.eventLoops' array, then clear 'app.eventLoops'
 		app.mutex.Lock()
-		eventLoops := app.eventLoops.Copy()
-		app.eventLoops.Cut(0, app.eventLoops.Len())
+		eventLoops := app.eventLoops
+		app.eventLoops = make([]*EventLoop, 0, 8)
 		app.mutex.Unlock()
 
 		// This is a procedure of two phases:
@@ -78,39 +76,33 @@ func appGoroutine(app *Application) {
 		// that all event-loops are paused.
 
 		// Pause all event loops
-		for _, x := range eventLoops {
-			switch e := x.(type) {
-			case *EventLoop:
-				if app.VerboseShutdown {
-					app.PrintfMsg("sending pause message to %s", e.Name)
-				}
-				// Request the event-loop to pause, and wait until it actually pauses
-				e.Pause <- 0
-				<-e.Pause
-				if app.VerboseShutdown {
-					app.PrintfMsg("%s is now paused", e.Name)
-				}
+		for _, e := range eventLoops {
+			if app.VerboseShutdown {
+				app.PrintfMsg("sending pause message to %s", e.Name)
+			}
+			// Request the event-loop to pause, and wait until it actually pauses
+			e.Pause <- 0
+			<-e.Pause
+			if app.VerboseShutdown {
+				app.PrintfMsg("%s is now paused", e.Name)
 			}
 		}
 
 		// Terminate all event loops
-		for _, x := range eventLoops {
-			switch e := x.(type) {
-			case *EventLoop:
-				if app.VerboseShutdown {
-					app.PrintfMsg("sending terminate message to %s", e.Name)
-				}
-				// Request the event-loop to terminate, and wait until it actually terminates
-				e.Terminate <- 0
-				<-e.Terminate
-				if app.VerboseShutdown {
-					app.PrintfMsg("%s has terminated", e.Name)
-				}
+		for _, e := range eventLoops {
+			if app.VerboseShutdown {
+				app.PrintfMsg("sending terminate message to %s", e.Name)
+			}
+			// Request the event-loop to terminate, and wait until it actually terminates
+			e.Terminate <- 0
+			<-e.Terminate
+			if app.VerboseShutdown {
+				app.PrintfMsg("%s has terminated", e.Name)
 			}
 		}
 
 		app.mutex.Lock()
-		if app.eventLoops.Len() == 0 {
+		if len(app.eventLoops) == 0 {
 			app.mutex.Unlock()
 			break
 		} else {
@@ -147,7 +139,7 @@ func (app *Application) addEventLoop(e *EventLoop) bool {
 	// At this point: The application is running,
 	//                or it is in the process of being terminated.
 
-	app.eventLoops.Push(e)
+	app.eventLoops = append(app.eventLoops, e)
 	app.mutex.Unlock()
 	return true
 }
@@ -280,27 +272,33 @@ func (e *EventLoop) App() *Application {
 	return app
 }
 
-// Unregister the EventLoop from the Application
-func (e *EventLoop) Delete() {
+// Unregister the EventLoop from the Application.
+// When the process finishes, the returned new channel will receive a value.
+func (e *EventLoop) Delete() <-chan byte {
+	doneCh := make(chan byte)
+
 	e.app_mutex.RLock()
 	app := e.app
 	e.app_mutex.RUnlock()
 
+	// Remove 'e' from 'app.eventLoops'
 	app.mutex.Lock()
 	{
 		if app.terminationInProgress {
 			// Nothing to do here - the EventLoop 'e' will be removed in function 'appGoroutine'
 			app.mutex.Unlock()
-			return
+			go func() { doneCh <- 0 }()
+			return doneCh
 		}
 
 		found := false
 		{
-			for i := 0; i < app.eventLoops.Len(); {
-				if app.eventLoops.At(i).(*EventLoop) == e {
+			num_eventLoops := len(app.eventLoops)
+			for i := 0; i < num_eventLoops; {
+				if app.eventLoops[i] == e {
 					// Remove the i-th element
-					app.eventLoops.Swap(i, app.eventLoops.Len()-1)
-					app.eventLoops.Delete(app.eventLoops.Len() - 1)
+					app.eventLoops[i] = app.eventLoops[num_eventLoops-1]
+					app.eventLoops = app.eventLoops[0 : num_eventLoops-1]
 					found = true
 					break
 				} else {
@@ -326,7 +324,10 @@ func (e *EventLoop) Delete() {
 		e.app_mutex.Lock()
 		e.app = nil
 		e.app_mutex.Unlock()
+
+		doneCh <- 0
 	}()
+	return doneCh
 }
 
 

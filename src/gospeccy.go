@@ -57,6 +57,8 @@ var (
 	r *SDLRenderer
 
 	joystick *sdl.Joystick
+
+	composer *output.SDLSurfaceComposer
 )
 
 type SDLSurfaceAccessor interface {
@@ -148,10 +150,16 @@ func newAppSurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
 		sdl.ShowCursor(sdl.ENABLE)
 		sdlMode = sdl.SWSURFACE
 	}
+
+	<-composer.ReplaceOutputSurface(nil)
+
 	surface := sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)
 	if app.Verbose {
 		app.PrintfMsg("video surface resolution: %dx%d", surface.W, surface.H)
 	}
+
+	<-composer.ReplaceOutputSurface(surface)
+
 	return &wrapSurface{surface}
 }
 
@@ -218,6 +226,9 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRen
 		consoleY:         int16(height),
 		sliderCh:         make(chan cmd_newSlider),
 	}
+
+	composer.AddInputSurface(r.speccySurface.GetSurface(), 0, 0, r.speccySurface.UpdatedRectsCh())
+
 	go r.loop()
 	return r
 }
@@ -259,6 +270,10 @@ func (r *SDLRenderer) ResizeVideo(scale2x, fullscreen bool) {
 	}
 }
 
+func (r *SDLRenderer) ShowPaintedRegions(enable bool) {
+	composer.ShowPaintedRegions(enable)
+}
+
 func (r *SDLRenderer) EnableSound(enable bool) {
 	if enable {
 		audio, err := output.NewSDLAudio(app)
@@ -285,6 +300,10 @@ func (r *DummyRenderer) ResizeVideo(scale2x, fullscreen bool) {
 	*r.fullscreen = fullscreen
 }
 
+func (r *DummyRenderer) ShowPaintedRegions(enable bool) {
+	composer.ShowPaintedRegions(enable)
+}
+
 func (r *DummyRenderer) EnableSound(enable bool) {
 	// Overwrite the command-line settings
 	*r.sound = enable
@@ -298,13 +317,7 @@ func (r *SDLRenderer) destroyCliRenderer() {
 
 		cli.SetRenderer(nil)
 
-		go func() {
-			for r := range cliSurface.UpdatedRectsCh() {
-				if r == nil {
-					break
-				}
-			}
-		}()
+		<-composer.RemoveInputSurface(cliSurface.GetSurface())
 
 		done := make(chan bool)
 		cliSurface.EventCh() <- clingon.Cmd_Terminate{done}
@@ -316,8 +329,6 @@ func (r *SDLRenderer) destroyCliRenderer() {
 }
 
 func (r *SDLRenderer) loop() {
-	var cliSurface_updatedRectsCh_orNil <-chan []sdl.Rect = nil
-
 	var slider_orNil *clingon.Animation = nil
 	var sliderTargetState int = -1
 	var sliderValueCh_orNil <-chan float64 = nil
@@ -339,7 +350,6 @@ func (r *SDLRenderer) loop() {
 			}
 
 			r.destroyCliRenderer()
-			cliSurface_updatedRectsCh_orNil = nil
 
 			evtLoop.Pause <- 0
 
@@ -363,14 +373,11 @@ func (r *SDLRenderer) loop() {
 			} else {
 				r.consoleY = int16(float64(r.height) - value*float64(r.height/2))
 			}
-			r.blitAll()
+			composer.SetPosition(r.cliSurface_orNil.GetSurface(), 0, int(r.consoleY))
 
 		case <-sliderFinishedCh_orNil:
 			if sliderTargetState == HIDE {
 				r.destroyCliRenderer()
-				cliSurface_updatedRectsCh_orNil = nil
-
-				r.blitAll()
 			}
 
 			slider_orNil = nil
@@ -382,84 +389,39 @@ func (r *SDLRenderer) loop() {
 
 		case cmd := <-r.cliSurfaceCh:
 			r.destroyCliRenderer()
-			cliSurface_updatedRectsCh_orNil = nil
 
 			r.cliSurface_orNil = cmd.surface_orNil
 			cli.SetRenderer(cmd.surface_orNil)
 
-			if cmd.surface_orNil != nil {
-				cliSurface_updatedRectsCh_orNil = cmd.surface_orNil.UpdatedRectsCh()
-			} else {
-				cliSurface_updatedRectsCh_orNil = nil
+			if r.cliSurface_orNil != nil {
+				composer.AddInputSurface(r.cliSurface_orNil.GetSurface(), 0, int(r.consoleY), r.cliSurface_orNil.UpdatedRectsCh())
 			}
 
 			cmd.done <- true
-			r.blitAll()
 
 		case cmd := <-r.speccySurfaceCh:
+			<-composer.RemoveAllInputSurfaces()
+
 			r.speccySurface.GetSurface().Free()
 			r.speccySurface = cmd.surface
+
+			composer.AddInputSurface(r.speccySurface.GetSurface(), 0, 0, r.speccySurface.UpdatedRectsCh())
+			if r.cliSurface_orNil != nil {
+				composer.AddInputSurface(r.cliSurface_orNil.GetSurface(), 0, int(r.consoleY), r.cliSurface_orNil.UpdatedRectsCh())
+			}
 			cmd.done <- true
-			r.blitAll()
 
 		case cmd := <-r.appSurfaceCh:
+			<-composer.ReplaceOutputSurface(nil)
+
 			r.appSurface.GetSurface().Free()
 			r.appSurface = cmd.surface
+
+			<-composer.ReplaceOutputSurface(r.appSurface.GetSurface())
+
 			cmd.done <- true
-			r.blitAll()
-
-		case cliRects := <-cliSurface_updatedRectsCh_orNil:
-			r.render(nil, cliRects)
-
-		case speccyRects := <-r.speccySurface.UpdatedRectsCh():
-			r.render(speccyRects, nil)
 		}
 	}
-}
-
-func (r *SDLRenderer) blitAll() {
-	appSdlSurface := r.appSurface.GetSurface()
-
-	appSdlSurface.Blit(nil, r.speccySurface.GetSurface(), nil)
-	if r.cliSurface_orNil != nil {
-		cliSurface := r.cliSurface_orNil
-		appSdlSurface.Blit(&sdl.Rect{0, int16(r.consoleY), 0, 0}, cliSurface.GetSurface(), nil)
-	}
-
-	appSdlSurface.Flip()
-}
-
-func (r *SDLRenderer) render(speccyRects, cliRects []sdl.Rect) {
-	appSdlSurface := r.appSurface.GetSurface()
-
-	var cliSdlSurface_orNil *sdl.Surface = nil
-	if r.cliSurface_orNil != nil {
-		cliSdlSurface_orNil = r.cliSurface_orNil.GetSurface()
-	}
-
-	for _, rect := range speccyRects {
-		// 'x' and 'y' are relative positions in respect to 'appSdlSurface'
-		x, y, w, h := rect.X, rect.Y, rect.W, rect.H
-		appSdlSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
-
-		if cliSdlSurface_orNil != nil {
-			cy := int16(r.consoleY)
-			appSdlSurface.Blit(&sdl.Rect{x, y, 0, 0}, cliSdlSurface_orNil, &sdl.Rect{x, y - cy, w, h})
-		}
-	}
-
-	for _, rect := range cliRects {
-		// 'x' and 'y' are relative positions in respect to 'appSdlSurface'
-		x, y, w, h := rect.X, rect.Y+int16(r.consoleY), rect.W, rect.H
-		appSdlSurface.Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
-
-		if cliSdlSurface_orNil != nil {
-			cy := int16(r.consoleY)
-			appSdlSurface.Blit(&sdl.Rect{x, y, 0, 0}, cliSdlSurface_orNil, &sdl.Rect{x, y - cy, w, h})
-		}
-	}
-
-	appSdlSurface.Flip()
 }
 
 func initCLI() {
@@ -710,6 +672,7 @@ func main() {
 	fps := flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
 	sound := flag.Bool("sound", true, "Enable or disable sound")
 	acceleratedLoad := flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
+	showPaintedRegions := flag.Bool("show-paint", false, "Show painted display regions")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseInput := flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
 
@@ -731,6 +694,9 @@ func main() {
 	}
 
 	initApplication(*verbose)
+
+	composer = output.NewSDLSurfaceComposer(app)
+	composer.ShowPaintedRegions(*showPaintedRegions)
 
 	// Use at least 2 OS threads.
 	// This helps to prevent sound buffer underflows

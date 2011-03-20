@@ -18,6 +18,7 @@ import (
 
 type UserInterfaceSettings interface {
 	ResizeVideo(scale2x, fullscreen bool)
+	ShowPaintedRegions(enable bool)
 	EnableSound(enable bool)
 }
 
@@ -246,6 +247,19 @@ func wrapper_fullscreen(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 }
 
+// Signature: func showPaint(enable bool)
+func wrapper_showPaint(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() || app.Terminated() {
+		return
+	}
+
+	enable := in[0].(eval.BoolValue).Get(t)
+
+	mutex.Lock()
+	uiSettings.ShowPaintedRegions(enable)
+	mutex.Unlock()
+}
+
 // Signature: func fps(n float32)
 func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() || app.Terminated() {
@@ -413,6 +427,20 @@ func defineFunctions(w *eval.World) {
 		help_vals.Push("Change the display scale (1 or 2)")
 	}
 	{
+		var functionSignature func(bool)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fullscreen, functionSignature)
+		w.DefineVar("fullscreen", funcType, funcValue)
+		help_keys.Push("fullscreen(enable bool)")
+		help_vals.Push("Fullscreen on/off")
+	}
+	{
+		var functionSignature func(bool)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_showPaint, functionSignature)
+		w.DefineVar("showPaint", funcType, funcValue)
+		help_keys.Push("showPaint(enable bool)")
+		help_vals.Push("Show painted regions")
+	}
+	{
 		var functionSignature func(float32)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, functionSignature)
 		w.DefineVar("fps", funcType, funcValue)
@@ -467,13 +495,6 @@ func defineFunctions(w *eval.World) {
 		w.DefineVar("puts", funcType, funcValue)
 		help_keys.Push("puts(str string)")
 		help_vals.Push("Print the given string")
-	}
-	{
-		var functionSignature func(bool)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fullscreen, functionSignature)
-		w.DefineVar("fullscreen", funcType, funcValue)
-		help_keys.Push("fullscreen(enable bool)")
-		help_vals.Push("Fullscreen on/off")
 	}
 	{
 		var functionSignature func(bool)

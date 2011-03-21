@@ -134,7 +134,8 @@ func screenRenderLoop(evtLoop *spectrum.EventLoop, screenChannel <-chan *spectru
 					renderer.render(screen)
 				}
 			} else {
-				evtLoop.Delete()
+				done := evtLoop.Delete()
+				go func() { <-done }()
 			}
 		}
 
@@ -205,6 +206,7 @@ func (display *SDLScreen) render(screen *spectrum.DisplayData) {
 	bpp     := surface.Bpp()
 	pixels  := &unscaledDisplay.pixels
 
+	surface.surface.Lock()
 	for _, r := range *unscaledDisplay.changedRegions {
 		end_x := uint(r.X) + uint(r.W)
 		end_y := uint(r.Y) + uint(r.H)
@@ -218,6 +220,7 @@ func (display *SDLScreen) render(screen *spectrum.DisplayData) {
 			}
 		}
 	}
+	surface.surface.Unlock()
 
 	if screen.CompletionTime_orNil != nil {
 		screen.CompletionTime_orNil <- time.Nanoseconds()
@@ -225,6 +228,7 @@ func (display *SDLScreen) render(screen *spectrum.DisplayData) {
 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, display.updatedRectsCh)
 	unscaledDisplay.releaseMemory()
+
 }
 
 
@@ -290,6 +294,7 @@ func (display *SDLScreen2x) render(screen *spectrum.DisplayData) {
 	pitch   := uintptr(surface.Pitch())
 	pixels  := &unscaledDisplay.pixels
 
+	surface.surface.Lock()
 	for _, r := range *unscaledDisplay.changedRegions {
 		end_x := uint(r.X) + uint(r.W)
 		end_y := uint(r.Y) + uint(r.H)
@@ -311,6 +316,7 @@ func (display *SDLScreen2x) render(screen *spectrum.DisplayData) {
 			}
 		}
 	}
+	surface.surface.Unlock()
 
 	if screen.CompletionTime_orNil != nil {
 		screen.CompletionTime_orNil <- time.Nanoseconds()

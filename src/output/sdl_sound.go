@@ -100,7 +100,8 @@ func forwarderLoop(evtLoop *spectrum.EventLoop, audio *SDLAudio) {
 				audioDataChannel = nil
 
 				// Go to the '<-evtLoop.Pause' case
-				evtLoop.Delete()
+				done := evtLoop.Delete()
+				go func() { <-done }()
 			}
 		}
 	}

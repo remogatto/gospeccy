@@ -1,41 +1,41 @@
-// /*
+/*
 
-// Copyright (c) 2010 Andrea Fazzi
+Copyright (c) 2010 Andrea Fazzi
 
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
 
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-// */
+*/
 
 package spectrum
 
-// import (
-// 	"testing"
-// 	"io/ioutil"
-// 	"fmt"
-// 	"strings"
-// 	"strconv"
-// 	"os"
-// 	"bufio"
-// 	"container/vector"
-// 	"spectrum/formats"
-// )
+import (
+	// 	"bufio"
+	// 	"container/vector"
+	// 	"fmt"
+	"io/ioutil"
+	// 	"os"
+	"spectrum/formats"
+	// 	"strconv"
+	// 	"strings"
+	"testing"
+)
 
 // var (
 // 	events        *vector.StringVector = new(vector.StringVector)
@@ -448,31 +448,42 @@ package spectrum
 
 // }
 
-// func BenchmarkZ80(b *testing.B) {
+func BenchmarkZ80(b *testing.B) {
+	b.StopTimer()
 
-// 	b.StopTimer()
+	var rom [0x4000]byte
+	{
+		fileData, err := ioutil.ReadFile("testdata/48.rom")
+		if err != nil {
+			panic(err)
+		}
+		if len(fileData) != 0x4000 {
+			panic("invalid ROM file")
+		}
 
-// 	romPath := "testdata/48.rom"
-// 	app := NewApplication()
+		copy(rom[:], fileData)
+	}
 
-// 	speccy, err := NewSpectrum48k(app, romPath)
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	app := NewApplication()
+	speccy := NewSpectrum48k(app, rom)
 
-// 	snapshot, err := formats.ReadProgram("testdata/fire.sna")
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	snapshot, err := formats.ReadProgram("testdata/fire.sna")
+	if err != nil {
+		panic(err)
+	}
 
-// 	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
+	if err != nil {
+		panic(err)
+	}
 
-// 	b.StartTimer()
+	b.StartTimer()
 
-// 	for i := 0; i < b.N; i++ {
-// 		speccy.Cpu.doOpcodes()
-// 	}
-// }
+	for i := 0; i < b.N; i++ {
+		speccy.CommandChannel <- Cmd_RenderFrame{CompletionTime_orNil: nil}
+		//speccy.renderFrame(/*completionTime_orNil*/ nil)
+	}
+
+	app.RequestExit()
+	<-app.HasTerminated
+}

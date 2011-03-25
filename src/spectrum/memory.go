@@ -7,15 +7,15 @@ type MemoryAccessor interface {
 	writeByte(address uint16, value byte)
 	writeByteInternal(address uint16, value byte)
 
-	contendRead(addr uint16, time uint)
-	contendReadNoMreq(addr uint16, time uint)
-	contendReadNoMreq_loop(addr uint16, time uint, count uint)
+	contendRead(address uint16, time uint)
+	contendReadNoMreq(address uint16, time uint)
+	contendReadNoMreq_loop(address uint16, time uint, count uint)
 
-	contendWriteNoMreq(addr uint16, time uint)
-	contendWriteNoMreq_loop(addr uint16, time uint, count uint)
+	contendWriteNoMreq(address uint16, time uint)
+	contendWriteNoMreq_loop(address uint16, time uint, count uint)
 
-	Read(addr uint16) byte
-	Write(addr uint16, value byte, protectROM bool)
+	Read(address uint16) byte
+	Write(address uint16, value byte, protectROM bool)
 	Data() *[0x10000]byte
 
 	reset()
@@ -43,8 +43,8 @@ func (memory *Memory) reset() {
 }
 
 
-func (memory *Memory) readByteInternal(addr uint16) byte {
-	return memory.data[addr]
+func (memory *Memory) readByteInternal(address uint16) byte {
+	return memory.data[address]
 }
 
 func (memory *Memory) writeByteInternal(address uint16, b byte) {
@@ -59,18 +59,18 @@ func (memory *Memory) writeByteInternal(address uint16, b byte) {
 	}
 }
 
-func (memory *Memory) readByte(addr uint16) byte {
-	memory.contend(addr, 3)
-	return memory.readByteInternal(addr)
+func (memory *Memory) readByte(address uint16) byte {
+	contendMemory(memory.speccy.Cpu, address, 3)
+	return memory.readByteInternal(address)
 }
 
-func (memory *Memory) writeByte(addr uint16, b byte) {
-	memory.contend(addr, 3)
-	memory.writeByteInternal(addr, b)
+func (memory *Memory) writeByte(address uint16, b byte) {
+	contendMemory(memory.speccy.Cpu, address, 3)
+	memory.writeByteInternal(address, b)
 }
 
-func (memory *Memory) contend(address uint16, time uint) {
-	tstates_p := &memory.speccy.Cpu.tstates
+func contendMemory(z80 *Z80, address uint16, time uint) {
+	tstates_p := &z80.tstates
 	tstates := *tstates_p
 
 	if (address & 0xc000) == 0x4000 {
@@ -82,9 +82,9 @@ func (memory *Memory) contend(address uint16, time uint) {
 	*tstates_p = tstates
 }
 
-// Equivalent to executing "contend(address, time)" count times
-func (memory *Memory) contend_loop(address uint16, time uint, count uint) {
-	tstates_p := &memory.speccy.Cpu.tstates
+// Equivalent to executing "contendMemory(z80, address, time)" count times
+func contendMemory_loop(z80 *Z80, address uint16, time uint, count uint) {
+	tstates_p := &z80.tstates
 	tstates := *tstates_p
 
 	if (address & 0xc000) == 0x4000 {
@@ -100,23 +100,23 @@ func (memory *Memory) contend_loop(address uint16, time uint, count uint) {
 }
 
 func (memory *Memory) contendRead(address uint16, time uint) {
-	memory.contend(address, time)
+	contendMemory(memory.speccy.Cpu, address, time)
 }
 
 func (memory *Memory) contendReadNoMreq(address uint16, time uint) {
-	memory.contend(address, time)
+	contendMemory(memory.speccy.Cpu, address, time)
 }
 
 func (memory *Memory) contendReadNoMreq_loop(address uint16, time uint, count uint) {
-	memory.contend_loop(address, time, count)
+	contendMemory_loop(memory.speccy.Cpu, address, time, count)
 }
 
 func (memory *Memory) contendWriteNoMreq(address uint16, time uint) {
-	memory.contend(address, time)
+	contendMemory(memory.speccy.Cpu, address, time)
 }
 
 func (memory *Memory) contendWriteNoMreq_loop(address uint16, time uint, count uint) {
-	memory.contend_loop(address, time, count)
+	contendMemory_loop(memory.speccy.Cpu, address, time, count)
 }
 
 func (memory *Memory) Read(address uint16) byte {

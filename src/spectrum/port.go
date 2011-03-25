@@ -384,15 +384,15 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 	}
 }
 
-func (p *Ports) contend(time uint) {
-	tstates_p := &p.speccy.Cpu.tstates
+func contendPort(z80 *Z80, time uint) {
+	tstates_p := &z80.tstates
 	*tstates_p += uint(delay_table[*tstates_p])
 	*tstates_p += time
 }
 
 func (p *Ports) contendPortPreio(address uint16) {
 	if (address & 0xc000) == 0x4000 {
-		p.contend(1)
+		contendPort(p.speccy.Cpu, 1)
 	} else {
 		p.speccy.Cpu.tstates += 1
 	}
@@ -401,14 +401,14 @@ func (p *Ports) contendPortPreio(address uint16) {
 func (p *Ports) contendPortPostio(address uint16) {
 	if (address & 0x0001) == 1 {
 		if (address & 0xc000) == 0x4000 {
-			p.contend(1)
-			p.contend(1)
-			p.contend(1)
+			contendPort(p.speccy.Cpu, 1)
+			contendPort(p.speccy.Cpu, 1)
+			contendPort(p.speccy.Cpu, 1)
 		} else {
 			p.speccy.Cpu.tstates += 3
 		}
 
 	} else {
-		p.contend(3)
+		contendPort(p.speccy.Cpu, 3)
 	}
 }

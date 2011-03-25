@@ -26,7 +26,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package main
 
 import (
-	"io/ioutil"
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
@@ -614,22 +613,13 @@ func initApplication(verbose bool) {
 
 // Create new emulator core
 func initEmulationCore(acceleratedLoad bool) os.Error {
-	var rom [0x4000]byte
-	{
-		romPath := spectrum.SystemRomPath("48.rom")
-
-		rom48k, err := ioutil.ReadFile(romPath)
-		if err != nil {
-			return err
-		}
-		if len(rom48k) != 0x4000 {
-			return os.NewError(fmt.Sprintf("ROM file \"%s\" has an invalid size", romPath))
-		}
-
-		copy(rom[:], rom48k)
+	romPath := spectrum.SystemRomPath("48.rom")
+	rom, err := spectrum.ReadROM(romPath)
+	if err != nil {
+		return err
 	}
 
-	speccy = spectrum.NewSpectrum48k(app, rom)
+	speccy = spectrum.NewSpectrum48k(app, *rom)
 	if acceleratedLoad {
 		speccy.TapeDrive().AcceleratedLoad = true
 	}

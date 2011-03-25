@@ -213,21 +213,13 @@ func (t *cliTestSuite) before() {
 }
 
 func StartFullEmulation(cli bool) {
-	var rom [0x4000]byte
-	{
-		fileData, err := ioutil.ReadFile("testdata/48.rom")
-		if err != nil {
-			panic(err)
-		}
-		if len(fileData) != 0x4000 {
-			panic("invalid ROM file")
-		}
-
-		copy(rom[:], fileData)
+	rom, err := spectrum.ReadROM("testdata/48.rom")
+	if err != nil {
+		panic(err)
 	}
 
 	app = spectrum.NewApplication()
-	speccy = spectrum.NewSpectrum48k(app, rom)
+	speccy = spectrum.NewSpectrum48k(app, *rom)
 	speccy.TapeDrive().NotifyLoadComplete = true
 	sdlScreen := output.NewSDLScreen2x(app)
 	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}

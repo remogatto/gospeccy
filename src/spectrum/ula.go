@@ -34,7 +34,9 @@ type ULA struct {
 	// Whether the 8x8 rectangular screen area was modified during the current frame
 	dirtyScreen [ScreenWidth_Attr * ScreenHeight_Attr]bool
 
-	speccy *Spectrum48k
+	z80    *Z80
+	memory MemoryAccessor
+	ports  PortAccessor
 }
 
 
@@ -42,8 +44,10 @@ func NewULA() *ULA {
 	return &ULA{accurateEmulation: true}
 }
 
-func (ula *ULA) init(speccy *Spectrum48k) {
-	ula.speccy = speccy
+func (ula *ULA) init(z80 *Z80, memory MemoryAccessor, ports PortAccessor) {
+	ula.z80 = z80
+	ula.memory = memory
+	ula.ports = ports
 }
 
 func (ula *ULA) reset() {
@@ -120,7 +124,7 @@ func (ula *ULA) screenBitmapWrite(address uint16, oldValue byte, newValue byte) 
 			ula_lineStart_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
 			x, _ := screenAddr_to_xy(address)
 			ula_tstate := ula_lineStart_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
-			if ula_tstate <= ula.speccy.Cpu.tstates {
+			if ula_tstate <= ula.z80.tstates {
 				// Remember the value read by ULA
 				ula.bitmap[rel_addr] = ula_byte_t{true, oldValue}
 			}
@@ -134,7 +138,7 @@ func (ula *ULA) screenAttrWrite(address uint16, oldValue byte, newValue byte) {
 		ula.screenAttrTouch(address)
 
 		if ula.accurateEmulation {
-			speccy := ula.speccy
+			CPU := ula.z80
 
 			attr_x := uint(address & 0x001f)
 			attr_y := uint((address - ATTR_BASE_ADDR) >> ScreenWidth_Attr_log2)
@@ -146,10 +150,10 @@ func (ula *ULA) screenAttrWrite(address uint16, oldValue byte, newValue byte) {
 			ula_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE + (x >> PIXELS_PER_TSTATE_LOG2)
 
 			for i := 0; i < 8; i++ {
-				if ula_tstate <= speccy.Cpu.tstates {
+				if ula_tstate <= CPU.tstates {
 					ula_attr := &ula.attr[ofs]
 					if !ula_attr.valid || (ula_tstate > ula_attr.tstate) {
-						*ula_attr = ula_attr_t{true, oldValue, speccy.Cpu.tstates}
+						*ula_attr = ula_attr_t{true, oldValue, CPU.tstates}
 					}
 					ofs += BytesPerLine
 					ula_tstate += TSTATES_PER_LINE
@@ -183,7 +187,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 		}
 
 		// Fill screen.bitmap & screen.attr, but only the dirty regions.
-		var memory_data *[0x10000]byte = ula.speccy.Memory.Data()
+		var memory_data *[0x10000]byte = ula.memory.Data()
 		ula_bitmap := &ula.bitmap
 		ula_attr := &ula.attr
 		screen_dirty := &screen.Dirty
@@ -266,7 +270,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 		}
 
 		// screen.borderEvents
-		screen.BorderEvents_orNil = ula.speccy.Ports.getBorderEvents_orNil()
+		screen.BorderEvents_orNil = ula.ports.getBorderEvents_orNil()
 	}
 
 	return &screen

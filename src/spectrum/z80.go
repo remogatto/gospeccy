@@ -131,11 +131,10 @@ type Z80 struct {
 
 	interruptsEnabledAt int
 
-	memory MemoryAccessor
-
-	ports PortAccessor
-
-	speccy *Spectrum48k
+	memory          MemoryAccessor
+	ports           PortAccessor
+	ula             *ULA
+	tapeDrive_orNil *TapeDrive
 
 	rzxInstructionsOffset int
 
@@ -149,6 +148,10 @@ type Z80 struct {
 	perfCounter_hostCpuInstr   *perf.PerfCounter // Can be nil (if creating the counter fails)
 
 	readFromTape bool
+
+	// The value is non-zero if a couple of the most recent frames
+	// executed instructions which appeared to be reading from the tape
+	shouldPlayTheTape int
 }
 
 func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
@@ -169,8 +172,9 @@ func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
 	return z80
 }
 
-func (z80 *Z80) init(speccy *Spectrum48k) {
-	z80.speccy = speccy
+func (z80 *Z80) init(ula *ULA, tapeDrive_orNil *TapeDrive) {
+	z80.ula = ula
+	z80.tapeDrive_orNil = tapeDrive_orNil
 }
 
 func (z80 *Z80) close() {
@@ -291,7 +295,7 @@ func (z80 *Z80) MakeSnapshot() *formats.FullSnapshot {
 	s.Cpu.PC = z80.pc
 
 	// Border color
-	s.Ula.Border = z80.speccy.ula.getBorderColor() & 0x07
+	s.Ula.Border = z80.ula.getBorderColor() & 0x07
 
 	// Memory
 	copy(s.Mem[:], z80.memory.Data()[0x4000:])
@@ -654,7 +658,7 @@ func (z80 *Z80) sltTrap(address int16, level byte) int {
 	return 0
 }
 
-func (z80 *Z80) doOpcodes(shouldPlayTheTape bool) {
+func (z80 *Z80) doOpcodes() {
 	var ttid_start int
 	if z80.perfCounter_hostCpuInstr != nil {
 		ttid_start = z80.perfCounter_hostCpuInstr.Gettid()
@@ -672,10 +676,12 @@ func (z80 *Z80) doOpcodes(shouldPlayTheTape bool) {
 
 	// Main instruction emulation loop
 	{
-		var readFromTape bool = (z80.readFromTape && shouldPlayTheTape)
+		var readFromTape bool = (z80.readFromTape && (z80.shouldPlayTheTape > 0) && (z80.tapeDrive_orNil != nil))
 
 		if !readFromTape {
-			z80.speccy.tapeDrive.decelerate()
+			if z80.tapeDrive_orNil != nil {
+				z80.tapeDrive_orNil.decelerate()
+			}
 		}
 
 		for (z80.tstates < z80.eventNextEvent) && !z80.halted {
@@ -690,18 +696,20 @@ func (z80 *Z80) doOpcodes(shouldPlayTheTape bool) {
 			opcodesMap[opcode](z80)
 
 			if readFromTape {
-				endOfBlock := z80.speccy.tapeDrive.doPlay()
+				endOfBlock := z80.tapeDrive_orNil.doPlay()
 				if endOfBlock {
 					readFromTape = false
-					z80.speccy.shouldPlayTheTape = 0
-					z80.speccy.tapeDrive.decelerate()
+					z80.shouldPlayTheTape = 0
+					z80.tapeDrive_orNil.decelerate()
 				}
 			}
 		}
 
 		if z80.halted {
-			z80.speccy.shouldPlayTheTape = 0
-			z80.speccy.tapeDrive.decelerate()
+			z80.shouldPlayTheTape = 0
+			if z80.tapeDrive_orNil != nil {
+				z80.tapeDrive_orNil.decelerate()
+			}
 
 			// Repeat emulating the HALT instruction until 'z80.eventNextEvent'
 			for z80.tstates < z80.eventNextEvent {

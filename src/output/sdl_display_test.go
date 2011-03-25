@@ -1,16 +1,16 @@
-package spectrum
+package output
 
-// import (
-// 	"testing"
-// 	"⚛sdl"
-// 	"io/ioutil"
-// 	"image"
-// 	"image/png"
-// 	"os"
-// 	"strings"
-// 	"unsafe"
-// 	"spectrum/formats"
-// )
+import (
+	//"image"
+	//"image/png"
+	"os"
+	//"strings"
+	"spectrum"
+	"spectrum/formats"
+	"⚛sdl"
+	"testing"
+	//"unsafe"
+)
 
 // func (s *SDLSurface) At(x, y int) image.Color {
 // 	var bpp = int(s.surface.Format.BytesPerPixel)
@@ -31,15 +31,15 @@ package spectrum
 // 	return image.RGBAColor{uint8(r), uint8(g), uint8(b), uint8(a)}
 // }
 
-// func initSDL() {
-// 	if sdl.Init(sdl.INIT_VIDEO) != 0 {
-// 		panic(sdl.GetError())
-// 	}
-// }
+func initSDL() {
+	if sdl.Init(sdl.INIT_VIDEO) != 0 {
+		panic(sdl.GetError())
+	}
+}
 
-// func newSurface() *sdl.Surface {
-// 	return sdl.SetVideoMode(TotalScreenWidth, TotalScreenHeight, 32, 0)
-// }
+func newSurface() *sdl.Surface {
+	return sdl.SetVideoMode(spectrum.TotalScreenWidth, spectrum.TotalScreenHeight, 32, 0)
+}
 
 // func loadExpectedImage(filename string) image.Image {
 // 	var file *os.File
@@ -177,54 +177,76 @@ package spectrum
 
 // }
 
-// func BenchmarkRender(b *testing.B) {
+func BenchmarkRender(b *testing.B) {
+	b.StopTimer()
 
-// 	b.StopTimer()
+	initSDL()
 
-// 	initSDL()
+	app := spectrum.NewApplication()
 
-// 	app := NewApplication()
+	sdlScreen := &SDLScreen{
+		screenChannel:   make(chan *spectrum.DisplayData),
+		screenSurface:   &SDLSurface{newSurface()},
+		unscaledDisplay: newUnscaledDisplay(),
+		updatedRectsCh:  make(chan []sdl.Rect),
+		app:             app,
+	}
 
-// 	const numFrames = 1000
+	rom, err := spectrum.ReadROM("testdata/48.rom")
+	if err != nil {
+		panic(err)
+	}
 
-// 	var frames [numFrames]*DisplayData
+	speccy := spectrum.NewSpectrum48k(app, *rom)
+	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 
-// 	sdlScreen := &SDLScreen{make(chan *DisplayData), &SDLSurface{newSurface()}, newUnscaledDisplay(), app}
+	snapshot, err := formats.ReadProgram("testdata/fire.z80")
+	if err != nil {
+		panic(err)
+	}
 
-// 	speccy, err := NewSpectrum48k(app, "testdata/48.rom")
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	errChan := make(chan os.Error)
+	speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{"<fire>", snapshot.(formats.Snapshot), errChan}
+	err = <-errChan
+	if err != nil {
+		panic(err)
+	}
 
-// 	speccy.addDisplay(sdlScreen)
+	// Capture a number of frames sent from 'speccy' to the rendering backends
+	const numFrames = 1000
+	var frames [numFrames]*spectrum.DisplayData
+	{
+		go func() {
+			for i := 0; i < numFrames; i++ {
+				speccy.CommandChannel <- spectrum.Cmd_RenderFrame{nil}
+			}
+		}()
 
-// 	snapshot, err := formats.ReadProgram("testdata/fire.sna")
-// 	if err != nil {
-// 		panic(err)
-// 	}
+		for i := 0; i < numFrames; i++ {
+			frames[i] = <-sdlScreen.screenChannel
+		}
+	}
 
-// 	err = speccy.loadSnapshot(snapshot.(formats.Snapshot))
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	// The actual benchmark
+	{
+		b.StartTimer()
 
-// 	go func() {
-// 		for i := 0; i < numFrames; i++ {
-// 			speccy.renderFrame(nil)
-// 		}
-// 	}()
+		go func() {
+			for {
+				<-sdlScreen.updatedRectsCh
+				sdlScreen.screenSurface.surface.Flip()
+			}
+		}()
 
-// 	for i := 0; i < numFrames; i++ {
-// 		frames[i] = <-sdlScreen.screenChannel
-// 	}
+		for i := 0; i < b.N; i++ {
+			sdlScreen.render(frames[i%numFrames])
+		}
 
-// 	var j int
-// 	b.StartTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		j %= numFrames
-// 		sdlScreen.render(frames[j])
-// 		j++
-// 	}
+		b.StopTimer()
+	}
 
-// 	sdl.Quit()
-// }
+	app.RequestExit()
+	<-app.HasTerminated
+
+	sdl.Quit()
+}

@@ -36,6 +36,7 @@ package spectrum
 
 import (
 	"container/vector"
+	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
@@ -159,9 +160,9 @@ func ProgramPath(fileName string) string {
 // or the original filename if the search fails.
 //
 // The search is performed in this order:
-// 1. ./roms/48.rom
-// 2. $HOME/.gospeccy/roms/48.rom
-// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms/48.rom
+// 1. ./roms
+// 2. $HOME/.gospeccy/roms
+// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms
 func SystemRomPath(fileName string) string {
 	var (
 		currDir = "roms"
@@ -224,6 +225,20 @@ func FontPath(fileName string) string {
 	return searchForValidPath(paths, fileName)
 }
 
+// Reads the 16KB ROM from the specified file
+func ReadROM(path string) (*[0x4000]byte, os.Error) {
+	fileData, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if len(fileData) != 0x4000 {
+		return nil, os.NewError(path + ":invalid ROM file")
+	}
+
+	var rom [0x4000]byte
+	copy(rom[:], fileData)
+	return &rom, nil
+}
 
 // Panic if condition is false
 func Assert(condition bool) {

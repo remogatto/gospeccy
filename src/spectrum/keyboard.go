@@ -69,7 +69,7 @@ func (keyboard *Keyboard) delayAfterKeyDown() {
 }
 
 func (keyboard *Keyboard) delayAfterKeyUp() {
-	// Sleep for 10 frames
+	// Sleep for 15 frames
 	time.Sleep(10 * 1e9 / int64(keyboard.speccy.GetCurrentFPS()))
 }
 

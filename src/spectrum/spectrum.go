@@ -88,10 +88,6 @@ type Spectrum48k struct {
 	// Register the state of FPS before accelerating tape loading
 	fpsBeforeAccelerating float32
 
-	// The value is non-zero if a couple of the most recent frames
-	// executed instructions which appeared to be reading from the tape
-	shouldPlayTheTape int
-
 	app *Application
 }
 
@@ -196,8 +192,8 @@ func NewSpectrum48k(app *Application, rom [0x4000]byte) *Spectrum48k {
 	memory.init(speccy)
 	keyboard.init(speccy)
 	joystick.init(speccy)
-	z80.init(speccy)
-	ula.init(speccy)
+	z80.init(ula, tapeDrive)
+	ula.init(z80, memory, ports)
 	ports.init(speccy)
 	tapeDrive.init(speccy)
 
@@ -519,7 +515,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	speccy.Cpu.tstates = (speccy.Cpu.tstates % TStatesPerFrame)
 	speccy.Cpu.interrupt()
 	speccy.Cpu.eventNextEvent = TStatesPerFrame
-	speccy.Cpu.doOpcodes(speccy.shouldPlayTheTape > 0)
+	speccy.Cpu.doOpcodes()
 
 	// Send display data to display backend(s)
 	if len(speccy.displays) > 0 {
@@ -555,10 +551,10 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	portFrameStatus := speccy.Ports.frame_end()
 
 	if portFrameStatus.shouldPlayTheTape {
-		speccy.shouldPlayTheTape = 75
+		speccy.Cpu.shouldPlayTheTape = 75
 	} else {
-		if speccy.shouldPlayTheTape > 0 {
-			speccy.shouldPlayTheTape--
+		if speccy.Cpu.shouldPlayTheTape > 0 {
+			speccy.Cpu.shouldPlayTheTape--
 		}
 	}
 }

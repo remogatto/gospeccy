@@ -84,24 +84,24 @@ func (ula *ULA) frame_begin() {
 	}
 
 	bitmap := &ula.bitmap
-	for ofs := uint16(0); ofs < BytesPerLine*ScreenHeight; ofs++ {
+	for ofs := uint(0); ofs < BytesPerLine*ScreenHeight; ofs++ {
 		if bitmap[ofs].valid {
-			ula.screenBitmapTouch(SCREEN_BASE_ADDR + ofs)
-		}
+			ula.screenBitmapTouch(uint16(SCREEN_BASE_ADDR + ofs))
 
-		bitmap[ofs].valid = false
+			bitmap[ofs].valid = false
+		}
 	}
 
 	attr := &ula.attr
-	for ofs := uint16(0); ofs < BytesPerLine*ScreenHeight; ofs++ {
+	for ofs := uint(0); ofs < BytesPerLine*ScreenHeight; ofs++ {
 		if attr[ofs].valid {
 			linearY := (ofs >> BytesPerLine_log2)
 			attr_y := (linearY >> 3)
 			attr_x := (ofs & 0x001f)
-			ula.screenAttrTouch(ATTR_BASE_ADDR + (attr_y << BytesPerLine_log2) + attr_x)
-		}
+			ula.screenAttrTouch(uint16(ATTR_BASE_ADDR + (attr_y << BytesPerLine_log2) + attr_x))
 
-		attr[ofs].valid = false
+			attr[ofs].valid = false
+		}
 	}
 }
 

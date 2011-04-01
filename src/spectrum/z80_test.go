@@ -409,7 +409,6 @@ func TestDoOpcodes(t *testing.T) {
 			}
 
 			// doOpcodes
-			z80.LogEvents = true
 			events.Push(currOp + "\n")
 			z80.doOpcodes()
 

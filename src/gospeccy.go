@@ -37,15 +37,13 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/pprof"
 	"clingon"
 )
 
 const DEFAULT_JOYSTICK_ID = 0
 
 var (
-	// The application instance
-	app *spectrum.Application
-
 	// The speccy instance
 	speccy *spectrum.Spectrum48k
 
@@ -139,7 +137,7 @@ func height(scale2x, fullscreen bool) int {
 	return spectrum.TotalScreenHeight
 }
 
-func newAppSurface(scale2x, fullscreen bool) SDLSurfaceAccessor {
+func newAppSurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfaceAccessor {
 	var sdlMode uint32
 	if fullscreen {
 		scale2x = true
@@ -217,7 +215,7 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRen
 		appSurfaceCh:     make(chan cmd_newSurface),
 		speccySurfaceCh:  make(chan cmd_newSurface),
 		cliSurfaceCh:     make(chan cmd_newCliSurface),
-		appSurface:       newAppSurface(scale2x, fullscreen),
+		appSurface:       newAppSurface(app, scale2x, fullscreen),
 		speccySurface:    newSpeccySurface(app, scale2x, fullscreen),
 		cliSurface_orNil: nil,
 		width:            width,
@@ -255,15 +253,13 @@ func (r *SDLRenderer) ResizeVideo(scale2x, fullscreen bool) {
 	r.fullscreen = fullscreen
 
 	done := make(chan bool)
-	r.appSurfaceCh <- cmd_newSurface{newAppSurface(scale2x, fullscreen), done}
+	r.appSurfaceCh <- cmd_newSurface{newAppSurface(r.app, scale2x, fullscreen), done}
 	<-done
 
-	done = make(chan bool)
-	r.speccySurfaceCh <- cmd_newSurface{newSpeccySurface(app, scale2x, fullscreen), done}
+	r.speccySurfaceCh <- cmd_newSurface{newSpeccySurface(r.app, scale2x, fullscreen), done}
 	<-done
 
 	if r.cliSurface_orNil != nil {
-		done = make(chan bool)
 		r.cliSurfaceCh <- cmd_newCliSurface{newCLISurface(scale2x, fullscreen), done}
 		<-done
 	}
@@ -275,7 +271,7 @@ func (r *SDLRenderer) ShowPaintedRegions(enable bool) {
 
 func (r *SDLRenderer) EnableSound(enable bool) {
 	if enable {
-		audio, err := output.NewSDLAudio(app)
+		audio, err := output.NewSDLAudio(r.app)
 		if err == nil {
 			finished := make(chan byte)
 			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
@@ -283,7 +279,7 @@ func (r *SDLRenderer) EnableSound(enable bool) {
 
 			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 		} else {
-			app.PrintfMsg("%s", err)
+			r.app.PrintfMsg("%s", err)
 			return
 		}
 	} else {
@@ -354,8 +350,8 @@ func (r *SDLRenderer) loop() {
 
 		case <-evtLoop.Terminate:
 			// Terminate this Go routine
-			if app.Verbose {
-				app.PrintfMsg("frontend SDL renderer event loop: exit")
+			if r.app.Verbose {
+				r.app.PrintfMsg("frontend SDL renderer event loop: exit")
 			}
 			evtLoop.Terminate <- 0
 			return
@@ -606,13 +602,14 @@ func (h *handler_SIGTERM) HandleSignal(s signal.Signal) {
 	}
 }
 
-func initApplication(verbose bool) {
-	app = spectrum.NewApplication()
+func createApplication(verbose bool) *spectrum.Application {
+	app := spectrum.NewApplication()
 	app.Verbose = verbose
+	return app
 }
 
 // Create new emulator core
-func initEmulationCore(acceleratedLoad bool) os.Error {
+func initEmulationCore(app *spectrum.Application, acceleratedLoad bool) os.Error {
 	romPath := spectrum.SystemRomPath("48.rom")
 	rom, err := spectrum.ReadROM(romPath)
 	if err != nil {
@@ -627,7 +624,7 @@ func initEmulationCore(acceleratedLoad bool) os.Error {
 	return nil
 }
 
-func initSDLSubSystems() os.Error {
+func initSDLSubSystems(app *spectrum.Application) os.Error {
 	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO|sdl.INIT_JOYSTICK) != 0 {
 		return os.NewError(sdl.GetError())
 	}
@@ -665,6 +662,7 @@ func main() {
 	showPaintedRegions := flag.Bool("show-paint", false, "Show painted display regions")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseInput := flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
+	cpuProfile := flag.String("hostcpu-profile", "", "Write host-CPU profile to the specified file (for 'pprof')")
 
 	{
 		flag.Usage = func() {
@@ -683,7 +681,27 @@ func main() {
 		}
 	}
 
-	initApplication(*verbose)
+	// Start host-CPU profiling (if enabled).
+	// The setup code is based on the contents of Go's file "src/pkg/testing/testing.go".
+	var pprof_file *os.File
+	if *cpuProfile != "" {
+		var err os.Error
+
+		pprof_file, err = os.Open(*cpuProfile, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s", err)
+			return
+		}
+
+		err = pprof.StartCPUProfile(pprof_file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to start host-CPU profiling: %s", err)
+			pprof_file.Close()
+			return
+		}
+	}
+
+	app := createApplication(*verbose)
 
 	composer = output.NewSDLSurfaceComposer(app)
 	composer.ShowPaintedRegions(*showPaintedRegions)
@@ -706,7 +724,7 @@ func main() {
 
 	SDL_initialized := false
 
-	if err := initEmulationCore(*acceleratedLoad); err != nil {
+	if err := initEmulationCore(app, *acceleratedLoad); err != nil {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()
 		goto quit
@@ -745,7 +763,7 @@ func main() {
 	}
 
 	// SDL subsystems init
-	if err := initSDLSubSystems(); err != nil {
+	if err := initSDLSubSystems(app); err != nil {
 		app.PrintfMsg("%s", err)
 		app.RequestExit()
 		goto quit
@@ -823,5 +841,10 @@ quit:
 	if app.Verbose {
 		app.PrintfMsg("GC: %d garbage collections, %f ms total pause time",
 			runtime.MemStats.NumGC, float64(runtime.MemStats.PauseTotalNs)/1e6)
+	}
+
+	// Stop host-CPU profiling
+	if *cpuProfile != "" {
+		pprof.StopCPUProfile() // flushes profile to disk
 	}
 }

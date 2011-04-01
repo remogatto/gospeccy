@@ -260,7 +260,7 @@ func (audio *SDLAudio) bufferRemove() {
 		}
 
 		if changedFreq {
-			//PrintfMsg("bufSize=%d, virtualFreq=%d", audio.bufSize, audio.virtualFreq)
+			//fmt.Printf("bufSize=%d, virtualFreq=%d\n", audio.bufSize, audio.virtualFreq)
 		}
 	}
 	audio.mutex.Unlock()

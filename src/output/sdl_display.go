@@ -63,28 +63,28 @@ type SDLSurface struct {
 	surface *sdl.Surface
 }
 
-func (s *SDLSurface) Width() uint {
+func (s SDLSurface) Width() uint {
 	return uint(s.surface.W)
 }
 
-func (s *SDLSurface) Height() uint {
+func (s SDLSurface) Height() uint {
 	return uint(s.surface.H)
 }
 
-func (s *SDLSurface) Bpp() uint {
+func (s SDLSurface) Bpp() uint {
 	return uint(s.surface.Format.BytesPerPixel)
 }
 
-func (s *SDLSurface) Pitch() uint {
+func (s SDLSurface) Pitch() uint {
 	return uint(s.surface.Pitch)
 }
 
 // Return the address of pixel at (x,y)
 func (s SDLSurface) addrXY(x, y uint) uintptr {
-	pixels := uintptr(unsafe.Pointer(s.surface.Pixels))
+	pixels := uintptr(s.surface.Pixels)
 	offset := uintptr(y*s.Pitch() + x*s.Bpp())
 
-	return uintptr(unsafe.Pointer(pixels + offset))
+	return pixels + offset
 }
 
 func newSDLSurface(app *spectrum.Application, w, h int) *SDLSurface {

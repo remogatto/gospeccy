@@ -363,7 +363,7 @@ sub push_pop ($$) {
     my $lclow = lc($low);
     my $lchigh = lc($high);
     if( $lcopcode eq 'pop') {
-	print "      z80.${lcopcode}16(&z80.$lclow, &z80.$lchigh)\n";
+	print "      z80.$lclow, z80.$lchigh = z80.${lcopcode}16()\n";
     } else {
 	print "      z80.${lcopcode}16(z80.$lclow, z80.$lchigh)\n";
     }
@@ -417,19 +417,19 @@ sub rotate_shift ($$) {
     my $lcregister = lc($register);
 
     if( length $register == 1 ) {
-	print "      z80.$lcopcode(&z80.$lcregister)\n";
+	print "      z80.$lcregister = z80.$lcopcode(z80.$lcregister)\n";
     } elsif( $register eq '(HL)' ) {
 	print << "CODE";
 	var bytetemp byte = z80.memory.readByte(z80.HL())
 	z80.memory.contendReadNoMreq( z80.HL(), 1 )
-	z80.$lcopcode(&bytetemp)
+	bytetemp = z80.$lcopcode(bytetemp)
 	z80.memory.writeByte(z80.HL(),bytetemp)
 CODE
     } elsif( $register eq '(REGISTER+dd)' ) {
 	print << "CODE";
 	var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 	z80.memory.contendReadNoMreq( z80.tempaddr, 1 )
-	z80.$lcopcode(&bytetemp)
+	bytetemp = z80.$lcopcode(bytetemp)
 	z80.memory.writeByte(z80.tempaddr, bytetemp)
 CODE
     }
@@ -1252,7 +1252,7 @@ CODE
 	    print << "CODE";
       z80.$lcregister = z80.memory.readByte(z80.tempaddr)
       z80.memory.contendReadNoMreq( z80.tempaddr, 1 )
-      z80.$lcopcode(&z80.$lcregister)
+      z80.$lcregister = z80.$lcopcode(z80.$lcregister)
       z80.memory.writeByte(z80.tempaddr, z80.$lcregister)
     }
 CODE

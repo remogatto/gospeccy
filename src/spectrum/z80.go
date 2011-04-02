@@ -83,23 +83,23 @@ type register16 struct {
 	high, low *byte
 }
 
-func (r *register16) inc() {
+func (r register16) inc() {
 	temp := r.get() + 1
 	*r.high = byte(temp >> 8)
 	*r.low = byte(temp & 0xff)
 }
 
-func (r *register16) dec() {
+func (r register16) dec() {
 	temp := r.get() - 1
 	*r.high = byte(temp >> 8)
 	*r.low = byte(temp & 0xff)
 }
 
-func (r *register16) set(value uint16) {
+func (r register16) set(value uint16) {
 	*r.high, *r.low = splitWord(value)
 }
 
-func (r *register16) get() uint16 {
+func (r register16) get() uint16 {
 	return joinBytes(*r.high, *r.low)
 }
 
@@ -139,8 +139,6 @@ type Z80 struct {
 	rzxInstructionsOffset int
 
 	eventNextEvent uint
-
-	LogEvents bool
 
 	z80_instructionCounter     uint64 // Number of Z80 instructions executed
 	z80_instructionsMeasured   uint64 // Number of Z80 instrs that can be related to 'hostCpu_instructionCounter'
@@ -477,11 +475,12 @@ func (z80 *Z80) or(value byte) {
 	z80.f = sz53pTable[z80.a]
 }
 
-func (z80 *Z80) pop16(regl, regh *byte) {
-	*regl = z80.memory.readByte(z80.sp)
+func (z80 *Z80) pop16() (regl, regh byte) {
+	regl = z80.memory.readByte(z80.sp)
 	z80.sp++
-	*regh = z80.memory.readByte(z80.sp)
+	regh = z80.memory.readByte(z80.sp)
 	z80.sp++
+	return
 }
 
 func (z80 *Z80) push16(regl, regh byte) {
@@ -492,32 +491,35 @@ func (z80 *Z80) push16(regl, regh byte) {
 }
 
 func (z80 *Z80) ret() {
-	pch, pcl := splitWord(z80.pc)
-	z80.pop16(&pcl, &pch)
+	pcl, pch := z80.pop16()
 	z80.pc = joinBytes(pch, pcl)
 }
 
-func (z80 *Z80) rl(value *byte) {
-	rltemp := *value
-	*value = (*value << 1) | (z80.f & FLAG_C)
-	z80.f = (rltemp >> 7) | sz53pTable[*value]
+func (z80 *Z80) rl(value byte) byte {
+	rltemp := value
+	value = (value << 1) | (z80.f & FLAG_C)
+	z80.f = (rltemp >> 7) | sz53pTable[value]
+	return value
 }
 
-func (z80 *Z80) rlc(value *byte) {
-	*value = (*value << 1) | (*value >> 7)
-	z80.f = (*value & FLAG_C) | sz53pTable[*value]
+func (z80 *Z80) rlc(value byte) byte {
+	value = (value << 1) | (value >> 7)
+	z80.f = (value & FLAG_C) | sz53pTable[value]
+	return value
 }
 
-func (z80 *Z80) rr(value *byte) {
-	rrtemp := *value
-	*value = (*value >> 1) | (z80.f << 7)
-	z80.f = (rrtemp & FLAG_C) | sz53pTable[*value]
+func (z80 *Z80) rr(value byte) byte {
+	rrtemp := value
+	value = (value >> 1) | (z80.f << 7)
+	z80.f = (rrtemp & FLAG_C) | sz53pTable[value]
+	return value
 }
 
-func (z80 *Z80) rrc(value *byte) {
-	z80.f = *value & FLAG_C
-	*value = (*value >> 1) | (*value << 7)
-	z80.f |= sz53pTable[*value]
+func (z80 *Z80) rrc(value byte) byte {
+	z80.f = value & FLAG_C
+	value = (value >> 1) | (value << 7)
+	z80.f |= sz53pTable[value]
+	return value
 }
 
 func (z80 *Z80) rst(value byte) {
@@ -542,28 +544,32 @@ func (z80 *Z80) sbc16(value uint16) {
 	z80.f = ternOpB((sub16temp&0x10000) != 0, FLAG_C, 0) | FLAG_N | overflowSubTable[lookup>>4] | (z80.h & (FLAG_3 | FLAG_5 | FLAG_S)) | halfcarrySubTable[lookup&0x07] | ternOpB(z80.HL() != 0, 0, FLAG_Z)
 }
 
-func (z80 *Z80) sla(value *byte) {
-	z80.f = *value >> 7
-	*value <<= 1
-	z80.f |= sz53pTable[*value]
+func (z80 *Z80) sla(value byte) byte {
+	z80.f = value >> 7
+	value <<= 1
+	z80.f |= sz53pTable[value]
+	return value
 }
 
-func (z80 *Z80) sll(value *byte) {
-	z80.f = *value >> 7
-	*value = (*value << 1) | 0x01
-	z80.f |= sz53pTable[(*value)]
+func (z80 *Z80) sll(value byte) byte {
+	z80.f = value >> 7
+	value = (value << 1) | 0x01
+	z80.f |= sz53pTable[(value)]
+	return value
 }
 
-func (z80 *Z80) sra(value *byte) {
-	z80.f = *value & FLAG_C
-	*value = (*value & 0x80) | (*value >> 1)
-	z80.f |= sz53pTable[*value]
+func (z80 *Z80) sra(value byte) byte {
+	z80.f = value & FLAG_C
+	value = (value & 0x80) | (value >> 1)
+	z80.f |= sz53pTable[value]
+	return value
 }
 
-func (z80 *Z80) srl(value *byte) {
-	z80.f = *value & FLAG_C
-	*value >>= 1
-	z80.f |= sz53pTable[*value]
+func (z80 *Z80) srl(value byte) byte {
+	z80.f = value & FLAG_C
+	value >>= 1
+	z80.f |= sz53pTable[value]
+	return value
 }
 
 func (z80 *Z80) xor(value byte) {

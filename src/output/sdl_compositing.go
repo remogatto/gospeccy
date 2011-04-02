@@ -193,7 +193,10 @@ func (composer *SDLSurfaceComposer) forwarderLoop(s *input_surface_t) {
 		case <-evtLoop.Pause:
 			updatedRectsCh_orNil = nil
 			go func() {
-				for _ = range s.updatedRectsCh {
+				for rect := range s.updatedRectsCh {
+					if rect == nil {
+						break
+					}
 				}
 			}()
 			evtLoop.Pause <- 0

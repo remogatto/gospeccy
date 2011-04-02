@@ -966,7 +966,7 @@ func initOpcodes() {
 	}
 	/* POP BC */
 	opcodesMap[0xc1] = func(z80 *Z80) {
-		z80.pop16(&z80.c, &z80.b)
+		z80.c, z80.b = z80.pop16()
 	}
 	/* JP NZ,nnnn */
 	opcodesMap[0xc2] = func(z80 *Z80) {
@@ -1070,7 +1070,7 @@ func initOpcodes() {
 	}
 	/* POP DE */
 	opcodesMap[0xd1] = func(z80 *Z80) {
-		z80.pop16(&z80.e, &z80.d)
+		z80.e, z80.d = z80.pop16()
 	}
 	/* JP NC,nnnn */
 	opcodesMap[0xd2] = func(z80 *Z80) {
@@ -1191,7 +1191,7 @@ func initOpcodes() {
 	}
 	/* POP HL */
 	opcodesMap[0xe1] = func(z80 *Z80) {
-		z80.pop16(&z80.l, &z80.h)
+		z80.l, z80.h = z80.pop16()
 	}
 	/* JP PO,nnnn */
 	opcodesMap[0xe2] = func(z80 *Z80) {
@@ -1305,7 +1305,7 @@ func initOpcodes() {
 	}
 	/* POP AF */
 	opcodesMap[0xf1] = func(z80 *Z80) {
-		z80.pop16(&z80.f, &z80.a)
+		z80.f, z80.a = z80.pop16()
 	}
 	/* JP P,nnnn */
 	opcodesMap[0xf2] = func(z80 *Z80) {
@@ -1412,283 +1412,283 @@ func initOpcodes() {
 
 	/* RLC B */
 	opcodesMap[shift0xcb(0x00)] = func(z80 *Z80) {
-		z80.rlc(&z80.b)
+		z80.b = z80.rlc(z80.b)
 	}
 	/* RLC C */
 	opcodesMap[shift0xcb(0x01)] = func(z80 *Z80) {
-		z80.rlc(&z80.c)
+		z80.c = z80.rlc(z80.c)
 	}
 	/* RLC D */
 	opcodesMap[shift0xcb(0x02)] = func(z80 *Z80) {
-		z80.rlc(&z80.d)
+		z80.d = z80.rlc(z80.d)
 	}
 	/* RLC E */
 	opcodesMap[shift0xcb(0x03)] = func(z80 *Z80) {
-		z80.rlc(&z80.e)
+		z80.e = z80.rlc(z80.e)
 	}
 	/* RLC H */
 	opcodesMap[shift0xcb(0x04)] = func(z80 *Z80) {
-		z80.rlc(&z80.h)
+		z80.h = z80.rlc(z80.h)
 	}
 	/* RLC L */
 	opcodesMap[shift0xcb(0x05)] = func(z80 *Z80) {
-		z80.rlc(&z80.l)
+		z80.l = z80.rlc(z80.l)
 	}
 	/* RLC (HL) */
 	opcodesMap[shift0xcb(0x06)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.rlc(&bytetemp)
+		bytetemp = z80.rlc(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* RLC A */
 	opcodesMap[shift0xcb(0x07)] = func(z80 *Z80) {
-		z80.rlc(&z80.a)
+		z80.a = z80.rlc(z80.a)
 	}
 	/* RRC B */
 	opcodesMap[shift0xcb(0x08)] = func(z80 *Z80) {
-		z80.rrc(&z80.b)
+		z80.b = z80.rrc(z80.b)
 	}
 	/* RRC C */
 	opcodesMap[shift0xcb(0x09)] = func(z80 *Z80) {
-		z80.rrc(&z80.c)
+		z80.c = z80.rrc(z80.c)
 	}
 	/* RRC D */
 	opcodesMap[shift0xcb(0x0a)] = func(z80 *Z80) {
-		z80.rrc(&z80.d)
+		z80.d = z80.rrc(z80.d)
 	}
 	/* RRC E */
 	opcodesMap[shift0xcb(0x0b)] = func(z80 *Z80) {
-		z80.rrc(&z80.e)
+		z80.e = z80.rrc(z80.e)
 	}
 	/* RRC H */
 	opcodesMap[shift0xcb(0x0c)] = func(z80 *Z80) {
-		z80.rrc(&z80.h)
+		z80.h = z80.rrc(z80.h)
 	}
 	/* RRC L */
 	opcodesMap[shift0xcb(0x0d)] = func(z80 *Z80) {
-		z80.rrc(&z80.l)
+		z80.l = z80.rrc(z80.l)
 	}
 	/* RRC (HL) */
 	opcodesMap[shift0xcb(0x0e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.rrc(&bytetemp)
+		bytetemp = z80.rrc(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* RRC A */
 	opcodesMap[shift0xcb(0x0f)] = func(z80 *Z80) {
-		z80.rrc(&z80.a)
+		z80.a = z80.rrc(z80.a)
 	}
 	/* RL B */
 	opcodesMap[shift0xcb(0x10)] = func(z80 *Z80) {
-		z80.rl(&z80.b)
+		z80.b = z80.rl(z80.b)
 	}
 	/* RL C */
 	opcodesMap[shift0xcb(0x11)] = func(z80 *Z80) {
-		z80.rl(&z80.c)
+		z80.c = z80.rl(z80.c)
 	}
 	/* RL D */
 	opcodesMap[shift0xcb(0x12)] = func(z80 *Z80) {
-		z80.rl(&z80.d)
+		z80.d = z80.rl(z80.d)
 	}
 	/* RL E */
 	opcodesMap[shift0xcb(0x13)] = func(z80 *Z80) {
-		z80.rl(&z80.e)
+		z80.e = z80.rl(z80.e)
 	}
 	/* RL H */
 	opcodesMap[shift0xcb(0x14)] = func(z80 *Z80) {
-		z80.rl(&z80.h)
+		z80.h = z80.rl(z80.h)
 	}
 	/* RL L */
 	opcodesMap[shift0xcb(0x15)] = func(z80 *Z80) {
-		z80.rl(&z80.l)
+		z80.l = z80.rl(z80.l)
 	}
 	/* RL (HL) */
 	opcodesMap[shift0xcb(0x16)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.rl(&bytetemp)
+		bytetemp = z80.rl(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* RL A */
 	opcodesMap[shift0xcb(0x17)] = func(z80 *Z80) {
-		z80.rl(&z80.a)
+		z80.a = z80.rl(z80.a)
 	}
 	/* RR B */
 	opcodesMap[shift0xcb(0x18)] = func(z80 *Z80) {
-		z80.rr(&z80.b)
+		z80.b = z80.rr(z80.b)
 	}
 	/* RR C */
 	opcodesMap[shift0xcb(0x19)] = func(z80 *Z80) {
-		z80.rr(&z80.c)
+		z80.c = z80.rr(z80.c)
 	}
 	/* RR D */
 	opcodesMap[shift0xcb(0x1a)] = func(z80 *Z80) {
-		z80.rr(&z80.d)
+		z80.d = z80.rr(z80.d)
 	}
 	/* RR E */
 	opcodesMap[shift0xcb(0x1b)] = func(z80 *Z80) {
-		z80.rr(&z80.e)
+		z80.e = z80.rr(z80.e)
 	}
 	/* RR H */
 	opcodesMap[shift0xcb(0x1c)] = func(z80 *Z80) {
-		z80.rr(&z80.h)
+		z80.h = z80.rr(z80.h)
 	}
 	/* RR L */
 	opcodesMap[shift0xcb(0x1d)] = func(z80 *Z80) {
-		z80.rr(&z80.l)
+		z80.l = z80.rr(z80.l)
 	}
 	/* RR (HL) */
 	opcodesMap[shift0xcb(0x1e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.rr(&bytetemp)
+		bytetemp = z80.rr(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* RR A */
 	opcodesMap[shift0xcb(0x1f)] = func(z80 *Z80) {
-		z80.rr(&z80.a)
+		z80.a = z80.rr(z80.a)
 	}
 	/* SLA B */
 	opcodesMap[shift0xcb(0x20)] = func(z80 *Z80) {
-		z80.sla(&z80.b)
+		z80.b = z80.sla(z80.b)
 	}
 	/* SLA C */
 	opcodesMap[shift0xcb(0x21)] = func(z80 *Z80) {
-		z80.sla(&z80.c)
+		z80.c = z80.sla(z80.c)
 	}
 	/* SLA D */
 	opcodesMap[shift0xcb(0x22)] = func(z80 *Z80) {
-		z80.sla(&z80.d)
+		z80.d = z80.sla(z80.d)
 	}
 	/* SLA E */
 	opcodesMap[shift0xcb(0x23)] = func(z80 *Z80) {
-		z80.sla(&z80.e)
+		z80.e = z80.sla(z80.e)
 	}
 	/* SLA H */
 	opcodesMap[shift0xcb(0x24)] = func(z80 *Z80) {
-		z80.sla(&z80.h)
+		z80.h = z80.sla(z80.h)
 	}
 	/* SLA L */
 	opcodesMap[shift0xcb(0x25)] = func(z80 *Z80) {
-		z80.sla(&z80.l)
+		z80.l = z80.sla(z80.l)
 	}
 	/* SLA (HL) */
 	opcodesMap[shift0xcb(0x26)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.sla(&bytetemp)
+		bytetemp = z80.sla(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* SLA A */
 	opcodesMap[shift0xcb(0x27)] = func(z80 *Z80) {
-		z80.sla(&z80.a)
+		z80.a = z80.sla(z80.a)
 	}
 	/* SRA B */
 	opcodesMap[shift0xcb(0x28)] = func(z80 *Z80) {
-		z80.sra(&z80.b)
+		z80.b = z80.sra(z80.b)
 	}
 	/* SRA C */
 	opcodesMap[shift0xcb(0x29)] = func(z80 *Z80) {
-		z80.sra(&z80.c)
+		z80.c = z80.sra(z80.c)
 	}
 	/* SRA D */
 	opcodesMap[shift0xcb(0x2a)] = func(z80 *Z80) {
-		z80.sra(&z80.d)
+		z80.d = z80.sra(z80.d)
 	}
 	/* SRA E */
 	opcodesMap[shift0xcb(0x2b)] = func(z80 *Z80) {
-		z80.sra(&z80.e)
+		z80.e = z80.sra(z80.e)
 	}
 	/* SRA H */
 	opcodesMap[shift0xcb(0x2c)] = func(z80 *Z80) {
-		z80.sra(&z80.h)
+		z80.h = z80.sra(z80.h)
 	}
 	/* SRA L */
 	opcodesMap[shift0xcb(0x2d)] = func(z80 *Z80) {
-		z80.sra(&z80.l)
+		z80.l = z80.sra(z80.l)
 	}
 	/* SRA (HL) */
 	opcodesMap[shift0xcb(0x2e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.sra(&bytetemp)
+		bytetemp = z80.sra(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* SRA A */
 	opcodesMap[shift0xcb(0x2f)] = func(z80 *Z80) {
-		z80.sra(&z80.a)
+		z80.a = z80.sra(z80.a)
 	}
 	/* SLL B */
 	opcodesMap[shift0xcb(0x30)] = func(z80 *Z80) {
-		z80.sll(&z80.b)
+		z80.b = z80.sll(z80.b)
 	}
 	/* SLL C */
 	opcodesMap[shift0xcb(0x31)] = func(z80 *Z80) {
-		z80.sll(&z80.c)
+		z80.c = z80.sll(z80.c)
 	}
 	/* SLL D */
 	opcodesMap[shift0xcb(0x32)] = func(z80 *Z80) {
-		z80.sll(&z80.d)
+		z80.d = z80.sll(z80.d)
 	}
 	/* SLL E */
 	opcodesMap[shift0xcb(0x33)] = func(z80 *Z80) {
-		z80.sll(&z80.e)
+		z80.e = z80.sll(z80.e)
 	}
 	/* SLL H */
 	opcodesMap[shift0xcb(0x34)] = func(z80 *Z80) {
-		z80.sll(&z80.h)
+		z80.h = z80.sll(z80.h)
 	}
 	/* SLL L */
 	opcodesMap[shift0xcb(0x35)] = func(z80 *Z80) {
-		z80.sll(&z80.l)
+		z80.l = z80.sll(z80.l)
 	}
 	/* SLL (HL) */
 	opcodesMap[shift0xcb(0x36)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.sll(&bytetemp)
+		bytetemp = z80.sll(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* SLL A */
 	opcodesMap[shift0xcb(0x37)] = func(z80 *Z80) {
-		z80.sll(&z80.a)
+		z80.a = z80.sll(z80.a)
 	}
 	/* SRL B */
 	opcodesMap[shift0xcb(0x38)] = func(z80 *Z80) {
-		z80.srl(&z80.b)
+		z80.b = z80.srl(z80.b)
 	}
 	/* SRL C */
 	opcodesMap[shift0xcb(0x39)] = func(z80 *Z80) {
-		z80.srl(&z80.c)
+		z80.c = z80.srl(z80.c)
 	}
 	/* SRL D */
 	opcodesMap[shift0xcb(0x3a)] = func(z80 *Z80) {
-		z80.srl(&z80.d)
+		z80.d = z80.srl(z80.d)
 	}
 	/* SRL E */
 	opcodesMap[shift0xcb(0x3b)] = func(z80 *Z80) {
-		z80.srl(&z80.e)
+		z80.e = z80.srl(z80.e)
 	}
 	/* SRL H */
 	opcodesMap[shift0xcb(0x3c)] = func(z80 *Z80) {
-		z80.srl(&z80.h)
+		z80.h = z80.srl(z80.h)
 	}
 	/* SRL L */
 	opcodesMap[shift0xcb(0x3d)] = func(z80 *Z80) {
-		z80.srl(&z80.l)
+		z80.l = z80.srl(z80.l)
 	}
 	/* SRL (HL) */
 	opcodesMap[shift0xcb(0x3e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.HL())
 		z80.memory.contendReadNoMreq(z80.HL(), 1)
-		z80.srl(&bytetemp)
+		bytetemp = z80.srl(bytetemp)
 		z80.memory.writeByte(z80.HL(), bytetemp)
 	}
 	/* SRL A */
 	opcodesMap[shift0xcb(0x3f)] = func(z80 *Z80) {
-		z80.srl(&z80.a)
+		z80.a = z80.srl(z80.a)
 	}
 	/* BIT 0,B */
 	opcodesMap[shift0xcb(0x40)] = func(z80 *Z80) {
@@ -3496,7 +3496,7 @@ func initOpcodes() {
 	}
 	/* POP ix */
 	opcodesMap[shift0xdd(0xe1)] = func(z80 *Z80) {
-		z80.pop16(&z80.ixl, &z80.ixh)
+		z80.ixl, z80.ixh = z80.pop16()
 	}
 	/* EX (SP),ix */
 	opcodesMap[shift0xdd(0xe3)] = func(z80 *Z80) {
@@ -3994,7 +3994,7 @@ func initOpcodes() {
 	}
 	/* POP iy */
 	opcodesMap[shift0xfd(0xe1)] = func(z80 *Z80) {
-		z80.pop16(&z80.iyl, &z80.iyh)
+		z80.iyl, z80.iyh = z80.pop16()
 	}
 	/* EX (SP),iy */
 	opcodesMap[shift0xfd(0xe3)] = func(z80 *Z80) {
@@ -4031,448 +4031,448 @@ func initOpcodes() {
 	opcodesMap[shift0xddcb(0x00)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&z80.b)
+		z80.b = z80.rlc(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,RLC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x01)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&z80.c)
+		z80.c = z80.rlc(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,RLC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x02)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&z80.d)
+		z80.d = z80.rlc(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,RLC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x03)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&z80.e)
+		z80.e = z80.rlc(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,RLC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x04)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&z80.h)
+		z80.h = z80.rlc(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,RLC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x05)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&z80.l)
+		z80.l = z80.rlc(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* RLC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x06)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&bytetemp)
+		bytetemp = z80.rlc(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,RLC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x07)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rlc(&z80.a)
+		z80.a = z80.rlc(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* LD B,RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x08)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&z80.b)
+		z80.b = z80.rrc(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x09)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&z80.c)
+		z80.c = z80.rrc(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x0a)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&z80.d)
+		z80.d = z80.rrc(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x0b)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&z80.e)
+		z80.e = z80.rrc(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x0c)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&z80.h)
+		z80.h = z80.rrc(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x0d)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&z80.l)
+		z80.l = z80.rrc(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x0e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&bytetemp)
+		bytetemp = z80.rrc(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,RRC (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x0f)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rrc(&z80.a)
+		z80.a = z80.rrc(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* LD B,RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x10)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&z80.b)
+		z80.b = z80.rl(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x11)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&z80.c)
+		z80.c = z80.rl(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x12)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&z80.d)
+		z80.d = z80.rl(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x13)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&z80.e)
+		z80.e = z80.rl(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x14)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&z80.h)
+		z80.h = z80.rl(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x15)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&z80.l)
+		z80.l = z80.rl(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x16)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&bytetemp)
+		bytetemp = z80.rl(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,RL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x17)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rl(&z80.a)
+		z80.a = z80.rl(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* LD B,RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x18)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&z80.b)
+		z80.b = z80.rr(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x19)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&z80.c)
+		z80.c = z80.rr(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x1a)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&z80.d)
+		z80.d = z80.rr(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x1b)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&z80.e)
+		z80.e = z80.rr(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x1c)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&z80.h)
+		z80.h = z80.rr(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x1d)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&z80.l)
+		z80.l = z80.rr(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x1e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&bytetemp)
+		bytetemp = z80.rr(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,RR (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x1f)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.rr(&z80.a)
+		z80.a = z80.rr(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* LD B,SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x20)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&z80.b)
+		z80.b = z80.sla(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x21)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&z80.c)
+		z80.c = z80.sla(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x22)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&z80.d)
+		z80.d = z80.sla(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x23)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&z80.e)
+		z80.e = z80.sla(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x24)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&z80.h)
+		z80.h = z80.sla(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x25)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&z80.l)
+		z80.l = z80.sla(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x26)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&bytetemp)
+		bytetemp = z80.sla(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,SLA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x27)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sla(&z80.a)
+		z80.a = z80.sla(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* LD B,SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x28)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&z80.b)
+		z80.b = z80.sra(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x29)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&z80.c)
+		z80.c = z80.sra(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x2a)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&z80.d)
+		z80.d = z80.sra(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x2b)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&z80.e)
+		z80.e = z80.sra(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x2c)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&z80.h)
+		z80.h = z80.sra(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x2d)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&z80.l)
+		z80.l = z80.sra(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x2e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&bytetemp)
+		bytetemp = z80.sra(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,SRA (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x2f)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sra(&z80.a)
+		z80.a = z80.sra(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* LD B,SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x30)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&z80.b)
+		z80.b = z80.sll(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x31)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&z80.c)
+		z80.c = z80.sll(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x32)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&z80.d)
+		z80.d = z80.sll(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x33)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&z80.e)
+		z80.e = z80.sll(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x34)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&z80.h)
+		z80.h = z80.sll(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x35)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&z80.l)
+		z80.l = z80.sll(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x36)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&bytetemp)
+		bytetemp = z80.sll(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,SLL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x37)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.sll(&z80.a)
+		z80.a = z80.sll(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* LD B,SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x38)] = func(z80 *Z80) {
 		z80.b = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&z80.b)
+		z80.b = z80.srl(z80.b)
 		z80.memory.writeByte(z80.tempaddr, z80.b)
 	}
 	/* LD C,SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x39)] = func(z80 *Z80) {
 		z80.c = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&z80.c)
+		z80.c = z80.srl(z80.c)
 		z80.memory.writeByte(z80.tempaddr, z80.c)
 	}
 	/* LD D,SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x3a)] = func(z80 *Z80) {
 		z80.d = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&z80.d)
+		z80.d = z80.srl(z80.d)
 		z80.memory.writeByte(z80.tempaddr, z80.d)
 	}
 	/* LD E,SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x3b)] = func(z80 *Z80) {
 		z80.e = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&z80.e)
+		z80.e = z80.srl(z80.e)
 		z80.memory.writeByte(z80.tempaddr, z80.e)
 	}
 	/* LD H,SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x3c)] = func(z80 *Z80) {
 		z80.h = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&z80.h)
+		z80.h = z80.srl(z80.h)
 		z80.memory.writeByte(z80.tempaddr, z80.h)
 	}
 	/* LD L,SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x3d)] = func(z80 *Z80) {
 		z80.l = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&z80.l)
+		z80.l = z80.srl(z80.l)
 		z80.memory.writeByte(z80.tempaddr, z80.l)
 	}
 	/* SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x3e)] = func(z80 *Z80) {
 		var bytetemp byte = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&bytetemp)
+		bytetemp = z80.srl(bytetemp)
 		z80.memory.writeByte(z80.tempaddr, bytetemp)
 	}
 	/* LD A,SRL (REGISTER+dd) */
 	opcodesMap[shift0xddcb(0x3f)] = func(z80 *Z80) {
 		z80.a = z80.memory.readByte(z80.tempaddr)
 		z80.memory.contendReadNoMreq(z80.tempaddr, 1)
-		z80.srl(&z80.a)
+		z80.a = z80.srl(z80.a)
 		z80.memory.writeByte(z80.tempaddr, z80.a)
 	}
 	/* BIT 0,(REGISTER+dd) */

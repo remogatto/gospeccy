@@ -58,11 +58,10 @@ sub arithmetic_logical ($$$) {
             my($lcopcode, $lcarg2); $lcopcode = lc($opcode);
 	    print << "CODE";
       
-	var offset, bytetemp byte
-	offset = z80.memory.readByte( z80.pc )
+	var offset byte = z80.memory.readByte( z80.pc )
 	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
 	z80.pc++
-	bytetemp = z80.memory.readByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))))
+	var bytetemp byte = z80.memory.readByte(z80.REGISTER() + uint16(signExtend(offset)))
 	z80.$lcopcode(bytetemp)
 
 CODE
@@ -125,11 +124,9 @@ sub cpi_cpd ($) {
 
     print << "CODE";
       
-	var value, bytetemp, lookup byte 
-
-	value = z80.memory.readByte( z80.HL() )
-	bytetemp = z80.a - value
-        lookup = ((z80.a & 0x08 ) >> 3 ) | (((value) & 0x08 ) >> 2 ) | ((bytetemp & 0x08 ) >> 1)
+	var value byte = z80.memory.readByte( z80.HL() )
+	var bytetemp byte = z80.a - value
+        var lookup byte = ((z80.a & 0x08 ) >> 3 ) | (((value) & 0x08 ) >> 2 ) | ((bytetemp & 0x08 ) >> 1)
 
 	z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )
 	z80.${modifier}HL(); z80.decBC()
@@ -147,11 +144,9 @@ sub cpir_cpdr ($) {
     my $modifier = ( $opcode eq 'CPIR' ? 'inc' : 'dec' );
 
     print << "CODE";
-	var value, bytetemp, lookup byte
-
-	value = z80.memory.readByte( z80.HL() )
-	bytetemp = z80.a - value
-        lookup = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)
+	var value byte = z80.memory.readByte( z80.HL() )
+	var bytetemp byte = z80.a - value
+        var lookup byte = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)
 
 	z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )
 	z80.decBC()
@@ -194,13 +189,11 @@ CODE
     } elsif( $arg eq '(REGISTER+dd)' ) {
 	my $lcopcode = lc($opcode);
 	print << "CODE";
-	var offset, bytetemp byte
-	var wordtemp uint16
-	offset = z80.memory.readByte( z80.pc )
+	var offset byte = z80.memory.readByte( z80.pc )
 	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
 	z80.pc++
-	wordtemp = uint16(int(z80.REGISTER()) + int(signExtend(offset)))
-	bytetemp = z80.memory.readByte( wordtemp )
+	var wordtemp uint16 = z80.REGISTER() + uint16(signExtend(offset))
+	var bytetemp byte = z80.memory.readByte( wordtemp )
 	z80.memory.contendReadNoMreq( wordtemp, 1 )
 	z80.$lcopcode(&bytetemp)
 	z80.memory.writeByte(wordtemp,bytetemp)
@@ -216,14 +209,12 @@ sub ini_ind ($) {
     my $modifier = ( $opcode eq 'INI' ? 'inc' : 'dec' );
     my $operation = ( $opcode eq 'INI' ? '+' : '-' );
     print << "CODE";
-	var initemp, initemp2 byte
-
 	z80.memory.contendReadNoMreq( z80.IR(), 1 );
-	initemp = z80.readPort(z80.BC());
+	var initemp byte = z80.readPort(z80.BC());
 	z80.memory.writeByte( z80.HL(), initemp );
 
         z80.b--; z80.${modifier}HL()
-        initemp2 = initemp + z80.c $operation 1;
+        var initemp2 byte = initemp + z80.c $operation 1;
 	z80.f = ternOpB((initemp & 0x80) != 0, FLAG_N, 0) | ternOpB(initemp2 < initemp, FLAG_H | FLAG_C, 0) | ternOpB(parityTable[(initemp2 & 0x07) ^ z80.b] != 0, FLAG_P, 0 ) | sz53Table[z80.b]
 CODE
 }
@@ -236,14 +227,12 @@ sub inir_indr ($) {
     my $modifier = ( $opcode eq 'INIR' ? 'inc' : 'dec' );
 
     print << "CODE";
-	var initemp, initemp2 byte
-
 	z80.memory.contendReadNoMreq( z80.IR(), 1 );
-	initemp = z80.readPort(z80.BC());
+	var initemp byte = z80.readPort(z80.BC());
 	z80.memory.writeByte( z80.HL(), initemp );
 
 	z80.b--;
-        initemp2 = initemp + z80.c $operation 1;
+        var initemp2 byte = initemp + z80.c $operation 1;
 	z80.f = ternOpB(initemp & 0x80 != 0, FLAG_N, 0) |
                 ternOpB(initemp2 < initemp, FLAG_H | FLAG_C, 0 ) |
                 ternOpB(parityTable[ ( initemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0) |
@@ -304,15 +293,13 @@ sub otir_otdr ($) {
     my $modifier = ( $opcode eq 'OTIR' ? 'inc' : 'dec' );
 
     print << "CODE";
-	var outitemp, outitemp2 byte
-
 	z80.memory.contendReadNoMreq( z80.IR(), 1 );
-	outitemp = z80.memory.readByte( z80.HL() );
+	var outitemp byte = z80.memory.readByte( z80.HL() );
 	z80.b--;	/* This does happen first, despite what the specs say */
 	z80.writePort(z80.BC(), outitemp);
 
 	z80.${modifier}HL()
-        outitemp2 = outitemp + z80.l;
+        var outitemp2 byte = outitemp + z80.l;
 	z80.f = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0 ) |
             ternOpB(outitemp2 < outitemp, FLAG_H | FLAG_C, 0) |
             ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |
@@ -332,15 +319,13 @@ sub outi_outd ($) {
     my $modifier = ( $opcode eq 'OUTI' ? 'inc' : 'dec' );
 
     print << "CODE";
-	var outitemp, outitemp2 byte
-
 	z80.memory.contendReadNoMreq( z80.IR(), 1 )
-	outitemp = z80.memory.readByte( z80.HL() )
+	var outitemp byte = z80.memory.readByte( z80.HL() )
 	z80.b--;	/* This does happen first, despite what the specs say */
 	z80.writePort(z80.BC(), outitemp)
 
 	z80.${modifier}HL()
-        outitemp2 = outitemp + z80.l
+        var outitemp2 byte = outitemp + z80.l
 	z80.f = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0) |
             ternOpB(outitemp2 < outitemp, FLAG_H | FLAG_C, 0) |
             ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |
@@ -401,8 +386,7 @@ CODE
     } elsif( $register eq '(REGISTER+dd)' ) {
 	print << "CODE";
    
-	var bytetemp byte
-	bytetemp = z80.memory.readByte( z80.tempaddr )
+	var bytetemp byte = z80.memory.readByte( z80.tempaddr )
 	z80.memory.contendReadNoMreq( z80.tempaddr, 1 )
 	z80.memory.writeByte( z80.tempaddr, bytetemp $operator $hex_mask )
 
@@ -502,8 +486,8 @@ sub opcode_DAA (@) {
 	} else {
 	  z80.add(add)
 	}
-        var temp int = (int(z80.f) & ^(FLAG_C | FLAG_P)) | int(carry) | int(parityTable[z80.a])
-	z80.f = byte(temp)
+        var temp byte = byte(int(z80.f) & ^(FLAG_C | FLAG_P)) | carry | parityTable[z80.a]
+	z80.f = temp
 DAA
 }
 
@@ -564,9 +548,8 @@ EX
 	my $lchigh = lc($high);
 
 	print << "EX";
-	var bytetempl, bytetemph byte
-	bytetempl = z80.memory.readByte( z80.SP() )
-	bytetemph = z80.memory.readByte( z80.SP() + 1 )
+	var bytetempl = z80.memory.readByte( z80.SP() )
+	var bytetemph = z80.memory.readByte( z80.SP() + 1 )
         z80.memory.contendReadNoMreq( z80.SP() + 1, 1 )
 	z80.memory.writeByte( z80.SP() + 1, z80.$lchigh )
 	z80.memory.writeByte( z80.SP(),     z80.$lclow  )
@@ -585,8 +568,7 @@ EX
 
 sub opcode_EXX (@) {
     print << "EXX";
-	var wordtemp uint16
-	wordtemp = z80.BC() 
+	var wordtemp uint16 = z80.BC() 
         z80.setBC(z80.BC_())
         z80.setBC_(wordtemp)
 
@@ -615,8 +597,7 @@ sub opcode_IN (@) {
 
     if( $register eq 'A' and $port eq '(nn)' ) {
 	print << "IN";
-	var intemp uint16
-	intemp = uint16(z80.memory.readByte(z80.pc)) + (uint16(z80.a) << 8 )
+	var intemp uint16 = uint16(z80.memory.readByte(z80.pc)) + (uint16(z80.a) << 8 )
 	z80.pc++
         z80.a = z80.readPort(intemp)
 IN
@@ -724,8 +705,7 @@ LD
 LD
         } elsif( $src eq '(nnnn)' ) {
 	    print << "LD";
-	var wordtemp uint16
-	wordtemp = uint16(z80.memory.readByte(z80.pc))
+	var wordtemp uint16 = uint16(z80.memory.readByte(z80.pc))
 	z80.pc++
 	wordtemp |= uint16(z80.memory.readByte(z80.pc)) << 8
 	z80.pc++
@@ -734,11 +714,10 @@ LD
         } elsif( $src eq '(REGISTER+dd)' ) {
             $dest = lc($dest);
 	    print << "LD";
-	var offset byte
-	offset = z80.memory.readByte( z80.pc )
+	var offset byte = z80.memory.readByte( z80.pc )
 	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
 	z80.pc++
-	z80.$dest = z80.memory.readByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))))
+	z80.$dest = z80.memory.readByte(z80.REGISTER() + uint16(signExtend(offset)))
 LD
         }
 
@@ -826,7 +805,7 @@ LD
 	offset := z80.memory.readByte( z80.pc )
 	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )
 	z80.pc++
-	z80.memory.writeByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))), z80.$src )
+	z80.memory.writeByte(z80.REGISTER() + uint16(signExtend(offset)), z80.$src )
 LD
         } elsif( $src eq 'nn' ) {
 	    print << "LD";
@@ -835,7 +814,7 @@ LD
 	value := z80.memory.readByte( z80.pc )
 	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 2 )
 	z80.pc++
-	z80.memory.writeByte(uint16(int(z80.REGISTER()) + int(signExtend(offset))), value )
+	z80.memory.writeByte(z80.REGISTER() + uint16(signExtend(offset)), value )
 LD
         }
     }
@@ -872,8 +851,7 @@ sub opcode_OUT (@) {
 
     if( $port eq '(nn)' and $register eq 'A' ) {
 	print << "OUT";
-	var outtemp uint16
-	outtemp = uint16(z80.memory.readByte(z80.pc)) + (uint16(z80.a) << 8)
+	var outtemp uint16 = uint16(z80.memory.readByte(z80.pc)) + (uint16(z80.a) << 8)
         z80.pc++
 	z80.writePort(outtemp, z80.a)
 OUT
@@ -1042,11 +1020,10 @@ sub opcode_slttrap ($) {
 
 # 	print << "shift";
       
-# 	var opcode3 byte
 # 	z80.memory.contendRead( z80.pc, 3 )
-# 	z80.tempaddr = uint16(int(z80.REGISTER()) + int(signExtend(z80.memory.readByteInternal( z80.pc ))))
+# 	z80.tempaddr = z80.REGISTER() + uint16(signExtend(z80.memory.readByteInternal( z80.pc )))
 # 	z80.pc++; z80.memory.contendRead( z80.pc, 3 )
-# 	opcode3 = z80.memory.readByteInternal( z80.pc )
+# 	var opcode3 byte = z80.memory.readByteInternal( z80.pc )
 # 	z80.memory.contendReadNoMreq_loop( z80.pc, 1, 2 )
 # 	z80.pc++
 #     }
@@ -1056,9 +1033,8 @@ sub opcode_slttrap ($) {
 #     } else {
 # 	print << "shift";
 
-# 	var opcode2 byte
 # 	z80.memory.contendRead( z80.pc, 4 )
-# 	opcode2 = z80.memory.readByteInternal( z80.pc ); z80.pc++
+# 	var opcode2 byte = z80.memory.readByteInternal( z80.pc ); z80.pc++
 # 	z80.r++
 # }
 

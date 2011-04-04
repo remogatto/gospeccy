@@ -270,7 +270,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 		}
 
 		// screen.borderEvents
-		screen.BorderEvents_orNil = ula.ports.getBorderEvents_orNil()
+		screen.BorderEvents = ula.ports.getBorderEvents()
 	}
 
 	return &screen
@@ -343,5 +343,5 @@ func (a *DisplayData) add(b *DisplayData) {
 		}
 	}
 
-	a.BorderEvents_orNil = b.BorderEvents_orNil
+	a.BorderEvents = b.BorderEvents
 }

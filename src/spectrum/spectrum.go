@@ -539,8 +539,8 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	// Send audio data to audio backend(s)
 	if len(speccy.audioReceivers) > 0 {
 		audioData := AudioData{
-			FPS:                speccy.currentFPS,
-			BeeperEvents_orNil: speccy.Ports.getBeeperEvents_orNil(),
+			FPS:          speccy.currentFPS,
+			BeeperEvents: speccy.Ports.getBeeperEvents(),
 		}
 
 		for _, audioReceiver := range speccy.audioReceivers {

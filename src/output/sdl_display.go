@@ -441,11 +441,14 @@ type UnscaledDisplay struct {
 	changedRegions *ListOfRects
 
 	// This is the border which was rendered to 'pixels'
-	border_orNil *spectrum.BorderEvent
+	border []spectrum.BorderEvent
 }
 
 func newUnscaledDisplay() *UnscaledDisplay {
-	return &UnscaledDisplay{changedRegions: newListOfRects()}
+	return &UnscaledDisplay{
+		changedRegions: newListOfRects(),
+		border:         nil,
+	}
 }
 
 func (disp *UnscaledDisplay) newFrame() {
@@ -484,27 +487,27 @@ func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
 }
 
 // Render border in the interval [start,end)
-func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorderEvent_t, end *simplifiedBorderEvent_t) {
-	spectrum.Assert(start.tstate < end.tstate)
+func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start spectrum.BorderEvent, end spectrum.BorderEvent) {
+	spectrum.Assert(start.TState < end.TState)
 
 	const DISPLAY_START = spectrum.DISPLAY_START
 	const TSTATES_PER_LINE = spectrum.TSTATES_PER_LINE
 
-	if start.tstate < DISPLAY_START {
-		start.tstate = DISPLAY_START
+	if start.TState < DISPLAY_START {
+		start.TState = DISPLAY_START
 	}
-	if end.tstate-1 < DISPLAY_START {
+	if end.TState-1 < DISPLAY_START {
 		return
 	}
-	if start.tstate >= DISPLAY_START+spectrum.TotalScreenHeight*TSTATES_PER_LINE {
+	if start.TState >= DISPLAY_START+spectrum.TotalScreenHeight*TSTATES_PER_LINE {
 		return
 	}
 
-	start_y := (start.tstate - DISPLAY_START) / TSTATES_PER_LINE
-	end_y   := (end.tstate-1 - DISPLAY_START) / TSTATES_PER_LINE
+	start_y := (start.TState - DISPLAY_START) / TSTATES_PER_LINE
+	end_y   := (end.TState-1 - DISPLAY_START) / TSTATES_PER_LINE
 
-	start_x := (start.tstate - DISPLAY_START) % TSTATES_PER_LINE
-	end_x   := (end.tstate-1 - DISPLAY_START) % TSTATES_PER_LINE
+	start_x := (start.TState - DISPLAY_START) % TSTATES_PER_LINE
+	end_x   := (end.TState-1 - DISPLAY_START) % TSTATES_PER_LINE
 
 	start_x = (start_x << spectrum.PIXELS_PER_TSTATE_LOG2) &^ 7
 	end_x = (end_x << spectrum.PIXELS_PER_TSTATE_LOG2) &^ 7
@@ -519,7 +522,7 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	}
 
 	// Fill scanlines from (start_x,start_y) to (end_x,end_y)
-	color := start.color
+	color := start.Color
 	if start_y == end_y {
 		y := start_y
 		disp.scanlineFill(start_x, end_x, y, color)
@@ -537,30 +540,25 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start *simplifiedBorde
 	}
 }
 
-func (disp *UnscaledDisplay) renderBorder(lastEvent_orNil *spectrum.BorderEvent) {
-	if !disp.border_orNil.Equals(lastEvent_orNil) {
-		if lastEvent_orNil != nil {
-			lastEvent := lastEvent_orNil
-			spectrum.Assert(lastEvent.TState == spectrum.TStatesPerFrame)
+func (disp *UnscaledDisplay) renderBorder(events []spectrum.BorderEvent) {
+	if !spectrum.SameBorderEvents(disp.border, events) {
+		if len(events) > 0 {
+			firstEvent := &events[0]
+			spectrum.Assert(firstEvent.TState == 0)
 
-			// Put the events in an array, sorted by T-state value in ascending order
-			var events []simplifiedBorderEvent_t
-			{
-				events_array := &simplifiedBorderEvent_array_t{}
-				spectrum.EventListToArray_Ascending(lastEvent, events_array, nil)
-				events = events_array.events
-			}
+			lastEvent := &events[len(events)-1]
+			spectrum.Assert(lastEvent.TState == spectrum.TStatesPerFrame)
 
 			numEvents := len(events)
 
 			for i := 0; i < numEvents-1; i++ {
-				disp.renderBorderBetweenTwoEvents(&events[i], &events[i+1])
+				disp.renderBorderBetweenTwoEvents(events[i], events[i+1])
 			}
 
 			disp.changedRegions.addBorder( /*scale*/ 1)
 		}
 
-		disp.border_orNil = lastEvent_orNil
+		disp.border = events
 	}
 }
 
@@ -626,28 +624,5 @@ func (disp *UnscaledDisplay) render(screen *spectrum.DisplayData) {
 		}
 	}
 
-	disp.renderBorder(screen.BorderEvents_orNil)
-}
-
-
-// =======================
-// Simplified border-event
-// =======================
-
-type simplifiedBorderEvent_t struct {
-	tstate uint
-	color  byte
-}
-
-type simplifiedBorderEvent_array_t struct {
-	events []simplifiedBorderEvent_t
-}
-
-func (a *simplifiedBorderEvent_array_t) Init(n int) {
-	a.events = make([]simplifiedBorderEvent_t, n)
-}
-
-func (a *simplifiedBorderEvent_array_t) Set(i int, _e spectrum.Event) {
-	e := _e.(*spectrum.BorderEvent)
-	a.events[i] = simplifiedBorderEvent_t{e.TState, e.Color}
+	disp.renderBorder(screen.BorderEvents)
 }

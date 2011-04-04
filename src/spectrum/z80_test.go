@@ -258,12 +258,12 @@ func (p *testPort) frame_end() FrameStatusOfPorts {
 	}
 }
 
-func (p *testPort) getBorderEvents_orNil() *BorderEvent {
-	return nil
+func (p *testPort) getBorderEvents() []BorderEvent {
+	return []BorderEvent{}
 }
 
-func (p *testPort) getBeeperEvents_orNil() *BeeperEvent {
-	return nil
+func (p *testPort) getBeeperEvents() []BeeperEvent {
+	return []BeeperEvent{}
 }
 
 func (p *testPort) reset() {

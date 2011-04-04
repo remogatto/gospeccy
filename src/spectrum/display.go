@@ -140,7 +140,7 @@ type DisplayData struct {
 	Attr   [BytesPerLine * ScreenHeight]Attr_4bit     // Linear y-coordinate
 	Dirty  [ScreenWidth_Attr * ScreenHeight_Attr]bool // The 8x8 rectangular region was modified, either the bitmap or the attr
 
-	BorderEvents_orNil *BorderEvent
+	BorderEvents []BorderEvent
 
 	// From structure Cmd_RenderFrame
 	CompletionTime_orNil chan<- int64

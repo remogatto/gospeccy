@@ -267,41 +267,21 @@ func (audio *SDLAudio) bufferRemove() {
 }
 
 
-type simplifiedBeeperEvent_t struct {
-	tstate uint
-	level  byte
-}
-
-type simplifiedBeeperEvent_array_t struct {
-	events []simplifiedBeeperEvent_t
-}
-
-func (a *simplifiedBeeperEvent_array_t) Init(n int) {
-	a.events = make([]simplifiedBeeperEvent_t, n)
-}
-
-func (a *simplifiedBeeperEvent_array_t) Set(i int, _e spectrum.Event) {
-	e := _e.(*spectrum.BeeperEvent)
-	a.events[i] = simplifiedBeeperEvent_t{e.TState, e.Level}
-}
-
-
 func (audio *SDLAudio) render(audioData *spectrum.AudioData) {
-	var events []simplifiedBeeperEvent_t
+	var events []spectrum.BeeperEvent
 
-	if audioData.BeeperEvents_orNil != nil {
-		var lastEvent *spectrum.BeeperEvent = audioData.BeeperEvents_orNil
+	if len(audioData.BeeperEvents) > 0 {
+		var firstEvent *spectrum.BeeperEvent = &audioData.BeeperEvents[0]
+		spectrum.Assert(firstEvent.TState == 0)
+
+		var lastEvent *spectrum.BeeperEvent = &audioData.BeeperEvents[len(audioData.BeeperEvents)-1]
 		spectrum.Assert(lastEvent.TState == spectrum.TStatesPerFrame)
 
-		// Put the events in an array, sorted by T-state value in ascending order
-		events_array := &simplifiedBeeperEvent_array_t{}
-		spectrum.EventListToArray_Ascending(lastEvent, events_array, nil)
-
-		events = events_array.events
+		events = audioData.BeeperEvents
 	} else {
-		events = make([]simplifiedBeeperEvent_t, 2)
-		events[0] = simplifiedBeeperEvent_t{tstate: 0, level: 0}
-		events[1] = simplifiedBeeperEvent_t{tstate: spectrum.TStatesPerFrame, level: 0}
+		events = make([]spectrum.BeeperEvent, 2)
+		events[0] = spectrum.BeeperEvent{TState: 0, Level: 0}
+		events[1] = spectrum.BeeperEvent{TState: spectrum.TStatesPerFrame, Level: 0}
 	}
 
 	numEvents := len(events)
@@ -334,12 +314,12 @@ func (audio *SDLAudio) render(audioData *spectrum.AudioData) {
 	for i := 0; i < numEvents-1; i++ {
 		start := events[i]
 
-		if start.level > 0 {
-			level := spectrum.Audio16_Table[start.level]
+		if start.Level > 0 {
+			level := spectrum.Audio16_Table[start.Level]
 			end := events[i+1]
 
-			var position0 float32 = float32(start.tstate) * k
-			var position1 float32 = float32(end.tstate) * k
+			var position0 float32 = float32(start.TState) * k
+			var position1 float32 = float32(end.TState) * k
 
 			pos0 := uint(position0)
 			pos1 := uint(position1)

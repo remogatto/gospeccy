@@ -428,7 +428,7 @@ func TestDoOpcodes(t *testing.T) {
 
 	// Read the "tests.expected" file
 
-	if file, err := os.Open("testdata/tests.expected", os.O_RDONLY, 0); err != nil {
+	if file, err := os.Open("testdata/tests.expected"); err != nil {
 		t.Fatalf("Error opening tests.expected\n")
 	} else {
 		var nextIsTestDescription bool = false

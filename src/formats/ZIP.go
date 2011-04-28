@@ -2,13 +2,13 @@ package formats
 
 import (
 	"archive/zip"
-	"io"
+//	"io"
 	"io/ioutil"
 	"os"
 )
 
 type ZipArchive struct {
-	reader *zip.Reader
+	reader *zip.ReadCloser
 }
 
 func (a *ZipArchive) Filenames() []string {
@@ -34,14 +34,14 @@ func (a *ZipArchive) Read(fileIndex int) ([]byte, os.Error) {
 	return ioutil.ReadAll(readCloser)
 }
 
-func ReadZip(r io.ReaderAt, size int64) (*ZipArchive, os.Error) {
-	reader, err := zip.NewReader(r, size)
-	if err != nil {
-		return nil, err
-	}
+// func ReadZip(r io.ReaderAt, size int64) (*ZipArchive, os.Error) {
+// 	reader, err := zip.NewReader(r, size)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return &ZipArchive{reader}, nil
-}
+// 	return &ZipArchive{reader}, nil
+// }
 
 func ReadZipFile(filePath string) (*ZipArchive, os.Error) {
 	reader, err := zip.OpenReader(filePath)

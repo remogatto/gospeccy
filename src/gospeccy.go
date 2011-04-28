@@ -687,7 +687,7 @@ func main() {
 	if *cpuProfile != "" {
 		var err os.Error
 
-		pprof_file, err = os.Open(*cpuProfile, os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666)
+		pprof_file, err = os.Create(*cpuProfile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s", err)
 			return

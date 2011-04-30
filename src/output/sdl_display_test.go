@@ -140,7 +140,7 @@ func newSurface() *sdl.Surface {
 // func (r *RenderTest) reportError(t *testing.T) {
 // 	t.Errorf("Expected image %s is not equal to the rendered one! Check %s\n", r.out, r.getDiffFn())
 
-// 	if file, err := os.Open(r.getDiffFn(), os.O_CREATE|os.O_WRONLY, 0666); err != nil {
+// 	if file, err := os.Create(r.getDiffFn()); err != nil {
 // 		panic(err)
 // 	} else {
 // 		if err := png.Encode(file, r.diffImage); err != nil {

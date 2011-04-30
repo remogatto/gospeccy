@@ -9,15 +9,15 @@
 func stress2(verbose bool) {
 	for i:=0; i<20; i++ {
 		if verbose {
-			println("Disabling sound")
+			println("Disabling audio")
 		}
-		sound(false)
+		audio(false)
 		wait(10)
 
 		if verbose {
-			println("Enabling sound")
+			println("Enabling audio")
 		}
-		sound(true)
+		audio(true)
 		wait(10)
 	}
 }

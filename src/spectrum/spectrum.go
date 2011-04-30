@@ -285,6 +285,8 @@ func (speccy *Spectrum48k) EmulatorLoop() {
 		}()
 	}
 
+	var newFPS_orMinusOne float32 = -1
+
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -301,18 +303,25 @@ func (speccy *Spectrum48k) EmulatorLoop() {
 			return
 
 		case <-ticker.C:
-			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
-			speccy.CommandChannel <- Cmd_RenderFrame{}
+			if newFPS_orMinusOne != -1 {
+				newFPS := newFPS_orMinusOne
+				newFPS_orMinusOne = -1
 
-		case FPS_new := <-speccy.fpsCh:
-			if (FPS_new != fps) && (FPS_new > 0) {
 				if app.Verbose {
-					app.PrintfMsg("setting FPS to %f", FPS_new)
+					app.PrintfMsg("setting FPS to %f", newFPS)
 				}
 				ticker.Stop()
 				Drain(ticker)
-				ticker = time.NewTicker(int64(1e9 / FPS_new))
-				fps = FPS_new
+				ticker = time.NewTicker(int64(1e9 / newFPS))
+				fps = newFPS
+			}
+
+			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
+			speccy.CommandChannel <- Cmd_RenderFrame{}
+
+		case newFPS := <-speccy.fpsCh:
+			if (newFPS != fps) && (newFPS > 0) {
+				newFPS_orMinusOne = newFPS
 			}
 		}
 	}
@@ -370,24 +379,26 @@ func commandLoop(speccy *Spectrum48k) {
 				}()
 
 			case Cmd_SetFPS:
-				if cmd.OldFPS_orNil != nil {
-					cmd.OldFPS_orNil <- speccy.currentFPS
-				}
+				speccy.currentFPS_mutex.Lock()
+				{
+					if cmd.OldFPS_orNil != nil {
+						cmd.OldFPS_orNil <- speccy.currentFPS
+					}
 
-				newFPS := cmd.NewFPS
-				if newFPS <= 1.0 {
-					newFPS = DefaultFPS
-				}
+					newFPS := cmd.NewFPS
+					if newFPS <= 1.0 {
+						newFPS = DefaultFPS
+					}
 
-				if newFPS != speccy.currentFPS {
-					speccy.currentFPS_mutex.Lock()
-					speccy.currentFPS = newFPS
-					speccy.currentFPS_mutex.Unlock()
+					if newFPS != speccy.currentFPS {
+						speccy.currentFPS = newFPS
 
-					go func() {
-						speccy.fpsCh <- newFPS
-					}()
+						go func() {
+							speccy.fpsCh <- newFPS
+						}()
+					}
 				}
+				speccy.currentFPS_mutex.Unlock()
 
 			case Cmd_SetUlaEmulationAccuracy:
 				speccy.ula.setEmulationAccuracy(cmd.AccurateEmulation)

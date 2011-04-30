@@ -19,7 +19,9 @@ import (
 type UserInterfaceSettings interface {
 	ResizeVideo(scale2x, fullscreen bool)
 	ShowPaintedRegions(enable bool)
-	EnableSound(enable bool)
+	EnableAudio(enable bool)
+	SetAudioFreq(freq uint) // 0 means "default frequency"
+	SetAudioQuality(hqAudio bool)
 }
 
 // ==============
@@ -117,12 +119,12 @@ func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_exit(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	// Implementation note:
 	//   The following test has to be there only in cases in which something can go wrong.
-	//   For example if the user would try to execute "exit(); sound(false)" then GoSpeccy would panic.
+	//   For example if the user tried to execute "exit(); audio(false)" then GoSpeccy would panic.
 	//   An alternative way would be to actually terminate the whole program at the 1st statement - so that
-	//   "sound(false)" or whatever is not executed - alas this is somewhat problematic,
-	//   since once the script "exit(); sound(false)" runs, it cannot be stopped halfway
+	//   ["audio(false)" or whatever else] is not executed - alas this is somewhat problematic,
+	//   since once the script "exit(); audio(false)" runs, it cannot be stopped halfway
 	//   through its execution. Using "runtime.Goexit()" would solve this issue, but only partially,
-	//   since it is potentially possible for the statement "sound(false)" to be hidden in a defer statement.
+	//   since it is potentially possible for the statement "audio(false)" to be hidden in a defer statement.
 	//   So, the best option (until somebody implements a better one) is to convert the problematic commands
 	//   into statements that are doing nothing while the application is in the process of being exited.
 	if app.TerminationInProgress() || app.Terminated() {
@@ -280,8 +282,8 @@ func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	speccy.CommandChannel <- spectrum.Cmd_SetUlaEmulationAccuracy{accurateEmulation}
 }
 
-// Signature: func sound(enable bool)
-func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
+// Signature: func audio(enable bool)
+func wrapper_audio(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
@@ -289,7 +291,20 @@ func wrapper_sound(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	enable := in[0].(eval.BoolValue).Get(t)
 
 	mutex.Lock()
-	uiSettings.EnableSound(enable)
+	uiSettings.EnableAudio(enable)
+	mutex.Unlock()
+}
+
+// Signature: func audioFreq(freq uint)
+func wrapper_audioFreq(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() || app.Terminated() {
+		return
+	}
+
+	freq := uint(in[0].(eval.UintValue).Get(t))
+
+	mutex.Lock()
+	uiSettings.SetAudioFreq(freq)
 	mutex.Unlock()
 }
 
@@ -456,10 +471,17 @@ func defineFunctions(w *eval.World) {
 	}
 	{
 		var functionSignature func(bool)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_sound, functionSignature)
-		w.DefineVar("sound", funcType, funcValue)
-		help_keys.Push("sound(enable bool)")
-		help_vals.Push("Enable or disable sound")
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audio, functionSignature)
+		w.DefineVar("audio", funcType, funcValue)
+		help_keys.Push("audio(enable bool)")
+		help_vals.Push("Enable or disable audio")
+	}
+	{
+		var functionSignature func(uint)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audioFreq, functionSignature)
+		w.DefineVar("audioFreq", funcType, funcValue)
+		help_keys.Push("audioFreq(freq uint)")
+		help_vals.Push("Set audio playback frequency (0=default frequency)")
 	}
 	{
 		var functionSignature func(uint)

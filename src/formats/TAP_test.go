@@ -19,8 +19,8 @@ func (t *testSuite) testReadTAP() {
 	tap, err := NewTAP(data)
 	t.Nil(err)
 
-	headerBlock := tap.blocks.At(0).(*tapBlockHeader)
-	dataBlock := tap.blocks.At(1).(tapBlockData)
+	headerBlock := tap.blocks[0].(*tapBlockHeader)
+	dataBlock := tap.blocks[1].(tapBlockData)
 
 	t.Equal(23, int(tap.Len()))
 
@@ -44,8 +44,8 @@ func (t *testSuite) testReadTAPCodeFile() {
 	t.Nil(err)
 
 	if !t.Failed() {
-		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
-		dataBlock := tap.blocks.At(1).(tapBlockData)
+		headerBlock := tap.blocks[0].(*tapBlockHeader)
+		dataBlock := tap.blocks[1].(tapBlockData)
 
 		t.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
 		t.Equal(uint16(0), headerBlock.par1)
@@ -67,8 +67,8 @@ func (t *testSuite) testReadTAPProgramFile() {
 	t.Nil(err)
 
 	if !t.Failed() {
-		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
-		dataBlock := tap.blocks.At(1).(tapBlockData)
+		headerBlock := tap.blocks[0].(*tapBlockHeader)
+		dataBlock := tap.blocks[1].(tapBlockData)
 
 		t.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
 		t.Equal(uint16(0x8000), headerBlock.par1)
@@ -99,8 +99,8 @@ func (t *testSuite) testReadTAPWithCustomLoader() {
 	t.Nil(err)
 
 	if !t.Failed() {
-		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
-		dataBlock := tap.blocks.At(1).(tapBlockData)
+		headerBlock := tap.blocks[0].(*tapBlockHeader)
+		dataBlock := tap.blocks[1].(tapBlockData)
 
 		t.Equal(byte(TAP_FILE_PROGRAM), headerBlock.tapType)
 		t.Equal(uint16(0x0a), headerBlock.par1)
@@ -116,8 +116,8 @@ func (t *testSuite) testNewTAPFromFile() {
 	t.Nil(err)
 
 	if !t.Failed() {
-		headerBlock := tap.blocks.At(0).(*tapBlockHeader)
-		dataBlock := tap.blocks.At(1).(tapBlockData)
+		headerBlock := tap.blocks[0].(*tapBlockHeader)
+		dataBlock := tap.blocks[1].(tapBlockData)
 
 		t.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
 		t.Equal(uint16(0), headerBlock.par1)

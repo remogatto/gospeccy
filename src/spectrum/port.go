@@ -133,7 +133,7 @@ func SameBorderEvents(l1, l2 []BorderEvent) bool {
 	}
 
 	n := len(l1)
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		e1 := l1[i]
 		e2 := l2[i]
 		if (e1.TState != e2.TState) || (e1.Color != e2.Color) {
@@ -326,7 +326,7 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 		if p.speccy.ula.getBorderColor() != color {
 			p.speccy.ula.setBorderColor(color)
 
-			last := len(p.borderEvents)-1
+			last := len(p.borderEvents) - 1
 			if p.borderEvents[last].TState == p.speccy.Cpu.tstates {
 				p.borderEvents[last].Color = color
 			} else {
@@ -346,7 +346,7 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 		if p.beeperLevel != newBeeperLevel {
 			p.beeperLevel = newBeeperLevel
 
-			last := len(p.beeperEvents)-1
+			last := len(p.beeperEvents) - 1
 			if p.beeperEvents[last].TState == p.speccy.Cpu.tstates {
 				p.beeperEvents[last].Level = newBeeperLevel
 			} else {

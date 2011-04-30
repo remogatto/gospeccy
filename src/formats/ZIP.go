@@ -49,5 +49,5 @@ func ReadZipFile(filePath string) (*ZipArchive, os.Error) {
 		return nil, err
 	}
 
-	return &ZipArchive{reader}, nil
+	return &ZipArchive{&reader.Reader}, nil
 }

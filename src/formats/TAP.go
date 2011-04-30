@@ -1,7 +1,6 @@
 package formats
 
 import (
-	"container/vector"
 	"os"
 )
 
@@ -81,7 +80,7 @@ func (data tapBlockData) checksum() bool {
 
 type TAP struct {
 	data   []byte
-	blocks vector.Vector
+	blocks []tapBlock
 }
 
 func NewTAP(data []byte) (*TAP, os.Error) {
@@ -104,7 +103,7 @@ func (tap *TAP) At(pos uint) byte {
 }
 
 func (tap *TAP) GetBlock(pos int) tapBlock {
-	return tap.blocks.At(pos).(tapBlock)
+	return tap.blocks[pos]
 }
 
 func readBlock_header(data []byte) *tapBlockHeader {
@@ -167,15 +166,15 @@ func (tap *TAP) read(data []byte) os.Error {
 			return err
 		}
 
-		tap.blocks.Push(block)
+		tap.blocks = append(tap.blocks, block)
 		pos += blockLength
 	}
 
-	tap.data = make([]byte, len(data)-(tap.blocks.Len()*2))
+	tap.data = make([]byte, len(data)-(len(tap.blocks)*2))
 	c := 0
 	for _, blk := range tap.blocks {
-		for _, v := range blk.(tapBlock).Data() {
-			tap.data[c] = v
+		for _, blk_data := range blk.Data() {
+			tap.data[c] = blk_data
 			c++
 		}
 	}

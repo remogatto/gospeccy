@@ -95,6 +95,10 @@ type SDLRenderer struct {
 	cliSurfaceCh                  chan cmd_newCliSurface
 
 	sliderCh chan cmd_newSlider
+
+	audio     bool
+	audioFreq uint
+	hqAudio   bool
 }
 
 // Passed to interpreter.Init()
@@ -102,7 +106,9 @@ type DummyRenderer struct {
 	scale2x    *bool
 	fullscreen *bool
 
-	sound *bool
+	audio     *bool
+	audioFreq *uint
+	hqAudio   *bool
 }
 
 type wrapSurface struct {
@@ -205,7 +211,7 @@ func newFont(scale2x, fullscreen bool) *ttf.Font {
 	return font
 }
 
-func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRenderer {
+func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool, audio, hqAudio bool, audioFreq uint) *SDLRenderer {
 	width := width(scale2x, fullscreen)
 	height := height(scale2x, fullscreen)
 	r := &SDLRenderer{
@@ -222,6 +228,9 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool) *SDLRen
 		height:           height,
 		consoleY:         int16(height),
 		sliderCh:         make(chan cmd_newSlider),
+		audio:            audio,
+		audioFreq:        audioFreq,
+		hqAudio:          hqAudio,
 	}
 
 	composer.AddInputSurface(r.speccySurface.GetSurface(), 0, 0, r.speccySurface.UpdatedRectsCh())
@@ -269,9 +278,17 @@ func (r *SDLRenderer) ShowPaintedRegions(enable bool) {
 	composer.ShowPaintedRegions(enable)
 }
 
-func (r *SDLRenderer) EnableSound(enable bool) {
+func (r *SDLRenderer) setAudioParameters(enable, hqAudio bool, freq uint) {
+	r.audio = enable
+	r.hqAudio = hqAudio
+	r.audioFreq = freq
+
+	finished := make(chan byte)
+	speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
+	<-finished
+
 	if enable {
-		audio, err := output.NewSDLAudio(r.app)
+		audio, err := output.NewSDLAudio(r.app, freq, hqAudio)
 		if err == nil {
 			finished := make(chan byte)
 			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
@@ -282,10 +299,22 @@ func (r *SDLRenderer) EnableSound(enable bool) {
 			r.app.PrintfMsg("%s", err)
 			return
 		}
-	} else {
-		finished := make(chan byte)
-		speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
-		<-finished
+	}
+}
+
+func (r *SDLRenderer) EnableAudio(enable bool) {
+	r.setAudioParameters(enable, r.hqAudio, r.audioFreq)
+}
+
+func (r *SDLRenderer) SetAudioFreq(freq uint) {
+	if r.audioFreq != freq {
+		r.setAudioParameters(r.audio, r.hqAudio, freq)
+	}
+}
+
+func (r *SDLRenderer) SetAudioQuality(hqAudio bool) {
+	if r.hqAudio != hqAudio {
+		r.setAudioParameters(r.audio, hqAudio, r.audioFreq)
 	}
 }
 
@@ -299,9 +328,19 @@ func (r *DummyRenderer) ShowPaintedRegions(enable bool) {
 	composer.ShowPaintedRegions(enable)
 }
 
-func (r *DummyRenderer) EnableSound(enable bool) {
+func (r *DummyRenderer) EnableAudio(enable bool) {
 	// Overwrite the command-line settings
-	*r.sound = enable
+	*r.audio = enable
+}
+
+func (r *DummyRenderer) SetAudioFreq(freq uint) {
+	// Overwrite the command-line settings
+	*r.audioFreq = freq
+}
+
+func (r *DummyRenderer) SetAudioQuality(hqAudio bool) {
+	// Overwrite the command-line settings
+	*r.hqAudio = hqAudio
 }
 
 // Synchronously destroy the CLI renderer
@@ -657,7 +696,9 @@ func main() {
 	scale2x := flag.Bool("2x", false, "2x display scaler")
 	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
 	fps := flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
-	sound := flag.Bool("sound", true, "Enable or disable sound")
+	audio := flag.Bool("audio", true, "Enable or disable audio")
+	audioFreq := flag.Uint("audio-freq", output.PLAYBACK_FREQUENCY, "Audio playback frequency (units: Hz)")
+	hqAudio := flag.Bool("audio-hq", true, "Enable or disable higher-quality audio")
 	acceleratedLoad := flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
 	showPaintedRegions := flag.Bool("show-paint", false, "Show painted display regions")
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
@@ -707,7 +748,7 @@ func main() {
 	composer.ShowPaintedRegions(*showPaintedRegions)
 
 	// Use at least 2 OS threads.
-	// This helps to prevent sound buffer underflows
+	// This helps to prevent audio buffer underflows
 	// in case SDL rendering is consuming too much CPU.
 	if (os.Getenv("GOMAXPROCS") == "") && (runtime.GOMAXPROCS(-1) < 2) {
 		runtime.GOMAXPROCS(2)
@@ -737,7 +778,9 @@ func main() {
 		dummyRenderer := DummyRenderer{
 			scale2x:    scale2x,
 			fullscreen: fullscreen,
-			sound:      sound,
+			audio:      audio,
+			audioFreq:  audioFreq,
+			hqAudio:    hqAudio,
 		}
 		interpreter.Init(app, flag.Arg(0), speccy, &dummyRenderer)
 
@@ -778,7 +821,7 @@ func main() {
 
 		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
 		if <-n == 0 {
-			r = NewSDLRenderer(app, *scale2x, *fullscreen)
+			r = NewSDLRenderer(app, *scale2x, *fullscreen, *audio, *hqAudio, *audioFreq)
 			interpreter.SetUI(r)
 		}
 
@@ -787,8 +830,8 @@ func main() {
 		// Setup the audio
 		speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
 		numAudioReceivers := <-n
-		if *sound && (numAudioReceivers == 0) {
-			audio, err := output.NewSDLAudio(app)
+		if *audio && (numAudioReceivers == 0) {
+			audio, err := output.NewSDLAudio(app, *audioFreq, *hqAudio)
 			if err == nil {
 				speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 			} else {

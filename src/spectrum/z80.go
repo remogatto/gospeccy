@@ -356,11 +356,8 @@ func ternOpB(cond bool, ret1, ret2 byte) byte {
 	return ret2
 }
 
-func signExtend(v byte) int8 {
-	if v < 128 {
-		return int8(v)
-	}
-	return int8(int(v) - 256)
+func signExtend(v byte) int16 {
+	return int16(int8(v))
 }
 
 func (z80 *Z80) tapeSaveTrap() int {
@@ -393,7 +390,7 @@ func (z80 *Z80) inc(value *byte) {
 }
 
 func (z80 *Z80) jr() {
-	var jrtemp int8 = signExtend(z80.memory.readByte(z80.pc))
+	var jrtemp int16 = signExtend(z80.memory.readByte(z80.pc))
 	z80.memory.contendReadNoMreq_loop(z80.pc, 1, 5)
 	z80.pc += uint16(jrtemp)
 }
@@ -773,18 +770,16 @@ func invalidOpcode(z80 *Z80) {
 }
 
 func opcode_cb(z80 *Z80) {
-	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
-	opcode2 = z80.memory.readByteInternal(z80.pc)
+	var opcode2 byte = z80.memory.readByteInternal(z80.pc)
 	z80.pc++
 	z80.r++
 	opcodesMap[SHIFT_0xCB+int(opcode2)](z80)
 }
 
 func opcode_ed(z80 *Z80) {
-	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
-	opcode2 = z80.memory.readByteInternal(z80.pc)
+	var opcode2 byte = z80.memory.readByteInternal(z80.pc)
 	z80.pc++
 	z80.r++
 
@@ -796,20 +791,18 @@ func opcode_ed(z80 *Z80) {
 }
 
 func opcode_dd(z80 *Z80) {
-	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
-	opcode2 = z80.memory.readByteInternal(z80.pc)
+	var opcode2 byte = z80.memory.readByteInternal(z80.pc)
 	z80.pc++
 	z80.r++
 
 	switch opcode2 {
 	case 0xcb:
-		var opcode3 byte
 		z80.memory.contendRead(z80.pc, 3)
-		z80.tempaddr = uint16(int(z80.IX()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.tempaddr = z80.IX() + uint16(signExtend(z80.memory.readByteInternal(z80.pc)))
 		z80.pc++
 		z80.memory.contendRead(z80.pc, 3)
-		opcode3 = z80.memory.readByteInternal(z80.pc)
+		var opcode3 byte = z80.memory.readByteInternal(z80.pc)
 		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 2)
 		z80.pc++
 		opcodesMap[SHIFT_0xDDCB+int(opcode3)](z80)
@@ -824,20 +817,18 @@ func opcode_dd(z80 *Z80) {
 }
 
 func opcode_fd(z80 *Z80) {
-	var opcode2 byte
 	z80.memory.contendRead(z80.pc, 4)
-	opcode2 = z80.memory.readByteInternal(z80.pc)
+	var opcode2 byte = z80.memory.readByteInternal(z80.pc)
 	z80.pc++
 	z80.r++
 
 	switch opcode2 {
 	case 0xcb:
-		var opcode3 byte
 		z80.memory.contendRead(z80.pc, 3)
-		z80.tempaddr = uint16(int(z80.IY()) + int(signExtend(z80.memory.readByteInternal(z80.pc))))
+		z80.tempaddr = z80.IY() + uint16(signExtend(z80.memory.readByteInternal(z80.pc)))
 		z80.pc++
 		z80.memory.contendRead(z80.pc, 3)
-		opcode3 = z80.memory.readByteInternal(z80.pc)
+		var opcode3 byte = z80.memory.readByteInternal(z80.pc)
 		z80.memory.contendReadNoMreq_loop(z80.pc, 1, 2)
 		z80.pc++
 

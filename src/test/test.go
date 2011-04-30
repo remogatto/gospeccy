@@ -65,7 +65,17 @@ func (r *renderer) ShowPaintedRegions(enable bool) {
 }
 
 // Implement 'interpreter.UserInterfaceSettings'
-func (r *renderer) EnableSound(enable bool) {
+func (r *renderer) EnableAudio(enable bool) {
+	// Empty
+}
+
+// Implement 'interpreter.UserInterfaceSettings'
+func (r *renderer) SetAudioFreq(freq uint) {
+	// Empty
+}
+
+// Implement 'interpreter.UserInterfaceSettings'
+func (r *renderer) SetAudioQuality(hqAudio bool) {
 	// Empty
 }
 
@@ -243,7 +253,7 @@ Welcome to the GoSpeccy CLI Testing Mode
 ----------------------------------------
 `)
 	}
-	audio, err := output.NewSDLAudio(app)
+	audio, err := output.NewSDLAudio(app, output.PLAYBACK_FREQUENCY, /*hqAudio*/ true)
 	if err == nil {
 		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 	} else {

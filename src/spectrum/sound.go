@@ -13,7 +13,7 @@ type AudioData struct {
 	// The FPS (frames per second) value that applies to this AudioData object
 	FPS float32
 
-	BeeperEvents_orNil *BeeperEvent
+	BeeperEvents []BeeperEvent
 }
 
 const MAX_AUDIO_LEVEL = 3

@@ -308,6 +308,19 @@ func wrapper_audioFreq(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	mutex.Unlock()
 }
 
+// Signature: func audioHQ(enable bool)
+func wrapper_audioHQ(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	if app.TerminationInProgress() || app.Terminated() {
+		return
+	}
+
+	hqAudio := in[0].(eval.BoolValue).Get(t)
+
+	mutex.Lock()
+	uiSettings.SetAudioQuality(hqAudio)
+	mutex.Unlock()
+}
+
 // Signature: func wait(milliseconds uint)
 func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() || app.Terminated() {
@@ -482,6 +495,13 @@ func defineFunctions(w *eval.World) {
 		w.DefineVar("audioFreq", funcType, funcValue)
 		help_keys.Push("audioFreq(freq uint)")
 		help_vals.Push("Set audio playback frequency (0=default frequency)")
+	}
+	{
+		var functionSignature func(bool)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audioHQ, functionSignature)
+		w.DefineVar("audioHQ", funcType, funcValue)
+		help_keys.Push("audioHQ(enable bool)")
+		help_vals.Push("Enable or disable high-quality audio")
 	}
 	{
 		var functionSignature func(uint)

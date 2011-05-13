@@ -1,3 +1,79 @@
+0.7.0 / 2011-??-??
+
+	* Use GOAM [http://github.com/0xe2-0x9a-0x9b/goam] to build and
+	  install GoSpeccy
+
+	* Use Clingon [http://github.com/remogatto/clingon] as the
+	  command-line GUI, instead of a C readline wrapper. The readline
+	  support is gone.
+
+	* Use [http://github.com/remogatto/prettytest], instead of an internal
+	  copy of the PrettyTest package
+
+	* Improved audio resampling method which usually produces less noise
+
+	* Added command-line options: "-hostcpu-profile", "-show-paint",
+	  "-audio", "-audio-freq", "-audio-hq"
+
+	* New script functions: cmdLineArg() string, fullscreen(bool),
+	  showPaint(bool), audioFreq(uint), audioHQ(bool)
+
+	* Renamed script functions: sound(bool) --> audio(bool)
+
+	* Performance optimizations: store events events in an array (instead
+	  of storing them in a linked-list), do not try to use uninitialized
+	  Go  variables, lower number of conversions between numeric types
+	  with  different bit-lengths, do not allocate memory when computing
+	  the address of a pixel in a SDL surface, do not allocate memory when
+	  executing certain instructions (INC, DEC, POP, RET, and others),
+	  use Go arrays instead of 'container/vector/Vector', read the ROM
+	  file only once instead of reading it on each reset, faster typing
+	  of [LOAD ""] when loading from tape
+
+	* Better display refresh stability thanks to reduced memory
+	  allocation. That is: less reasons for the Go runtime to stop the
+	  program to perform memory garbage-collection.
+
+	* Make the Z80 CPU conformance test complete much faster
+
+	* Add initial support for Kempston joystick
+
+	* Automatically detect when to pause/unpause the tape.
+	  This enables loading of multi-part TAP files, and of programs
+	  that expect the audio data to contain periods of silence.
+
+	* Play 8063 pulses on all TAP headers
+
+	* Limit the maximum speedup of accelerated loading to 20
+
+	* Enable loading of the "VeraMono.ttf" font from "$HOME/.gospeccy"
+	  or from the installation directory
+
+	* Do not initialize SDL if GoSpeccy is unable to detect the type of
+	  the program on the command-line
+
+	* Changing the FPS should now result in fever sound buffer underflows
+
+	* Do not set GOMAXPROCS if there is an environment variable named
+	  'GOMAXPROCS'
+
+	* Disable writes to ZX Spectrum ROM (to the first 0x4000 bytes of
+	  memory). As a side-effect it enables "RANDOMIZE USR 0" to work
+	  correctly.
+
+	* Change the script help text so that it fits the width of the console
+	  when the scale is set to 2
+
+	* Add Go-SDL TTF version check. Print video surface resolution if in
+	  verbose mode
+
+	* Update to a newer version of Go-PerfEvents that allows GoSpeccy
+	  to potentially compile&run in a wider range of software environments
+
+	* Fix a couple of real&potential bugs, deadlocks and race conditions
+
+	* Minor updates to the README.md file
+
 0.6.1 / 2010-11-12
 ==================
 	* Add support for accelerated tape loading both in console and command-line

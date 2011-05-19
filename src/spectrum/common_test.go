@@ -102,20 +102,20 @@ package spectrum
 // 	<-speccy.systemROMLoaded
 // }
 
-// func beforeAll(t *prettytest.T) {
+// func BeforeAll(t *prettytest.T) {
 // 	StartFullEmulation()
 // }
 
-// func afterAll(t *prettytest.T) {
+// func AfterAll(t *prettytest.T) {
 // 	app.RequestExit()
 // 	<-app.HasTerminated
 // }
 
-// func before(t *prettytest.T) {
+// func Before(t *prettytest.T) {
 // 	StartFullEmulation()
 // }
 
-// func after(t *prettytest.T) {
+// func After(t *prettytest.T) {
 // 	app.RequestExit()
 // 	<-app.HasTerminated
 // }

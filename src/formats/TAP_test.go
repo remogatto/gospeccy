@@ -13,7 +13,7 @@ var (
 	tapProgramFn = path.Join(testdataDir, "hello.tap")
 )
 
-func (t *testSuite) testReadTAP() {
+func (t *testSuite) TestReadTAP() {
 	data, err := ioutil.ReadFile(tapCodeFn)
 	t.Nil(err)
 	tap, err := NewTAP(data)
@@ -31,13 +31,13 @@ func (t *testSuite) testReadTAP() {
 	t.Equal(byte(TAP_BLOCK_DATA), dataBlock[0])
 }
 
-func (t *testSuite) testReadTAPError() {
+func (t *testSuite) TestReadTAPError() {
 	_, err := NewTAP(nil)
 	t.NotNil(err)
 }
 
 // SAVE "ROM" CODE 0,2
-func (t *testSuite) testReadTAPCodeFile() {
+func (t *testSuite) TestReadTAPCodeFile() {
 	data, err := ioutil.ReadFile(tapCodeFn)
 	t.Nil(err)
 	tap, err := NewTAP(data)
@@ -60,7 +60,7 @@ func (t *testSuite) testReadTAPCodeFile() {
 
 // 10 PRINT "Hello World"
 // SAVE "HELLO"
-func (t *testSuite) testReadTAPProgramFile() {
+func (t *testSuite) TestReadTAPProgramFile() {
 	data, err := ioutil.ReadFile(tapProgramFn)
 	t.Nil(err)
 	tap, err := NewTAP(data)
@@ -92,7 +92,7 @@ func (t *testSuite) testReadTAPProgramFile() {
 	}
 }
 
-func (t *testSuite) testReadTAPWithCustomLoader() {
+func (t *testSuite) TestReadTAPWithCustomLoader() {
 	data, err := ioutil.ReadFile("testdata/fire.tap")
 	t.Nil(err)
 	tap, err := NewTAP(data)
@@ -109,7 +109,7 @@ func (t *testSuite) testReadTAPWithCustomLoader() {
 	}
 }
 
-func (t *testSuite) testNewTAPFromFile() {
+func (t *testSuite) TestNewTAPFromFile() {
 	data, err := ioutil.ReadFile(tapCodeFn)
 	t.Nil(err)
 	tap, err := NewTAP(data)
@@ -132,23 +132,23 @@ func (t *testSuite) testNewTAPFromFile() {
 
 var tap *TAP
 
-func (t *testSuite) before() {
+func (t *testSuite) Before() {
 	data, _ := ioutil.ReadFile(tapProgramFn)
 	tap, _ = NewTAP(data)
 }
 
-func (t *testSuite) testTAPAt() {
+func (t *testSuite) TestTAPAt() {
 	t.Equal(byte(0x00), tap.At(0))
 	t.Equal(byte(0xff), tap.At(0x13))
 }
 
-func (t *testSuite) testTAPGetBlock() {
+func (t *testSuite) TestTAPGetBlock() {
 	_, ok := tap.GetBlock(0).(*tapBlockHeader)
 	t.True(ok)
 	_, ok = tap.GetBlock(1).(tapBlockData)
 	t.True(ok)
 }
 
-func (t *testSuite) testTAPBlockLen() {
+func (t *testSuite) TestTAPBlockLen() {
 	t.Equal(19, tap.GetBlock(0).Len())
 }

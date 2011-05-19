@@ -10,7 +10,7 @@ type testSuite struct {
 	prettytest.Suite
 }
 
-func (t *testSuite) testReadProgram_SNA() {
+func (t *testSuite) TestReadProgram_SNA() {
 	program, err := ReadProgram("testdata/fire.sna")
 	_, ok := program.(Snapshot)
 
@@ -18,7 +18,7 @@ func (t *testSuite) testReadProgram_SNA() {
 	t.True(ok)
 }
 
-func (t *testSuite) testReadProgram_Z80() {
+func (t *testSuite) TestReadProgram_Z80() {
 	program, err := ReadProgram("testdata/fire.z80")
 	_, ok := program.(Snapshot)
 
@@ -26,7 +26,7 @@ func (t *testSuite) testReadProgram_Z80() {
 	t.True(ok)
 }
 
-func (t *testSuite) testReadProgram_TAP() {
+func (t *testSuite) TestReadProgram_TAP() {
 	program, err := ReadProgram("testdata/fire.tap")
 	_, ok := program.(*TAP)
 
@@ -34,7 +34,7 @@ func (t *testSuite) testReadProgram_TAP() {
 	t.True(ok)
 }
 
-func (t *testSuite) testReadProgram_SNA_ZIP() {
+func (t *testSuite) TestReadProgram_SNA_ZIP() {
 	program, err := ReadProgram("testdata/fire.sna.zip")
 	_, ok := program.(Snapshot)
 
@@ -42,7 +42,7 @@ func (t *testSuite) testReadProgram_SNA_ZIP() {
 	t.True(ok)
 }
 
-func (t *testSuite) testReadProgram_ZIP_ambiguous() {
+func (t *testSuite) TestReadProgram_ZIP_ambiguous() {
 	_, err := ReadProgram("testdata/ambiguous.zip")
 	t.NotNil(err)
 	t.True(strings.Contains(err.String(), "multiple"))

@@ -12,7 +12,7 @@ import (
 
 // System ROM
 
-func (t *testSuite) should_load_system_ROM() {
+func (t *testSuite) Should_load_system_ROM() {
 	romLoaded := make(chan (<-chan bool))
 	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
 	<-(<-romLoaded)
@@ -22,14 +22,14 @@ func (t *testSuite) should_load_system_ROM() {
 
 // Keyboard
 
-func (t *testSuite) should_respond_to_keypress() {
+func (t *testSuite) Should_respond_to_keypress() {
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_R)
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_Enter)
 
 	t.True(screenEqualTo("testdata/key_press_1_ok.sna"))
 }
 
-func (t *testSuite) should_respond_to_keypress_sequence() {
+func (t *testSuite) Should_respond_to_keypress_sequence() {
 	k := speccy.Keyboard
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_P)
 
@@ -58,7 +58,7 @@ func (t *testSuite) should_respond_to_keypress_sequence() {
 
 // // Tapedrive
 
-func (t *testSuite) should_load_tapes_using_ROM_routine() {
+func (t *testSuite) Should_load_tapes_using_ROM_routine() {
 	filename := "testdata/hello.tap"
 	data, err := ioutil.ReadFile(filename)
 	t.Nil(err)
@@ -79,7 +79,7 @@ func (t *testSuite) should_load_tapes_using_ROM_routine() {
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func (t *testSuite) should_support_accelerated_loading() {
+func (t *testSuite) Should_support_accelerated_loading() {
 	filename := "testdata/hello.tap"
 	data, err := ioutil.ReadFile(filename)
 	t.Nil(err)
@@ -106,7 +106,7 @@ func (t *testSuite) should_support_accelerated_loading() {
 
 // // Formats
 
-func (t *testSuite) should_support_SNA_format() {
+func (t *testSuite) Should_support_SNA_format() {
 	filename := "testdata/hello.sna"
 	snapshot, err := formats.ReadProgram(filename)
 	t.Nil(err)
@@ -118,7 +118,7 @@ func (t *testSuite) should_support_SNA_format() {
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func (t *testSuite) should_support_Z80_format() {
+func (t *testSuite) Should_support_Z80_format() {
 	filename := "testdata/hello.z80"
 	snapshot, err := formats.ReadProgram(filename)
 	t.Nil(err)
@@ -130,7 +130,7 @@ func (t *testSuite) should_support_Z80_format() {
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
-func (t *testSuite) should_support_TAP_format() {
+func (t *testSuite) Should_support_TAP_format() {
 	filename := "testdata/hello.tap"
 	data, err := ioutil.ReadFile(filename)
 	t.Nil(err)

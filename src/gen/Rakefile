@@ -25,24 +25,34 @@ require 'erb'
 
 CLOBBER.concat(['z80_gen.go', 'opcodes_gen.go'])
 
-file "opcodes_gen.go" => ["z80.pl", "opcodes_gen.go.erb"] do
+file "z80" => ["z80.go"] do
+  puts "Compile z80.go"
+  `make z80`
+end
+
+file "opcodes_gen.go" => ["z80", "opcodes_gen.go.erb"] do
   template = ERB.new(File.read('opcodes_gen.go.erb'))
 
-  opcodes_base = `./z80.pl opcodes_base.dat`
-  opcodes_cb = `./z80.pl opcodes_cb.dat`
-  opcodes_ed = `./z80.pl opcodes_ed.dat`
-  opcodes_dd = opcodes_fd = `./z80.pl opcodes_ddfd.dat`
-  opcodes_ddfdcb = `./z80.pl opcodes_ddfdcb.dat`
+  opcodes_base = `./z80 opcodes_base.dat`
+  opcodes_cb = `./z80 opcodes_cb.dat`
+  opcodes_ed = `./z80 opcodes_ed.dat`
+  opcodes_dd = opcodes_fd = `./z80 opcodes_ddfd.dat`
+  opcodes_ddfdcb = `./z80 opcodes_ddfdcb.dat`
 
   puts "Write opcodes_gen.go"
   File.open("opcodes_gen.go", 'w') { |f| f << template.result(binding) }
+
+  puts "gofmt opcodes_gen.go"
   `gofmt -w opcodes_gen.go`
 end
 
 file "z80_gen.go" => ["z80_gen.go.erb"] do
   template = ERB.new(File.read('z80_gen.go.erb'))
+
   puts "Write z80_gen.go"
   File.open("z80_gen.go", 'w') { |f| f << template.result(binding) } 
+
+  puts "gofmt z80_gen.go"
   `gofmt -w z80_gen.go`
 end
 

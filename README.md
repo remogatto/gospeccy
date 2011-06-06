@@ -211,7 +211,8 @@ Manic Miner running on GoSpeccy.
 
 * andrea.fazzi@alcacoop.it
 * http://twitter.com/remogatto
-* http://freecella.blogspot.com
+* http://www.facebook.com/remochat
+* http://remogatto.github.com/
 
 # License
 

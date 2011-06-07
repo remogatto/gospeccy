@@ -74,6 +74,7 @@ type TapeDrive struct {
 	state, mask                           byte
 	accelerating                          bool
 	fpsBeforeAcceleration                 float32
+	notifyCpuLoadCompleted                bool
 	loadComplete                          chan bool
 
 	mutex sync.RWMutex
@@ -251,9 +252,7 @@ func (tapeDrive *TapeDrive) doPlay() (endOfBlock bool) {
 			tapeDrive.state = TAPE_DRIVE_STOP
 
 			tapeDrive.speccy.Cpu.readFromTape = false
-			if tapeDrive.NotifyLoadComplete {
-				tapeDrive.loadComplete <- true
-			}
+			tapeDrive.notifyCpuLoadCompleted = true
 		}
 
 	case TAPE_DRIVE_PAUSE_STOP:

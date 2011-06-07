@@ -31,7 +31,6 @@ import (
 	"spectrum/formats"
 )
 
-
 /* The flags */
 
 const FLAG_C = 0x01
@@ -680,6 +679,11 @@ func (z80 *Z80) doOpcodes() {
 	// Main instruction emulation loop
 	{
 		var readFromTape bool = (z80.readFromTape && (z80.shouldPlayTheTape > 0) && (z80.tapeDrive_orNil != nil))
+
+		if z80.tapeDrive_orNil.NotifyLoadComplete && z80.tapeDrive_orNil.notifyCpuLoadCompleted && z80.tapeDrive_orNil != nil {
+			z80.tapeDrive_orNil.notifyCpuLoadCompleted = false
+			z80.tapeDrive_orNil.loadComplete <- true
+		}
 
 		if !readFromTape {
 			if z80.tapeDrive_orNil != nil {

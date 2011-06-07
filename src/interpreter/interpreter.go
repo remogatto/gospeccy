@@ -138,7 +138,9 @@ func wrapper_reset(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() || app.Terminated() {
 		return
 	}
-	speccy.CommandChannel <- spectrum.Cmd_Reset{nil}
+	romLoaded := make(chan (<-chan bool))
+	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+	<-(<-romLoaded)
 }
 
 // Signature: func addSearchPath(path string)

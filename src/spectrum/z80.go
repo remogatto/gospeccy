@@ -680,7 +680,7 @@ func (z80 *Z80) doOpcodes() {
 	{
 		var readFromTape bool = (z80.readFromTape && (z80.shouldPlayTheTape > 0) && (z80.tapeDrive_orNil != nil))
 
-		if z80.tapeDrive_orNil.NotifyLoadComplete && z80.tapeDrive_orNil.notifyCpuLoadCompleted && z80.tapeDrive_orNil != nil {
+		if z80.tapeDrive_orNil != nil && z80.tapeDrive_orNil.NotifyLoadComplete && z80.tapeDrive_orNil.notifyCpuLoadCompleted {
 			z80.tapeDrive_orNil.notifyCpuLoadCompleted = false
 			z80.tapeDrive_orNil.loadComplete <- true
 		}

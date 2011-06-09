@@ -177,7 +177,7 @@ func (t *testSuite) BeforeAll() {
 		sdl.Quit()
 	}
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
- 	StartFullEmulation(false)
+	StartFullEmulation(false)
 }
 
 func (t *testSuite) AfterAll() {
@@ -220,7 +220,7 @@ func (t *cliTestSuite) BeforeAll() {
 }
 
 func (t *cliTestSuite) AfterAll() {
-//	font.Close()
+	//	font.Close()
 	t.t.AfterAll()
 }
 

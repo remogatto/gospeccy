@@ -64,7 +64,7 @@ func (t *cliTestSuite) Should_print_help() {
 func (t *cliTestSuite) Should_allow_printing_strings() {
 	console.PutCommand(fmt.Sprintf("puts(\"%s\")", "Hello World!"))
 	r, _ := regexp.Compile("Hello World!")
-	t.Equal(2, len(r.FindAllString(console.String(), -1)))
+	t.True(len(r.FindAllString(console.String(), -1)) > 1)
 }
 
 func (t *cliTestSuite) Should_allow_taking_screenshots() {

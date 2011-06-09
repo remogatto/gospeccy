@@ -25,7 +25,6 @@ func (t *testSuite) Should_load_system_ROM() {
 func (t *testSuite) Should_respond_to_keypress() {
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_R)
 	<-speccy.Keyboard.KeyPress(spectrum.KEY_Enter)
-
 	t.True(screenEqualTo("testdata/key_press_1_ok.sna"))
 }
 

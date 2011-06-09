@@ -177,20 +177,23 @@ func (t *testSuite) BeforeAll() {
 		sdl.Quit()
 	}
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
+ 	StartFullEmulation(false)
 }
 
 func (t *testSuite) AfterAll() {
+	app.RequestExit()
+	<-app.HasTerminated
 	sdl.Quit()
 }
 
 func (t *testSuite) Before() {
-	StartFullEmulation(false)
+	// Reset
+	romLoaded := make(chan (<-chan bool))
+	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
+	<-(<-romLoaded)
 }
 
-func (t *testSuite) After() {
-	app.RequestExit()
-	<-app.HasTerminated
-}
+func (t *testSuite) After() {}
 
 type cliTestSuite struct {
 	prettytest.Suite
@@ -198,7 +201,13 @@ type cliTestSuite struct {
 }
 
 func (t *cliTestSuite) BeforeAll() {
-	t.t.BeforeAll()
+	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
+		app.PrintfMsg("%s", sdl.GetError())
+		app.RequestExit()
+		<-app.HasTerminated
+		sdl.Quit()
+	}
+	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
 	if ttf.Init() != 0 {
 		panic(sdl.GetError())
 	}
@@ -207,10 +216,11 @@ func (t *cliTestSuite) BeforeAll() {
 	if font == nil {
 		panic(sdl.GetError())
 	}
+	StartFullEmulation(true)
 }
 
 func (t *cliTestSuite) AfterAll() {
-	font.Close()
+//	font.Close()
 	t.t.AfterAll()
 }
 
@@ -219,7 +229,7 @@ func (t *cliTestSuite) After() {
 }
 
 func (t *cliTestSuite) Before() {
-	StartFullEmulation(true)
+	t.t.Before()
 }
 
 func StartFullEmulation(cli bool) {

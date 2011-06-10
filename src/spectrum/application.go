@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"os"
 	"os/signal"
 	"runtime"
 )
@@ -389,7 +390,7 @@ type SignalHandler interface {
 	//
 	// A single signal is passed to all installed signal handlers.
 	// The [order in which this function is called in respect to other handlers] is unspecified.
-	HandleSignal(signal signal.Signal)
+	HandleSignal(signal os.Signal)
 }
 
 // Actually, this is a set

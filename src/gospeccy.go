@@ -35,9 +35,9 @@ import (
 	"fmt"
 	"flag"
 	"os"
-	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"syscall"
 	"clingon"
 )
 
@@ -627,11 +627,11 @@ type handler_SIGTERM struct {
 	app *spectrum.Application
 }
 
-func (h *handler_SIGTERM) HandleSignal(s signal.Signal) {
+func (h *handler_SIGTERM) HandleSignal(s os.Signal) {
 	switch ss := s.(type) {
-	case signal.UnixSignal:
+	case os.UnixSignal:
 		switch ss {
-		case signal.SIGTERM, signal.SIGINT:
+		case syscall.SIGTERM, syscall.SIGINT:
 			if h.app.Verbose {
 				h.app.PrintfMsg("%v", ss)
 			}

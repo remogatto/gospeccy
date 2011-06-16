@@ -32,8 +32,9 @@ func knownType(filename string) bool {
 	return false
 }
 
+var query_regexp = regexp.MustCompile("ftp://([a-zA-Z0-9\\-\\/\\.\\?_]+)")
+
 func query(app *spectrum.Application, q string) []string {
-	re, _ := regexp.Compile("ftp://([a-zA-Z0-9\\-\\/\\.\\?_]+)")
 	client := new(http.Client)
 	query :=  queryBaseURL + q
 	if app.Verbose {
@@ -44,14 +45,14 @@ func query(app *spectrum.Application, q string) []string {
 	if err != nil {
 		panic(err)
 	}
-	body, _ := ioutil.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		panic(err)
 	}
 	if app.Verbose {
 		app.PrintfMsg(response.Status)
 	}
-	uris := re.FindAllString(string(body), -1)
+	uris := query_regexp.FindAllString(string(body), -1)
 	matches := make([]string, 0)
 	for _, uri := range uris {
 		if knownType(path.Base(uri)) {
@@ -63,40 +64,69 @@ func query(app *spectrum.Application, q string) []string {
 	return matches
 }
 
-func choice(app *spectrum.Application, matches []string) (url string) {
-	fmt.Print("Please select a number (press ENTER to exit): ")
+func choice(app *spectrum.Application, matches []string) string {
+	app.PrintfMsg("")
+	fmt.Printf("Select a number from the above list (press ENTER to exit GoSpeccy): ")
 	in := bufio.NewReader(os.Stdin)
-        if input, err := in.ReadString('\n'); err != nil {
+
+        input, err := in.ReadString('\n')
+	if err != nil {
                 panic(err)
-	} else if input == "\n" {
+	}
+
+	input = strings.TrimSpace(input)
+	if input == "" {
 		os.Exit(0)
-	} else {
-		if id, err := strconv.Atoi(strings.TrimRight(input, "\n")); err != nil {
-			panic(err)
-		} else {
-			if app.Verbose {
-				app.PrintfMsg("You've selected %s", matches[id])
-			}
-			url = matches[id]
-		}
+	}
+
+	id, err := strconv.Atoi(strings.TrimRight(input, "\n"))
+	if err != nil {
+		panic(err)
+	}
+	if (id < 0) || (id >= len(matches)) {
+		panic(os.NewError("Invalid selection"))
+	}
+
+	url := matches[id]
+	if app.Verbose {
+		app.PrintfMsg("You've selected %s", url)
 	}
 	return url
 }
 
 func get(app *spectrum.Application, url string) string {
 	filename := path.Base(url)
-	userDirPath := path.Join(spectrum.DefaultUserDir, "zip", filename)
+	dir := path.Join(spectrum.DefaultUserDir, "zip")
+	filePath := path.Join(dir, filename)
 	ftpURL := url[6:len(url)]
+
 	if app.Verbose {
 		ftp.Log = true
 	}
-	if f, err := os.Create(userDirPath); err != nil {
+
+	if err := os.MkdirAll(dir, 0777); err != nil {
 		panic(err)
-	} else {
-		if err = ftp.Get(ftpURL, f); err != nil {
-			panic(err)
-		}
 	}
-	return userDirPath
+
+	// Already downloaded in the past ?
+	if _, err := os.Stat(filePath); err == nil {
+		app.PrintfMsg("Not downloading, file " + filePath + " already exists");
+		return filePath
+	}
+
+	// The actual download
+	app.PrintfMsg("Downloading into " + filePath);
+	f, err := os.Create(filePath)
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+	if err = ftp.Get(ftpURL, f); err != nil {
+		os.Remove(filePath)
+		panic(err)
+	}
+
+	return filePath
 }
 

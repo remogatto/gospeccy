@@ -704,7 +704,7 @@ func main() {
 	verbose := flag.Bool("verbose", false, "Enable debugging messages")
 	verboseInput := flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
 	cpuProfile := flag.String("hostcpu-profile", "", "Write host-CPU profile to the specified file (for 'pprof')")
-
+	download := flag.String("download", "", "Download from ftp.worldofspectrum.org; you must provide a query regex")
 	{
 		flag.Usage = func() {
 			fmt.Fprintf(os.Stderr, "GoSpeccy - A ZX Spectrum 48k Emulator written in Go\n\n")
@@ -802,6 +802,17 @@ func main() {
 			app.PrintfMsg("read %s: %s", file, err)
 			app.RequestExit()
 			goto quit
+		}
+	} else if *download != "" {
+		if url := choice(app, query(app, *download)); url != "" {
+			file := get(app, url)
+			var err os.Error
+			program_orNil, err = formats.ReadProgram(file)
+			if err != nil {
+				app.PrintfMsg("read %s: %s", file, err)
+				app.RequestExit()
+				goto quit
+			}
 		}
 	}
 

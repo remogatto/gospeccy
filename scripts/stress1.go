@@ -3,13 +3,13 @@
 func stress1(verbose bool) {
 	for i:=0; i<20; i++ {
 		if verbose {
-			println("Setting scale to 1")
+			puts("Setting scale to 1\n")
 		}
 		scale(1)
 		wait(10)
 
 		if verbose {
-			println("Setting scale to 2")
+			puts("Setting scale to 2\n")
 		}
 		scale(2)
 		wait(10)

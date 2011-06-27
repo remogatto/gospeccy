@@ -32,11 +32,14 @@ import (
 	"spectrum/output"
 	"⚛sdl"
 	"⚛sdl/ttf"
+	"bufio"
 	"fmt"
 	"flag"
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
+	"strings"
 	"syscall"
 	"clingon"
 )
@@ -459,7 +462,7 @@ func (r *SDLRenderer) loop() {
 }
 
 func initCLI() {
-	cli = clingon.NewConsole(&interpreter.Interpreter{})
+	cli = clingon.NewConsole(interpreter.GetInterpreter())
 	cli.Print(`
 GoSpeccy Command Line Interface (CLI)
 -------------------------------------
@@ -690,21 +693,88 @@ func initSDLSubSystems(app *spectrum.Application) os.Error {
 	return nil
 }
 
+
+func ftpget_choice(app *spectrum.Application, matches []string) (string, os.Error) {
+	switch len(matches) {
+	case 0:
+		return "", nil
+
+	case 1:
+		return matches[0], nil
+	}
+
+	app.PrintfMsg("")
+	fmt.Printf("Select a number from the above list (press ENTER to exit GoSpeccy): ")
+	in := bufio.NewReader(os.Stdin)
+
+	input, err := in.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", nil
+	}
+
+	id, err := strconv.Atoi(input)
+	if err != nil {
+		return "", err
+	}
+	if (id < 0) || (id >= len(matches)) {
+		return "", os.NewError("Invalid selection")
+	}
+
+	url := matches[id]
+	if app.Verbose {
+		app.PrintfMsg("You've selected %s", url)
+	}
+	return url, nil
+}
+
+
+func wait(app *spectrum.Application) {
+	<-app.HasTerminated
+	if SDL_initialized {
+		sdl.Quit()
+	}
+
+	if app.Verbose {
+		app.PrintfMsg("GC: %d garbage collections, %f ms total pause time",
+			runtime.MemStats.NumGC, float64(runtime.MemStats.PauseTotalNs)/1e6)
+	}
+
+	// Stop host-CPU profiling
+	if *cpuProfile != "" {
+		pprof.StopCPUProfile() // flushes profile to disk
+	}
+}
+
+func exit(app *spectrum.Application) {
+	app.RequestExit()
+	wait(app)
+}
+
+var (
+	help               = flag.Bool("help", false, "Show usage")
+	scale2x            = flag.Bool("2x", false, "2x display scaler")
+	fullscreen         = flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
+	fps                = flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
+	audio              = flag.Bool("audio", true, "Enable or disable audio")
+	audioFreq          = flag.Uint("audio-freq", output.PLAYBACK_FREQUENCY, "Audio playback frequency (units: Hz)")
+	hqAudio            = flag.Bool("audio-hq", true, "Enable or disable higher-quality audio")
+	acceleratedLoad    = flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
+	showPaintedRegions = flag.Bool("show-paint", false, "Show painted display regions")
+	verbose            = flag.Bool("verbose", false, "Enable debugging messages")
+	verboseInput       = flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
+	cpuProfile         = flag.String("hostcpu-profile", "", "Write host-CPU profile to the specified file (for 'pprof')")
+	wos                = flag.String("wos", "", "Download from WorldOfSpectrum; you must provide a query regex (ex: -wos=jetsetwilly)")
+
+	SDL_initialized = false
+)
+
 func main() {
 	// Handle options
-	help := flag.Bool("help", false, "Show usage")
-	scale2x := flag.Bool("2x", false, "2x display scaler")
-	fullscreen := flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
-	fps := flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
-	audio := flag.Bool("audio", true, "Enable or disable audio")
-	audioFreq := flag.Uint("audio-freq", output.PLAYBACK_FREQUENCY, "Audio playback frequency (units: Hz)")
-	hqAudio := flag.Bool("audio-hq", true, "Enable or disable higher-quality audio")
-	acceleratedLoad := flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
-	showPaintedRegions := flag.Bool("show-paint", false, "Show painted display regions")
-	verbose := flag.Bool("verbose", false, "Enable debugging messages")
-	verboseInput := flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
-	cpuProfile := flag.String("hostcpu-profile", "", "Write host-CPU profile to the specified file (for 'pprof')")
-	wos := flag.String("wos", "", "Download from WorldOfSpectrum; you must provide a query regex (ex: -wos=jetsetwilly")
 	{
 		flag.Usage = func() {
 			fmt.Fprintf(os.Stderr, "GoSpeccy - A ZX Spectrum 48k Emulator written in Go\n\n")
@@ -763,12 +833,9 @@ func main() {
 		spectrum.InstallSignalHandler(&handler)
 	}
 
-	SDL_initialized := false
-
 	if err := initEmulationCore(app, *acceleratedLoad); err != nil {
-		app.PrintfMsg("%s", err)
-		app.RequestExit()
-		goto quit
+		exit(app)
+		return
 	}
 
 	// Run startup scripts.
@@ -785,7 +852,8 @@ func main() {
 		interpreter.Init(app, flag.Arg(0), speccy, &dummyRenderer)
 
 		if app.TerminationInProgress() || app.Terminated() {
-			goto quit
+			exit(app)
+			return
 		}
 	}
 
@@ -799,28 +867,70 @@ func main() {
 		var err os.Error
 		program_orNil, err = formats.ReadProgram(path)
 		if err != nil {
-			app.PrintfMsg("read %s: %s", file, err)
-			app.RequestExit()
-			goto quit
+			app.PrintfMsg("%s", err)
+			exit(app)
+			return
 		}
 	} else if *wos != "" {
-		if url := choice(app, query(app, *wos)); url != "" {
-			file := get(app, url)
-			var err os.Error
-			program_orNil, err = formats.ReadProgram(file)
-			if err != nil {
-				app.PrintfMsg("read %s: %s", file, err)
-				app.RequestExit()
-				goto quit
+		var records []spectrum.WosRecord
+		records, err := spectrum.WosQuery(app, *wos)
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			exit(app)
+			return
+		}
+
+		var urls []string
+		for _, record := range records {
+			var freeware bool = (strings.ToLower(record.Publication) == "freeware")
+
+			for _, url := range record.FtpFiles {
+				urls = append(urls, url)
+				if freeware {
+					app.PrintfMsg("[%d] - [Freeware] %s", len(urls)-1, url)
+				} else {
+					app.PrintfMsg("[%d] - [Not freeware] %s", len(urls)-1, url)
+				}
 			}
+		}
+		if len(urls) != 1 {
+			app.PrintfMsg("%d matches", len(urls))
+		} else {
+			app.PrintfMsg("1 match")
+		}
+
+		url, err := ftpget_choice(app, urls)
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			exit(app)
+			return
+		}
+
+		if url != "" {
+			filePath, err := spectrum.WosGet(app, os.Stdout, url)
+			if err != nil {
+				app.PrintfMsg("get %s: %s", url, err)
+				exit(app)
+				return
+			}
+
+			program_orNil, err = formats.ReadProgram(filePath)
+			if err != nil {
+				app.PrintfMsg("%s", err)
+				exit(app)
+				return
+			}
+		} else {
+			exit(app)
+			return
 		}
 	}
 
 	// SDL subsystems init
 	if err := initSDLSubSystems(app); err != nil {
 		app.PrintfMsg("%s", err)
-		app.RequestExit()
-		goto quit
+		exit(app)
+		return
 	} else {
 		SDL_initialized = true
 	}
@@ -876,8 +986,8 @@ func main() {
 		err := <-errChan
 		if err != nil {
 			app.PrintfMsg("%s", err)
-			app.RequestExit()
-			goto quit
+			exit(app)
+			return
 		}
 	}
 
@@ -886,19 +996,5 @@ func main() {
 	hint += "      Input an empty line in the console to display available commands.\n"
 	fmt.Print(hint)
 
-quit:
-	<-app.HasTerminated
-	if SDL_initialized {
-		sdl.Quit()
-	}
-
-	if app.Verbose {
-		app.PrintfMsg("GC: %d garbage collections, %f ms total pause time",
-			runtime.MemStats.NumGC, float64(runtime.MemStats.PauseTotalNs)/1e6)
-	}
-
-	// Stop host-CPU profiling
-	if *cpuProfile != "" {
-		pprof.StopCPUProfile() // flushes profile to disk
-	}
+	wait(app)
 }

@@ -254,7 +254,7 @@ func StartFullEmulation(cli bool) {
 		r.consoleY = int16(r.height / 2)
 		interpreter.IgnoreStartupScript = true
 		interpreter.Init(app, "", speccy, r)
-		console = clingon.NewConsole(&interpreter.Interpreter{})
+		console = clingon.NewConsole(interpreter.GetInterpreter())
 		console.SetRenderer(cliRenderer)
 		console.SetPrompt("gospeccy> ")
 

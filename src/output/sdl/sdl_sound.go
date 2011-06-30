@@ -5,13 +5,13 @@
  * except for usages in immoral contexts.
  */
 
-package output
+package sdl
 
 import (
 	"fmt"
 	"math"
 	"os"
-	"⚛sdl"
+	sdllib "⚛sdl"
 	sdl_audio "⚛sdl/audio"
 	"spectrum"
 	"sync"
@@ -223,7 +223,7 @@ func NewSDLAudio(app *spectrum.Application, playbackFrequency uint, hqAudio bool
 		spec.Channels = 1
 		spec.Samples = uint16(2048 * float32(playbackFrequency) / PLAYBACK_FREQUENCY)
 		if sdl_audio.OpenAudio(&spec, &spec) != 0 {
-			return nil, os.NewError(sdl.GetError())
+			return nil, os.NewError(sdllib.GetError())
 		}
 		if app.Verbose {
 			app.PrintfMsg("%#v", spec)

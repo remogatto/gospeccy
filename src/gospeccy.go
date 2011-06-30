@@ -29,9 +29,6 @@ import (
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
-	"spectrum/output"
-	"⚛sdl"
-	"⚛sdl/ttf"
 	"bufio"
 	"fmt"
 	"flag"
@@ -42,6 +39,10 @@ import (
 	"strings"
 	"syscall"
 	"clingon"
+	"spectrum/output/sdl"
+	"spectrum/output/websocket"
+	sdllib "⚛sdl"
+	ttflib "⚛sdl/ttf"
 )
 
 const DEFAULT_JOYSTICK_ID = 0
@@ -56,14 +57,14 @@ var (
 	// The application renderer
 	r *SDLRenderer
 
-	joystick *sdl.Joystick
+	joystick *sdllib.Joystick
 
-	composer *output.SDLSurfaceComposer
+	composer *sdl.SDLSurfaceComposer
 )
 
 type SDLSurfaceAccessor interface {
-	UpdatedRectsCh() <-chan []sdl.Rect
-	GetSurface() *sdl.Surface
+	UpdatedRectsCh() <-chan []sdllib.Rect
+	GetSurface() *sdllib.Surface
 }
 
 type cmd_newSurface struct {
@@ -115,14 +116,14 @@ type DummyRenderer struct {
 }
 
 type wrapSurface struct {
-	surface *sdl.Surface
+	surface *sdllib.Surface
 }
 
-func (s *wrapSurface) GetSurface() *sdl.Surface {
+func (s *wrapSurface) GetSurface() *sdllib.Surface {
 	return s.surface
 }
 
-func (s *wrapSurface) UpdatedRectsCh() <-chan []sdl.Rect {
+func (s *wrapSurface) UpdatedRectsCh() <-chan []sdllib.Rect {
 	return nil
 }
 
@@ -150,16 +151,16 @@ func newAppSurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfa
 	var sdlMode uint32
 	if fullscreen {
 		scale2x = true
-		sdlMode = sdl.FULLSCREEN
-		sdl.ShowCursor(sdl.DISABLE)
+		sdlMode = sdllib.FULLSCREEN
+		sdllib.ShowCursor(sdllib.DISABLE)
 	} else {
-		sdl.ShowCursor(sdl.ENABLE)
-		sdlMode = sdl.SWSURFACE
+		sdllib.ShowCursor(sdllib.ENABLE)
+		sdlMode = sdllib.SWSURFACE
 	}
 
 	<-composer.ReplaceOutputSurface(nil)
 
-	surface := sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)
+	surface := sdllib.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)
 	if app.Verbose {
 		app.PrintfMsg("video surface resolution: %dx%d", surface.W, surface.H)
 	}
@@ -175,11 +176,11 @@ func newSpeccySurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSu
 		scale2x = true
 	}
 	if scale2x {
-		sdlScreen := output.NewSDLScreen2x(app)
+		sdlScreen := sdl.NewSDLScreen2x(app)
 		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 		speccySurface = sdlScreen
 	} else {
-		sdlScreen := output.NewSDLScreen(app)
+		sdlScreen := sdl.NewSDLScreen(app)
 		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 		speccySurface = sdlScreen
 	}
@@ -188,28 +189,28 @@ func newSpeccySurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSu
 
 func newCLISurface(scale2x, fullscreen bool) *clingon.SDLRenderer {
 	cliSurface := clingon.NewSDLRenderer(
-		sdl.CreateRGBSurface(
-			sdl.SRCALPHA,
+		sdllib.CreateRGBSurface(
+			sdllib.SRCALPHA,
 			width(scale2x, fullscreen),
 			height(scale2x, fullscreen)/2, 32, 0, 0, 0, 0),
 		newFont(scale2x, fullscreen),
 	)
-	cliSurface.GetSurface().SetAlpha(sdl.SRCALPHA, 0xdd)
+	cliSurface.GetSurface().SetAlpha(sdllib.SRCALPHA, 0xdd)
 	return cliSurface
 }
 
-func newFont(scale2x, fullscreen bool) *ttf.Font {
-	var font *ttf.Font
+func newFont(scale2x, fullscreen bool) *ttflib.Font {
+	var font *ttflib.Font
 	if fullscreen {
 		scale2x = true
 	}
 	if scale2x {
-		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 12)
+		font = ttflib.OpenFont(spectrum.FontPath("VeraMono.ttf"), 12)
 	} else {
-		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 10)
+		font = ttflib.OpenFont(spectrum.FontPath("VeraMono.ttf"), 10)
 	}
 	if font == nil {
-		panic(sdl.GetError())
+		panic(sdllib.GetError())
 	}
 	return font
 }
@@ -236,7 +237,9 @@ func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool, audio, 
 		hqAudio:          hqAudio,
 	}
 
-	composer.AddInputSurface(r.speccySurface.GetSurface(), 0, 0, r.speccySurface.UpdatedRectsCh())
+	if r.speccySurface != nil {
+		composer.AddInputSurface(r.speccySurface.GetSurface(), 0, 0, r.speccySurface.UpdatedRectsCh())
+	}
 
 	go r.loop()
 	return r
@@ -291,7 +294,7 @@ func (r *SDLRenderer) setAudioParameters(enable, hqAudio bool, freq uint) {
 	<-finished
 
 	if enable {
-		audio, err := output.NewSDLAudio(r.app, freq, hqAudio)
+		audio, err := sdl.NewSDLAudio(r.app, freq, hqAudio)
 		if err == nil {
 			finished := make(chan byte)
 			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
@@ -493,15 +496,15 @@ func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verbo
 			evtLoop.Terminate <- 0
 			return
 
-		case event := <-sdl.Events:
+		case event := <-sdllib.Events:
 			switch e := event.(type) {
-			case sdl.QuitEvent:
+			case sdllib.QuitEvent:
 				if app.Verbose {
 					app.PrintfMsg("SDL quit -> request[exit the application]")
 				}
 				app.RequestExit()
 
-			case sdl.JoyAxisEvent:
+			case sdllib.JoyAxisEvent:
 				if verboseInput {
 					app.PrintfMsg("[Joystick] Axis: %d, Value: %d", e.Axis, e.Value)
 				}
@@ -525,7 +528,7 @@ func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verbo
 					}
 				}
 
-			case sdl.JoyButtonEvent:
+			case sdllib.JoyButtonEvent:
 				if verboseInput {
 					app.PrintfMsg("[Joystick] Button: %d, State: %d", e.Button, e.State)
 				}
@@ -537,8 +540,8 @@ func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verbo
 					}
 				}
 
-			case sdl.KeyboardEvent:
-				keyName := sdl.GetKeyName(sdl.Key(e.Keysym.Sym))
+			case sdllib.KeyboardEvent:
+				keyName := sdllib.GetKeyName(sdllib.Key(e.Keysym.Sym))
 
 				if verboseInput {
 					app.PrintfMsg("\n")
@@ -547,13 +550,13 @@ func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verbo
 					app.PrintfMsg("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", e.Keysym.Scancode, e.Keysym.Sym, e.Keysym.Mod, e.Keysym.Unicode)
 				}
 
-				if (keyName == "escape") && (e.Type == sdl.KEYDOWN) {
+				if (keyName == "escape") && (e.Type == sdllib.KEYDOWN) {
 					if app.Verbose {
 						app.PrintfMsg("escape key -> request[exit the application]")
 					}
 					app.RequestExit()
 
-				} else if (keyName == "f10") && (e.Type == sdl.KEYDOWN) {
+				} else if (keyName == "f10") && (e.Type == sdllib.KEYDOWN) {
 					//if app.Verbose {
 					//	app.PrintfMsg("f10 key -> toggle console")
 					//}
@@ -584,17 +587,17 @@ func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verbo
 					if r.cliSurface_orNil != nil {
 						cliSurface := r.cliSurface_orNil
 
-						if (keyName == "page up") && (e.Type == sdl.KEYDOWN) {
+						if (keyName == "page up") && (e.Type == sdllib.KEYDOWN) {
 							cliSurface.EventCh() <- clingon.Cmd_Scroll{clingon.SCROLL_UP}
-						} else if (keyName == "page down") && (e.Type == sdl.KEYDOWN) {
+						} else if (keyName == "page down") && (e.Type == sdllib.KEYDOWN) {
 							cliSurface.EventCh() <- clingon.Cmd_Scroll{clingon.SCROLL_DOWN}
-						} else if (keyName == "up") && (e.Type == sdl.KEYDOWN) {
+						} else if (keyName == "up") && (e.Type == sdllib.KEYDOWN) {
 							cli.PutReadline(clingon.HISTORY_PREV)
-						} else if (keyName == "down") && (e.Type == sdl.KEYDOWN) {
+						} else if (keyName == "down") && (e.Type == sdllib.KEYDOWN) {
 							cli.PutReadline(clingon.HISTORY_NEXT)
-						} else if (keyName == "left") && (e.Type == sdl.KEYDOWN) {
+						} else if (keyName == "left") && (e.Type == sdllib.KEYDOWN) {
 							cli.PutReadline(clingon.CURSOR_LEFT)
-						} else if (keyName == "right") && (e.Type == sdl.KEYDOWN) {
+						} else if (keyName == "right") && (e.Type == sdllib.KEYDOWN) {
 							cli.PutReadline(clingon.CURSOR_RIGHT)
 						} else {
 							unicode := e.Keysym.Unicode
@@ -607,12 +610,12 @@ func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verbo
 
 						if haveMapping {
 							switch e.Type {
-							case sdl.KEYDOWN:
+							case sdllib.KEYDOWN:
 								// Normal order
 								for i := 0; i < len(sequence); i++ {
 									speccy.Keyboard.KeyDown(sequence[i])
 								}
-							case sdl.KEYUP:
+							case sdllib.KEYUP:
 								// Reverse order
 								for i := len(sequence) - 1; i >= 0; i-- {
 									speccy.Keyboard.KeyUp(sequence[i])
@@ -667,19 +670,19 @@ func initEmulationCore(app *spectrum.Application, acceleratedLoad bool) os.Error
 }
 
 func initSDLSubSystems(app *spectrum.Application) os.Error {
-	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO|sdl.INIT_JOYSTICK) != 0 {
-		return os.NewError(sdl.GetError())
+	if sdllib.Init(sdllib.INIT_VIDEO|sdllib.INIT_AUDIO|sdllib.INIT_JOYSTICK) != 0 {
+		return os.NewError(sdllib.GetError())
 	}
-	if ttf.Init() != 0 {
-		return os.NewError(sdl.GetError())
+	if ttflib.Init() != 0 {
+		return os.NewError(sdllib.GetError())
 	}
-	if sdl.NumJoysticks() > 0 {
+	if sdllib.NumJoysticks() > 0 {
 		// Open joystick
-		joystick = sdl.JoystickOpen(DEFAULT_JOYSTICK_ID)
+		joystick = sdllib.JoystickOpen(DEFAULT_JOYSTICK_ID)
 		if joystick != nil {
 			if app.Verbose {
 				app.PrintfMsg("Opened Joystick %d", DEFAULT_JOYSTICK_ID)
-				app.PrintfMsg("Name: %s", sdl.JoystickName(DEFAULT_JOYSTICK_ID))
+				app.PrintfMsg("Name: %s", sdllib.JoystickName(DEFAULT_JOYSTICK_ID))
 				app.PrintfMsg("Number of Axes: %d", joystick.NumAxes())
 				app.PrintfMsg("Number of Buttons: %d", joystick.NumButtons())
 				app.PrintfMsg("Number of Balls: %d", joystick.NumBalls())
@@ -688,8 +691,8 @@ func initSDLSubSystems(app *spectrum.Application) os.Error {
 			return os.NewError("Couldn't open Joystick!")
 		}
 	}
-	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
-	sdl.EnableUNICODE(1)
+	sdllib.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
+	sdllib.EnableUNICODE(1)
 	return nil
 }
 
@@ -736,7 +739,7 @@ func ftpget_choice(app *spectrum.Application, matches []string) (string, os.Erro
 func wait(app *spectrum.Application) {
 	<-app.HasTerminated
 	if SDL_initialized {
-		sdl.Quit()
+		sdllib.Quit()
 	}
 
 	if app.Verbose {
@@ -761,7 +764,7 @@ var (
 	fullscreen         = flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
 	fps                = flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
 	audio              = flag.Bool("audio", true, "Enable or disable audio")
-	audioFreq          = flag.Uint("audio-freq", output.PLAYBACK_FREQUENCY, "Audio playback frequency (units: Hz)")
+	audioFreq          = flag.Uint("audio-freq", sdl.PLAYBACK_FREQUENCY, "Audio playback frequency (units: Hz)")
 	hqAudio            = flag.Bool("audio-hq", true, "Enable or disable higher-quality audio")
 	acceleratedLoad    = flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
 	showPaintedRegions = flag.Bool("show-paint", false, "Show painted display regions")
@@ -769,6 +772,8 @@ var (
 	verboseInput       = flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
 	cpuProfile         = flag.String("hostcpu-profile", "", "Write host-CPU profile to the specified file (for 'pprof')")
 	wos                = flag.String("wos", "", "Download from WorldOfSpectrum; you must provide a query regex (ex: -wos=jetsetwilly)")
+	server_addr        = flag.String("server", "", "Start GoSpeccy as a websocket-based service")
+	server_path        = flag.String("server-public-path", "./public/", "The public path to be served (typically it contains the web frontend)")
 
 	SDL_initialized = false
 )
@@ -814,9 +819,6 @@ func main() {
 
 	app := createApplication(*verbose)
 
-	composer = output.NewSDLSurfaceComposer(app)
-	composer.ShowPaintedRegions(*showPaintedRegions)
-
 	// Use at least 2 OS threads.
 	// This helps to prevent audio buffer underflows
 	// in case SDL rendering is consuming too much CPU.
@@ -836,25 +838,6 @@ func main() {
 	if err := initEmulationCore(app, *acceleratedLoad); err != nil {
 		exit(app)
 		return
-	}
-
-	// Run startup scripts.
-	// The startup scripts may change the display settings or enable/disable the audio.
-	// They may also terminate the program.
-	{
-		dummyRenderer := DummyRenderer{
-			scale2x:    scale2x,
-			fullscreen: fullscreen,
-			audio:      audio,
-			audioFreq:  audioFreq,
-			hqAudio:    hqAudio,
-		}
-		interpreter.Init(app, flag.Arg(0), speccy, &dummyRenderer)
-
-		if app.TerminationInProgress() || app.Terminated() {
-			exit(app)
-			return
-		}
 	}
 
 	// Optional: Read and categorize the contents
@@ -926,43 +909,70 @@ func main() {
 		}
 	}
 
-	// SDL subsystems init
-	if err := initSDLSubSystems(app); err != nil {
-		app.PrintfMsg("%s", err)
-		exit(app)
-		return
+	// Eventually start GoSpeccy as a websocket-based service
+	if *server_addr != "" {
+		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{websocket.NewWebSocketService(app, *server_addr, *server_path)}
 	} else {
-		SDL_initialized = true
-	}
+		composer = sdl.NewSDLSurfaceComposer(app)
+		composer.ShowPaintedRegions(*showPaintedRegions)
 
-	{
-		n := make(chan uint)
+		// Run startup scripts.
+		// The startup scripts may change the display settings or enable/disable the audio.
+		// They may also terminate the program.
+		{
+			dummyRenderer := DummyRenderer{
+				scale2x:    scale2x,
+				fullscreen: fullscreen,
+				audio:      audio,
+				audioFreq:  audioFreq,
+				hqAudio:    hqAudio,
+			}
+			interpreter.Init(app, flag.Arg(0), speccy, &dummyRenderer)
 
-		// Setup the display
-
-		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
-		if <-n == 0 {
-			r = NewSDLRenderer(app, *scale2x, *fullscreen, *audio, *hqAudio, *audioFreq)
-			interpreter.SetUI(r)
-		}
-
-		initCLI()
-
-		// Setup the audio
-		speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
-		numAudioReceivers := <-n
-		if *audio && (numAudioReceivers == 0) {
-			audio, err := output.NewSDLAudio(app, *audioFreq, *hqAudio)
-			if err == nil {
-				speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
-			} else {
-				app.PrintfMsg("%s", err)
+			if app.TerminationInProgress() || app.Terminated() {
+				exit(app)
+				return
 			}
 		}
-	}
 
-	// Start the SDL event loop
-	go sdlEventLoop(app, speccy, *verboseInput)
+		// SDL subsystems init
+		if err := initSDLSubSystems(app); err != nil {
+			app.PrintfMsg("%s", err)
+			exit(app)
+			return
+		} else {
+			SDL_initialized = true
+		}
+
+		{
+			n := make(chan uint)
+
+			// Setup the display
+
+			speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
+			if <-n == 0 {
+				r = NewSDLRenderer(app, *scale2x, *fullscreen, *audio, *hqAudio, *audioFreq)
+				interpreter.SetUI(r)
+			}
+
+			initCLI()
+
+			// Setup the audio
+			speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
+			numAudioReceivers := <-n
+			if *audio && (numAudioReceivers == 0) {
+				audio, err := sdl.NewSDLAudio(app, *audioFreq, *hqAudio)
+				if err == nil {
+					speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
+				} else {
+					app.PrintfMsg("%s", err)
+				}
+			}
+		}
+
+		// Start the SDL event loop
+		go sdlEventLoop(app, speccy, *verboseInput)
+	}
 
 	// Begin speccy emulation
 	go speccy.EmulatorLoop()
@@ -991,10 +1001,16 @@ func main() {
 		}
 	}
 
-	hint := ""
-	hint += "Hint: Press F10 to invoke the built-in console.\n"
-	hint += "      Input an empty line in the console to display available commands.\n"
-	fmt.Print(hint)
-
+	if *server_addr != "" {
+		hint := ""
+		hint += "Hint: GoSpeccy is running as a service.\n"
+		hint += fmt.Sprintf("      Open your browser on http://%s\n", *server_addr)
+		fmt.Print(hint)		
+	} else {
+		hint := ""
+		hint += "Hint: Press F10 to invoke the built-in console.\n"
+		hint += "      Input an empty line in the console to display available commands.\n"
+		fmt.Print(hint)
+	}
 	wait(app)
 }

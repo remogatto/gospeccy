@@ -316,7 +316,6 @@ func (speccy *Spectrum48k) EmulatorLoop() {
 				fps = newFPS
 			}
 
-			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
 			speccy.CommandChannel <- Cmd_RenderFrame{}
 
 		case newFPS := <-speccy.fpsCh:

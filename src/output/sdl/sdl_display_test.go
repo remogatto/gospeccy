@@ -1,4 +1,4 @@
-package output
+package sdl
 
 import (
 	//"image"
@@ -7,7 +7,7 @@ import (
 	//"strings"
 	"spectrum"
 	"spectrum/formats"
-	"⚛sdl"
+	sdllib "⚛sdl"
 	"testing"
 	//"unsafe"
 )
@@ -26,19 +26,19 @@ import (
 // 	var b uint8
 // 	var a uint8
 
-// 	sdl.GetRGBA(color, s.surface.Format, &r, &g, &b, &a)
+// 	sdllib.GetRGBA(color, s.surface.Format, &r, &g, &b, &a)
 
 // 	return image.RGBAColor{uint8(r), uint8(g), uint8(b), uint8(a)}
 // }
 
 func initSDL() {
-	if sdl.Init(sdl.INIT_VIDEO) != 0 {
-		panic(sdl.GetError())
+	if sdllib.Init(sdllib.INIT_VIDEO) != 0 {
+		panic(sdllib.GetError())
 	}
 }
 
-func newSurface() *sdl.Surface {
-	return sdl.SetVideoMode(spectrum.TotalScreenWidth, spectrum.TotalScreenHeight, 32, 0)
+func newSurface() *sdllib.Surface {
+	return sdllib.SetVideoMode(spectrum.TotalScreenWidth, spectrum.TotalScreenHeight, 32, 0)
 }
 
 // func loadExpectedImage(filename string) image.Image {
@@ -173,7 +173,7 @@ func newSurface() *sdl.Surface {
 // 		}
 // 	}
 
-// 	sdl.Quit()
+// 	sdllib.Quit()
 
 // }
 
@@ -188,7 +188,7 @@ func BenchmarkRender(b *testing.B) {
 		screenChannel:   make(chan *spectrum.DisplayData),
 		screenSurface:   &SDLSurface{newSurface()},
 		unscaledDisplay: newUnscaledDisplay(),
-		updatedRectsCh:  make(chan []sdl.Rect),
+		updatedRectsCh:  make(chan []sdllib.Rect),
 		app:             app,
 	}
 
@@ -248,5 +248,5 @@ func BenchmarkRender(b *testing.B) {
 	app.RequestExit()
 	<-app.HasTerminated
 
-	sdl.Quit()
+	sdllib.Quit()
 }

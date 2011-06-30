@@ -2,18 +2,18 @@ package test
 
 import (
 	"io/ioutil"
-	"⚛sdl"
-	"⚛sdl/ttf"
 	"prettytest"
 	"clingon"
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
-	"spectrum/output"
+	"spectrum/output/sdl"
+	sdllib "⚛sdl"
+	ttflib "⚛sdl/ttf"
 )
 
 var (
-	font        *ttf.Font
+	font        *ttflib.Font
 	speccy      *spectrum.Spectrum48k
 	console     *clingon.Console
 	cliRenderer *clingon.SDLRenderer
@@ -22,13 +22,13 @@ var (
 )
 
 type SDLSurfaceAccessor interface {
-	UpdatedRectsCh() <-chan []sdl.Rect
-	GetSurface() *sdl.Surface
+	UpdatedRectsCh() <-chan []sdllib.Rect
+	GetSurface() *sdllib.Surface
 }
 
 type renderer struct {
 	app              *spectrum.Application
-	appSurface       *sdl.Surface
+	appSurface       *sdllib.Surface
 	speccySurface    SDLSurfaceAccessor
 	cliSurface_orNil *clingon.SDLRenderer
 	width, height    int
@@ -40,7 +40,7 @@ func newRenderer(app *spectrum.Application, speccySurface SDLSurfaceAccessor, cl
 	height := spectrum.TotalScreenHeight * 2
 	r := &renderer{
 		app:              app,
-		appSurface:       sdl.SetVideoMode(width, height, 32, 0),
+		appSurface:       sdllib.SetVideoMode(width, height, 32, 0),
 		speccySurface:    speccySurface,
 		cliSurface_orNil: cliSurface_orNil,
 		width:            width,
@@ -79,18 +79,18 @@ func (r *renderer) SetAudioQuality(hqAudio bool) {
 	// Empty
 }
 
-func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
+func (r *renderer) render(speccyRects, cliRects []sdllib.Rect) {
 	for _, rect := range speccyRects {
 		x, y, w, h := rect.X, rect.Y-int16(r.consoleY), rect.W, rect.H
 		r.appSurface.Blit(&rect, r.speccySurface.GetSurface(), &rect)
 		if r.cliSurface_orNil != nil {
-			r.appSurface.Blit(&sdl.Rect{x, rect.Y, 0, 0}, r.cliSurface_orNil.GetSurface(), &sdl.Rect{x, y, w, h})
+			r.appSurface.Blit(&sdllib.Rect{x, rect.Y, 0, 0}, r.cliSurface_orNil.GetSurface(), &sdllib.Rect{x, y, w, h})
 		}
 	}
 	for _, rect := range cliRects {
 		x, y, w, h := rect.X, rect.Y+int16(r.consoleY), rect.W, rect.H
-		r.appSurface.Blit(&sdl.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdl.Rect{x, y, w, h})
-		r.appSurface.Blit(&sdl.Rect{rect.X, rect.Y + int16(r.consoleY), 0, 0}, r.cliSurface_orNil.GetSurface(), &rect)
+		r.appSurface.Blit(&sdllib.Rect{x, y, 0, 0}, r.speccySurface.GetSurface(), &sdllib.Rect{x, y, w, h})
+		r.appSurface.Blit(&sdllib.Rect{rect.X, rect.Y + int16(r.consoleY), 0, 0}, r.cliSurface_orNil.GetSurface(), &rect)
 	}
 	r.appSurface.Flip()
 }
@@ -124,7 +124,7 @@ func (r *renderer) destroyCliRenderer() {
 }
 
 func (r *renderer) loopWithCLI(evtLoop *spectrum.EventLoop) {
-	var cliSurface_updatedRectsCh_orNil <-chan []sdl.Rect = r.cliSurface_orNil.UpdatedRectsCh()
+	var cliSurface_updatedRectsCh_orNil <-chan []sdllib.Rect = r.cliSurface_orNil.UpdatedRectsCh()
 
 	go func() {
 		for {
@@ -170,20 +170,20 @@ type testSuite struct {
 }
 
 func (t *testSuite) BeforeAll() {
-	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
-		app.PrintfMsg("%s", sdl.GetError())
+	if sdllib.Init(sdllib.INIT_VIDEO|sdllib.INIT_AUDIO) != 0 {
+		app.PrintfMsg("%s", sdllib.GetError())
 		app.RequestExit()
 		<-app.HasTerminated
-		sdl.Quit()
+		sdllib.Quit()
 	}
-	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
+	sdllib.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
 	StartFullEmulation(false)
 }
 
 func (t *testSuite) AfterAll() {
 	app.RequestExit()
 	<-app.HasTerminated
-	sdl.Quit()
+	sdllib.Quit()
 }
 
 func (t *testSuite) Before() {
@@ -201,20 +201,20 @@ type cliTestSuite struct {
 }
 
 func (t *cliTestSuite) BeforeAll() {
-	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO) != 0 {
-		app.PrintfMsg("%s", sdl.GetError())
+	if sdllib.Init(sdllib.INIT_VIDEO|sdllib.INIT_AUDIO) != 0 {
+		app.PrintfMsg("%s", sdllib.GetError())
 		app.RequestExit()
 		<-app.HasTerminated
-		sdl.Quit()
+		sdllib.Quit()
 	}
-	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
-	if ttf.Init() != 0 {
-		panic(sdl.GetError())
+	sdllib.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator - Test mode", "")
+	if ttflib.Init() != 0 {
+		panic(sdllib.GetError())
 	}
-	sdl.EnableUNICODE(1)
-	font = ttf.OpenFont("testdata/VeraMono.ttf", 12)
+	sdllib.EnableUNICODE(1)
+	font = ttflib.OpenFont("testdata/VeraMono.ttf", 12)
 	if font == nil {
-		panic(sdl.GetError())
+		panic(sdllib.GetError())
 	}
 	StartFullEmulation(true)
 }
@@ -241,15 +241,15 @@ func StartFullEmulation(cli bool) {
 	app = spectrum.NewApplication()
 	speccy = spectrum.NewSpectrum48k(app, *rom)
 	speccy.TapeDrive().NotifyLoadComplete = true
-	sdlScreen := output.NewSDLScreen2x(app)
+	sdlScreen := sdl.NewSDLScreen2x(app)
 	speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
 	if !cli {
 		r = newRenderer(app, sdlScreen, nil)
 	} else {
 		width := spectrum.TotalScreenWidth * 2
 		height := spectrum.TotalScreenHeight * 2
-		cliRenderer := clingon.NewSDLRenderer(sdl.CreateRGBSurface(sdl.SRCALPHA, int(width), int(height/2), 32, 0, 0, 0, 0), font)
-		cliRenderer.GetSurface().SetAlpha(sdl.SRCALPHA, 0xdd)
+		cliRenderer := clingon.NewSDLRenderer(sdllib.CreateRGBSurface(sdllib.SRCALPHA, int(width), int(height/2), 32, 0, 0, 0, 0), font)
+		cliRenderer.GetSurface().SetAlpha(sdllib.SRCALPHA, 0xdd)
 		r = newRenderer(app, sdlScreen, cliRenderer)
 		r.consoleY = int16(r.height / 2)
 		interpreter.IgnoreStartupScript = true
@@ -263,7 +263,7 @@ Welcome to the GoSpeccy CLI Testing Mode
 ----------------------------------------
 `)
 	}
-	audio, err := output.NewSDLAudio(app, output.PLAYBACK_FREQUENCY, /*hqAudio*/ true)
+	audio, err := sdl.NewSDLAudio(app, sdl.PLAYBACK_FREQUENCY, /*hqAudio*/ true)
 	if err == nil {
 		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 	} else {

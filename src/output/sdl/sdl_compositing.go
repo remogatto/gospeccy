@@ -5,13 +5,13 @@
  * except for usages in immoral contexts.
  */
 
-package output
+package sdl
 
 import (
 	"rand"
-	"⚛sdl"
 	"spectrum"
 	"unsafe"
+	sdllib "⚛sdl"
 )
 
 // Composes multiple SDL surfaces into a single surface
@@ -24,7 +24,7 @@ type SDLSurfaceComposer struct {
 	inputs []*input_surface_t
 
 	// The surface where to put the composited image
-	output_orNil *sdl.Surface
+	output_orNil *sdllib.Surface
 
 	commandChannel chan interface{}
 
@@ -32,8 +32,8 @@ type SDLSurfaceComposer struct {
 }
 
 type input_surface_t struct {
-	surface        *sdl.Surface
-	updatedRectsCh <-chan []sdl.Rect
+	surface        *sdllib.Surface
+	updatedRectsCh <-chan []sdllib.Rect
 	forwarderLoop  *spectrum.EventLoop
 	x, y           int
 }
@@ -58,14 +58,14 @@ func NewSDLSurfaceComposer(app *spectrum.Application) *SDLSurfaceComposer {
 // The order of surfaces in the mentioned list defines the compositing order.
 // The first surface will visually appear at the bottom,
 // while the last surface will visually appear at the top.
-func (composer *SDLSurfaceComposer) AddInputSurface(surface *sdl.Surface, x, y int, updatedRectsCh <-chan []sdl.Rect) {
+func (composer *SDLSurfaceComposer) AddInputSurface(surface *sdllib.Surface, x, y int, updatedRectsCh <-chan []sdllib.Rect) {
 	composer.commandChannel <- cmd_add{surface, x, y, updatedRectsCh}
 }
 
 // Enqueues a command that will remove the specified surface
 // from [the list of input surfaces of 'composer'].
 // The returned channel will receive a single value when the command completes.
-func (composer *SDLSurfaceComposer) RemoveInputSurface(surface *sdl.Surface) <-chan byte {
+func (composer *SDLSurfaceComposer) RemoveInputSurface(surface *sdllib.Surface) <-chan byte {
 	done := make(chan byte)
 	composer.commandChannel <- cmd_remove{surface, done}
 	return done
@@ -80,13 +80,13 @@ func (composer *SDLSurfaceComposer) RemoveAllInputSurfaces() <-chan byte {
 }
 
 // Enqueues a command that will move the specified surface to a new position
-func (composer *SDLSurfaceComposer) SetPosition(surface *sdl.Surface, x, y int) {
+func (composer *SDLSurfaceComposer) SetPosition(surface *sdllib.Surface, x, y int) {
 	composer.commandChannel <- cmd_setPosition{surface, x, y}
 }
 
 // Enqueues a command that will replace the output surface.
 // The returned channel will receive a single value when the command completes.
-func (composer *SDLSurfaceComposer) ReplaceOutputSurface(surface_orNil *sdl.Surface) <-chan byte {
+func (composer *SDLSurfaceComposer) ReplaceOutputSurface(surface_orNil *sdllib.Surface) <-chan byte {
 	done := make(chan byte)
 	composer.commandChannel <- cmd_replaceOutputSurface{surface_orNil, done}
 	return done
@@ -101,13 +101,13 @@ func (composer *SDLSurfaceComposer) ShowPaintedRegions(enable bool) {
 
 
 type cmd_add struct {
-	surface        *sdl.Surface
+	surface        *sdllib.Surface
 	x, y           int
-	updatedRectsCh <-chan []sdl.Rect
+	updatedRectsCh <-chan []sdllib.Rect
 }
 
 type cmd_remove struct {
-	surface *sdl.Surface
+	surface *sdllib.Surface
 	done    chan<- byte
 }
 
@@ -116,12 +116,12 @@ type cmd_removeAll struct {
 }
 
 type cmd_setPosition struct {
-	surface *sdl.Surface
+	surface *sdllib.Surface
 	x, y    int
 }
 
 type cmd_replaceOutputSurface struct {
-	surface_orNil *sdl.Surface
+	surface_orNil *sdllib.Surface
 	done          chan<- byte
 }
 
@@ -131,7 +131,7 @@ type cmd_showPaintedRegions struct {
 
 type cmd_update struct {
 	surface *input_surface_t
-	rects   []sdl.Rect
+	rects   []sdllib.Rect
 }
 
 // The composer's command loop.
@@ -217,7 +217,7 @@ func (composer *SDLSurfaceComposer) forwarderLoop(s *input_surface_t) {
 	}
 }
 
-func (composer *SDLSurfaceComposer) indexOf(surface *sdl.Surface) int {
+func (composer *SDLSurfaceComposer) indexOf(surface *sdllib.Surface) int {
 	n := len(composer.inputs)
 	for i := 0; i < n; i++ {
 		if composer.inputs[i].surface == surface {
@@ -228,7 +228,7 @@ func (composer *SDLSurfaceComposer) indexOf(surface *sdl.Surface) int {
 	panic("no such surface")
 }
 
-func (composer *SDLSurfaceComposer) add(app *spectrum.Application, surface *sdl.Surface, x, y int, updatedRectsCh <-chan []sdl.Rect) {
+func (composer *SDLSurfaceComposer) add(app *spectrum.Application, surface *sdllib.Surface, x, y int, updatedRectsCh <-chan []sdllib.Rect) {
 	newInput := &input_surface_t{
 		surface:        surface,
 		updatedRectsCh: updatedRectsCh,
@@ -238,19 +238,19 @@ func (composer *SDLSurfaceComposer) add(app *spectrum.Application, surface *sdl.
 	}
 	composer.inputs = append(composer.inputs, newInput)
 
-	updateRect := sdl.Rect{
+	updateRect := sdllib.Rect{
 		X: int16(0),
 		Y: int16(0),
 		W: uint16(newInput.surface.W),
 		H: uint16(newInput.surface.H),
 	}
 
-	composer.performCompositing(x, y, []sdl.Rect{updateRect})
+	composer.performCompositing(x, y, []sdllib.Rect{updateRect})
 
 	go composer.forwarderLoop(newInput)
 }
 
-func (composer *SDLSurfaceComposer) remove(surface *sdl.Surface, done chan<- byte) {
+func (composer *SDLSurfaceComposer) remove(surface *sdllib.Surface, done chan<- byte) {
 	i := composer.indexOf(surface)
 	input := composer.inputs[i]
 
@@ -258,13 +258,13 @@ func (composer *SDLSurfaceComposer) remove(surface *sdl.Surface, done chan<- byt
 	copy(composer.inputs[i:], composer.inputs[i+1:])
 	composer.inputs = composer.inputs[0 : len(composer.inputs)-1]
 
-	updateRect := sdl.Rect{
+	updateRect := sdllib.Rect{
 		X: int16(0),
 		Y: int16(0),
 		W: uint16(input.surface.W),
 		H: uint16(input.surface.H),
 	}
-	composer.performCompositing(input.x, input.y, []sdl.Rect{updateRect})
+	composer.performCompositing(input.x, input.y, []sdllib.Rect{updateRect})
 
 	go func() {
 		deleted := input.forwarderLoop.Delete()
@@ -290,7 +290,7 @@ func (composer *SDLSurfaceComposer) removeAll(done chan<- byte) {
 	}()
 }
 
-func (composer *SDLSurfaceComposer) setPosition(surface *sdl.Surface, newX, newY int) {
+func (composer *SDLSurfaceComposer) setPosition(surface *sdllib.Surface, newX, newY int) {
 	input := composer.inputs[composer.indexOf(surface)]
 
 	oldX, oldY := input.x, input.y
@@ -317,7 +317,7 @@ func (composer *SDLSurfaceComposer) setPosition(surface *sdl.Surface, newX, newY
 			absDeltaY = uint(oldY - newY)
 		}
 
-		updateRect := sdl.Rect{
+		updateRect := sdllib.Rect{
 			X: int16(x - newX),
 			Y: int16(y - newY),
 			W: uint16(uint(input.surface.W) + absDeltaX),
@@ -325,19 +325,19 @@ func (composer *SDLSurfaceComposer) setPosition(surface *sdl.Surface, newX, newY
 		}
 
 		// Repaint
-		composer.performCompositing(input.x, input.y, []sdl.Rect{updateRect})
+		composer.performCompositing(input.x, input.y, []sdllib.Rect{updateRect})
 	}
 }
 
 func (composer *SDLSurfaceComposer) repaintTheWholeOutputSurface() {
 	if composer.output_orNil != nil {
-		updateRect := sdl.Rect{
+		updateRect := sdllib.Rect{
 			X: int16(0),
 			Y: int16(0),
 			W: uint16(composer.output_orNil.W),
 			H: uint16(composer.output_orNil.H),
 		}
-		composer.performCompositing(0, 0, []sdl.Rect{updateRect})
+		composer.performCompositing(0, 0, []sdllib.Rect{updateRect})
 	}
 }
 
@@ -351,11 +351,11 @@ var rnd *rand.Rand = rand.New(rand.NewSource(0))
 // ofsX, ofsY: The translation to be applied to each element of 'rects'.
 //             After the translation, the position of each rectangle is relative
 //             to the coordinate system of the output surface.
-func (composer *SDLSurfaceComposer) performCompositing(ofsX, ofsY int, rects []sdl.Rect) {
+func (composer *SDLSurfaceComposer) performCompositing(ofsX, ofsY int, rects []sdllib.Rect) {
 	if composer.output_orNil != nil {
 		output := composer.output_orNil
 
-		updateRects := make([]sdl.Rect, 0)
+		updateRects := make([]sdllib.Rect, 0)
 
 		for inputIndex, input := range composer.inputs {
 			for _, rect := range rects {
@@ -395,7 +395,7 @@ func (composer *SDLSurfaceComposer) performCompositing(ofsX, ofsY int, rects []s
 //
 // The value of the alpha channel is from 0 to 256 (including 256).
 // The value 256 maps to an alpha value of 1.0.
-func fillRect(surface *SDLSurface, r sdl.Rect, RGB uint32, A uint32) {
+func fillRect(surface *SDLSurface, r sdllib.Rect, RGB uint32, A uint32) {
 	R := uint32((RGB >> 16) & 0xFF)
 	G := uint32((RGB >> 8) & 0xFF)
 	B := uint32((RGB >> 0) & 0xFF)
@@ -432,9 +432,9 @@ func fillRect(surface *SDLSurface, r sdl.Rect, RGB uint32, A uint32) {
 
 // Clips 'rect' to the dimensions of 'surface'.
 // Returns the clipped rectangle.
-func clip(rect sdl.Rect, surface *sdl.Surface) sdl.Rect {
+func clip(rect sdllib.Rect, surface *sdllib.Surface) sdllib.Rect {
 	if (rect.X >= int16(surface.W)) || (rect.Y >= int16(surface.H)) {
-		return sdl.Rect{}
+		return sdllib.Rect{}
 	}
 
 	clippedRect := rect
@@ -442,7 +442,7 @@ func clip(rect sdl.Rect, surface *sdl.Surface) sdl.Rect {
 	if clippedRect.X < 0 {
 		w := int16(clippedRect.W) - (-clippedRect.X)
 		if w <= 0 {
-			return sdl.Rect{}
+			return sdllib.Rect{}
 		}
 
 		clippedRect.X = 0
@@ -451,7 +451,7 @@ func clip(rect sdl.Rect, surface *sdl.Surface) sdl.Rect {
 	if clippedRect.Y < 0 {
 		h := int16(clippedRect.H) - (-clippedRect.Y)
 		if h <= 0 {
-			return sdl.Rect{}
+			return sdllib.Rect{}
 		}
 
 		clippedRect.Y = 0

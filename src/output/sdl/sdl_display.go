@@ -23,21 +23,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-package output
+package sdl
 
 import (
 	"fmt"
 	"os"
-	"⚛sdl"
-	"⚛sdl/ttf"
 	"spectrum"
 	"time"
 	"unsafe"
+	sdllib "⚛sdl"
+	ttflib "⚛sdl/ttf"
 )
 
 func init() {
 	const expectedVersion = "⚛SDL bindings 1.0"
-	actualVersion := sdl.GoSdlVersion()
+	actualVersion := sdllib.GoSdlVersion()
 	if actualVersion != expectedVersion {
 		fmt.Fprintf(os.Stderr, "Invalid SDL bindings version: expected \"%s\", got \"%s\"\n",
 			expectedVersion, actualVersion)
@@ -47,7 +47,7 @@ func init() {
 
 func init() {
 	const expectedVersion = "⚛SDL TTF bindings 1.0"
-	actualVersion := ttf.GoSdlVersion()
+	actualVersion := ttflib.GoSdlVersion()
 	if actualVersion != expectedVersion {
 		fmt.Fprintf(os.Stderr, "Invalid SDL font bindings version: expected \"%s\", got \"%s\"\n",
 			expectedVersion, actualVersion)
@@ -60,7 +60,7 @@ func init() {
 // ==========
 
 type SDLSurface struct {
-	surface *sdl.Surface
+	surface *sdllib.Surface
 }
 
 func (s SDLSurface) Width() uint {
@@ -88,9 +88,9 @@ func (s SDLSurface) addrXY(x, y uint) uintptr {
 }
 
 func newSDLSurface(app *spectrum.Application, w, h int) *SDLSurface {
-	surface := sdl.CreateRGBSurface(sdl.SWSURFACE, w, h, 32, 0, 0, 0, 0)
+	surface := sdllib.CreateRGBSurface(sdllib.SWSURFACE, w, h, 32, 0, 0, 0, 0)
 	if surface == nil {
-		app.PrintfMsg("%s", sdl.GetError())
+		app.PrintfMsg("%s", sdllib.GetError())
 		app.RequestExit()
 		return nil
 	}
@@ -156,7 +156,7 @@ type SDLScreen struct {
 
 	unscaledDisplay *UnscaledDisplay
 
-	updatedRectsCh chan []sdl.Rect
+	updatedRectsCh chan []sdllib.Rect
 
 	app *spectrum.Application
 }
@@ -170,7 +170,7 @@ func NewSDLScreen(app *spectrum.Application) *SDLScreen {
 		screenChannel:   make(chan *spectrum.DisplayData),
 		screenSurface:   NewSDLSurface(app),
 		unscaledDisplay: newUnscaledDisplay(),
-		updatedRectsCh:  make(chan []sdl.Rect),
+		updatedRectsCh:  make(chan []sdllib.Rect),
 		app:             app,
 	}
 
@@ -179,11 +179,11 @@ func NewSDLScreen(app *spectrum.Application) *SDLScreen {
 	return SDL_screen
 }
 
-func (display *SDLScreen) UpdatedRectsCh() <-chan []sdl.Rect {
+func (display *SDLScreen) UpdatedRectsCh() <-chan []sdllib.Rect {
 	return display.updatedRectsCh
 }
 
-func (display *SDLScreen) GetSurface() *sdl.Surface {
+func (display *SDLScreen) GetSurface() *sdllib.Surface {
 	return display.screenSurface.surface
 }
 
@@ -246,7 +246,7 @@ type SDLScreen2x struct {
 
 	unscaledDisplay *UnscaledDisplay
 
-	updatedRectsCh chan []sdl.Rect
+	updatedRectsCh chan []sdllib.Rect
 
 	app *spectrum.Application
 }
@@ -256,7 +256,7 @@ func NewSDLScreen2x(app *spectrum.Application) *SDLScreen2x {
 		screenChannel:   make(chan *spectrum.DisplayData),
 		screenSurface:   NewSDLSurface2x(app),
 		unscaledDisplay: newUnscaledDisplay(),
-		updatedRectsCh:  make(chan []sdl.Rect),
+		updatedRectsCh:  make(chan []sdllib.Rect),
 		app:             app,
 	}
 
@@ -265,11 +265,11 @@ func NewSDLScreen2x(app *spectrum.Application) *SDLScreen2x {
 	return SDL_screen
 }
 
-func (display *SDLScreen2x) UpdatedRectsCh() <-chan []sdl.Rect {
+func (display *SDLScreen2x) UpdatedRectsCh() <-chan []sdllib.Rect {
 	return display.updatedRectsCh
 }
 
-func (display *SDLScreen2x) GetSurface() *sdl.Surface {
+func (display *SDLScreen2x) GetSurface() *sdllib.Surface {
 	return display.screenSurface.surface
 }
 
@@ -331,7 +331,7 @@ func (display *SDLScreen2x) render(screen *spectrum.DisplayData) {
 // Misc functions
 // ==============
 
-func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale uint, updatedRectsCh chan []sdl.Rect) {
+func SDL_updateRects(surface *sdllib.Surface, surfaceChanges *ListOfRects, scale uint, updatedRectsCh chan []sdllib.Rect) {
 	// Implementation note:
 	//   This function does NOT make use of 'surface.UpdateRects',
 	//   although in theory that would be much more efficient than 'surface.UpdateRect'.
@@ -379,7 +379,7 @@ func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale ui
 	w := uint32(scale) * uint32(maxx-minx)
 	h := uint32(scale) * uint32(maxy-miny)
 
-	updatedRectsCh <- []sdl.Rect{{int16(x), int16(y), uint16(w), uint16(h)}}
+	updatedRectsCh <- []sdllib.Rect{{int16(x), int16(y), uint16(w), uint16(h)}}
 }
 
 
@@ -387,21 +387,21 @@ func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale ui
 // ListOfRects
 // ===========
 
-type ListOfRects []sdl.Rect
+type ListOfRects []sdllib.Rect
 
 func newListOfRects() *ListOfRects {
 	l := new(ListOfRects)
-	*l = make([]sdl.Rect, 0, 8)
+	*l = make([]sdllib.Rect, 0, 8)
 	return l
 }
 
-func (l *ListOfRects) addRect(rect sdl.Rect) {
+func (l *ListOfRects) addRect(rect sdllib.Rect) {
 	slice := *l
 
 	len_slice := len(slice)
 	if len_slice == cap(slice) {
 		// Double the capacity (assumes non-zero initial capacity)
-		newSlice := make([]sdl.Rect, len_slice, 2*cap(slice))
+		newSlice := make([]sdllib.Rect, len_slice, 2*cap(slice))
 		copy(newSlice, slice)
 		slice = newSlice
 	}
@@ -413,7 +413,7 @@ func (l *ListOfRects) addRect(rect sdl.Rect) {
 }
 
 func (l *ListOfRects) add(x, y int, w, h uint) {
-	l.addRect(sdl.Rect{int16(x), int16(y), uint16(w), uint16(h)})
+	l.addRect(sdllib.Rect{int16(x), int16(y), uint16(w), uint16(h)})
 }
 
 func (l *ListOfRects) addBorder(scale uint) {

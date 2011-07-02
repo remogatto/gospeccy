@@ -293,6 +293,7 @@ func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil c
 	select {
 	case displayChannel <- displayData:
 		nonBlockingSend = true
+		display.numSentFrames++
 	default:
 		nonBlockingSend = false
 	}

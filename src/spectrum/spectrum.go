@@ -42,6 +42,9 @@ type DisplayInfo struct {
 	// The index of the last frame sent to the 'displayReceiver', initially nil.
 	lastFrame *uint
 
+	// Number of frames sent to the DisplayReceiver
+	numSentFrames uint
+
 	// Total number of frames that the DisplayReceiver did not receive
 	// because the send might block CPU emulation
 	numMissedFrames uint
@@ -224,7 +227,9 @@ func (speccy *Spectrum48k) Close() {
 		}
 
 		for i, display := range speccy.displays {
-			speccy.app.PrintfMsg("display #%d: %d missed frames", i, display.numMissedFrames)
+			nSent := display.numSentFrames
+			nMissed := display.numMissedFrames
+			speccy.app.PrintfMsg("display #%d: %d shown frames, %d missed frames", i, nSent, nMissed)
 		}
 	}
 }
@@ -485,7 +490,6 @@ func (speccy *Spectrum48k) addDisplay(display DisplayReceiver) {
 	d := &DisplayInfo{
 		displayReceiver: display,
 		lastFrame:       nil,
-		numMissedFrames: 0,
 		missedChanges:   nil,
 	}
 
@@ -499,7 +503,9 @@ func (speccy *Spectrum48k) closeAllDisplays() {
 	for i, d := range displays {
 		d.displayReceiver.Close()
 		if speccy.app.Verbose {
-			speccy.app.PrintfMsg("display #%d: %d missed frames", i, d.numMissedFrames)
+			nSent := d.numSentFrames
+			nMissed := d.numMissedFrames
+			speccy.app.PrintfMsg("display #%d: %d shown frames, %d missed frames", i, nSent, nMissed)
 		}
 	}
 }

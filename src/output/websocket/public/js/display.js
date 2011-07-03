@@ -112,7 +112,7 @@ var Display = function (canvasElement) {
   {
     changedRegions = [];
     this.renderUnscaled(displayData);
-
+    var cx, cy;
     for (var i = 0; i < changedRegions.length; i++)
     {
       var r = changedRegions[i];
@@ -121,10 +121,12 @@ var Display = function (canvasElement) {
       for (var y = r.y; y < end_y; y++)
       {
 	var wy = TotalScreenWidth * y;
+	cy = y * 2;
 	for (var x = r.x; x < end_x; x++)
 	{
+	  cx = x * 2;
 	  context.fillStyle = palette[pixels[wy+x]];
-	  context.fillRect(x, y, 1, 1);
+	  context.fillRect(cx, cy, 2, 2);
 	}
       }
     }

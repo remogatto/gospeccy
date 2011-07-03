@@ -6,6 +6,7 @@ import (
 	"spectrum"
 	"json"
 	"path"
+	"os"
 )
 
 var (
@@ -31,33 +32,17 @@ func staticHandler(w http.ResponseWriter, r *http.Request) {
 
 func sockHandler(ws *websocket.Conn) {
 	// Start the read/write loops
-	go readMessages(app.NewEventLoop(), ws)
-	writeMessages(app.NewEventLoop(), ws)
+	go readMessages(ws)
+	writeMessages(ws)
 }
 
-func readMessages(evtLoop *spectrum.EventLoop, ws *websocket.Conn) {
-	go func() {
-		for {
-			select {
-			case <-evtLoop.Pause:
-				println("close")
-				ws.Write([]byte("CLOSE"))
-				evtLoop.Pause <- 0
-				
-			case <-evtLoop.Terminate:
-				// Terminate this Go routine
-				if evtLoop.App().Verbose {
-					evtLoop.App().PrintfMsg("websocket read loop: exit")
-				}
-				evtLoop.Terminate <- 0
-				return
-			}
-		}
-	}()
+func readMessages(ws *websocket.Conn) {
 	for {
 		msg := make([]byte, 10)
 		if n, err := ws.Read(msg); err != nil {
-			panic(err)
+			if err == os.EOF {
+				return
+			}
 		} else {
 			switch string(msg[0:n]) {
 			case "RECEIVED":
@@ -69,20 +54,9 @@ func readMessages(evtLoop *spectrum.EventLoop, ws *websocket.Conn) {
 	}
 }
 
-func writeMessages(evtLoop *spectrum.EventLoop, ws *websocket.Conn) {
+func writeMessages(ws *websocket.Conn) {
 	for {
 		select {
-		case <-evtLoop.Pause:
-			evtLoop.Pause <- 0
-
-		case <-evtLoop.Terminate:
-			// Terminate this Go routine
-			if evtLoop.App().Verbose {
-				evtLoop.App().PrintfMsg("websocket write loop: exit")
-			}
-			evtLoop.Terminate <- 0
-			return
-
 		case screen := <-fwdScreenChannel:
 			var jsonString string
 			if screen != nil {
@@ -131,7 +105,7 @@ func NewWebSocketService(a *spectrum.Application, addr, path string) *WebSocketS
 
 	// Listen to incoming DisplayData messages from the emulation
 	// core forwarding them to the websocket service
-	go webSocketForwarderLoop(app.NewEventLoop(), screen.screenChannel)
+	go webSocketForwarderLoop(screen.screenChannel)
 
 	return screen
 }
@@ -145,33 +119,14 @@ func (display *WebSocketService) Close() {
 	display.screenChannel <- nil
 }
 
-func webSocketForwarderLoop(evtLoop *spectrum.EventLoop, screenChannel <-chan *spectrum.DisplayData) {
-	terminating := false
+func webSocketForwarderLoop(screenChannel <-chan *spectrum.DisplayData) {
 	for {
 		select {
-		case <-evtLoop.Pause:
-			terminating = true
-			evtLoop.Pause <- 0
-
-		case <-evtLoop.Terminate:
-			// Terminate this Go routine
-			if evtLoop.App().Verbose {
-				evtLoop.App().PrintfMsg("websocket service loop: exit")
-			}
-			evtLoop.Terminate <- 0
-			return
-
 		case screen := <-screenChannel:
 			if screen != nil {
-				if !terminating {
-					fwdScreenChannel <- screen
-					<-renderComplete
-				}
-			} else {
-				done := evtLoop.Delete()
-				go func() { <-done }()
+				fwdScreenChannel <- screen
+				<-renderComplete
 			}
-		}
-
+		} 
 	}
 }

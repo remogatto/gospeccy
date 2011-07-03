@@ -60,7 +60,7 @@ func (z80 *Z80) DumpRegisters(out *vector.StringVector) {
 }
 
 func (memory *testMemory) DumpMemory(out *vector.StringVector) {
-	var addresses sort.IntSlice = make([]int, 0, 32)
+	var addresses sort.IntArray = make([]int, 0, 32)
 
 	for address, _ := range memory.data_map {
 		addresses = append(addresses, int(address))

@@ -1,6 +1,6 @@
 var App = function (settings, display) {
   var app = this;
-  
+
   this.ws = new WebSocket(settings.socketURL);
   this.hasConnection = false;
 
@@ -8,8 +8,8 @@ var App = function (settings, display) {
     this.hasConnection = true;
   };
   this.ws.onmessage = function(evt) {
-    display.render(JSON.parse(evt.data));
     app.ws.send("RECEIVED");
+    display.render(JSON.parse(evt.data));
   };
   this.ws.onerror = function(evt) {
     console.log("Error: ", evt);

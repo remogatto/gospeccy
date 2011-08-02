@@ -53,7 +53,7 @@ func printValues(buf *bytes.Buffer, values []eval.Value, conf print_config_t) {
 			}
 			buf.WriteString(s)
 		} else {
-			ss := strings.Split(s, "\n", -1)
+			ss := strings.Split(s, "\n")
 			for j, x := range ss {
 				buf.WriteString(indentation)
 				if (j == 0) && (conf.names_orNil != nil) {

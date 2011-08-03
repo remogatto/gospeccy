@@ -5,7 +5,7 @@
 //
 // Copyright (c) 1999-2006 Philip Kendall <philip-fuse@shadowmagic.org.uk>
 // Copyright (c) 2010 Andrea Fazzi <andrea.fazzi@alcacoop.it>
-// Copyright (c) 2011 ⚛ <0xe2.0x9a.0x9b@gmail.com> 
+// Copyright (c) 2011 ⚛ <0xe2.0x9a.0x9b@gmail.com>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,13 +24,16 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+	"template"
 )
 
 // The status of which flags relates to which condition
@@ -65,13 +68,16 @@ func lc(s string) string {
 	return strings.ToLower(s)
 }
 
-// Joins the strings in the 'stringList', prints them on to standard output
-// and sends a new line to standard output
+// The writer to which we are currently printing
+var outputStream io.Writer = nil
+
+// Joins the strings in the 'stringList', prints them to 'outputStream'
+// and sends a new line to 'outputStream'
 func ln(stringList ...string) {
 	for _, s := range stringList {
-		fmt.Print(s)
+		fmt.Fprint(outputStream, s)
 	}
-	fmt.Println()
+	fmt.Fprintln(outputStream)
 }
 
 // Returns 'if_true' or 'if_false' depending on the value of 'cond'.
@@ -897,22 +903,46 @@ var description = map[string]string{
 }
 
 var funcTable = make(map[string]reflect.Value)
+
 func init() {
 	var opcode Opcode
 	var opcodeType reflect.Type = reflect.TypeOf(opcode)
 	var opcodeValue reflect.Value = reflect.ValueOf(opcode)
 
 	numMethods := opcodeType.NumMethod()
-	for i:=0; i<numMethods; i++ {
+	for i := 0; i < numMethods; i++ {
 		funcName := opcodeType.Method(i).Name
 		funcValue := opcodeValue.Method(i)
 		funcTable[funcName] = funcValue
 	}
 }
 
-// Main program
-func main() {
-	data_file := os.Args[1]
+
+// Removes characters which cannot form a Go identifier
+func turnIntoIdentifier(in string) string {
+	var out bytes.Buffer
+	for _, rune := range strings.ToUpper(in) {
+		switch rune {
+		case ' ', ',':
+			out.WriteByte('_')
+		case '(':
+			// Indirection
+			out.WriteByte('i')
+		case '+':
+			// Plus
+			out.WriteByte('p')
+		case ')', '\'':
+			// Delete
+		default:
+			out.WriteRune(rune)
+		}
+	}
+	return out.String()
+}
+
+
+func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, functions *bytes.Buffer) {
+	outputStream = code
 
 	var data []byte
 	var err os.Error
@@ -921,7 +951,7 @@ func main() {
 		panic(err.String())
 	}
 
-	lines := strings.Split(string(data), "\n", -1)
+	lines := strings.Split(string(data), "\n")
 
 	var fallthrough_cases []string
 
@@ -938,7 +968,7 @@ func main() {
 			continue
 		}
 
-		var l []string = strings.Split(line, " ", -1)
+		var l []string = strings.Split(line, " ")
 
 		var number, opcode, arguments, extra string
 		number = l[0]
@@ -954,24 +984,35 @@ func main() {
 
 		var args []string
 		if arguments != "" {
-			args = strings.Split(arguments, ",", -1)
+			args = strings.Split(arguments, ",")
 		}
 
 		var shift_op string
-		if data_file == "opcodes_cb.dat" {
+		var opcodeType string
+		switch logical_data_file {
+		case "opcodes_cb":
 			shift_op = "shift0xcb(" + number + ")"
-		} else if data_file == "opcodes_ed.dat" {
+			opcodeType = "CB"
+		case "opcodes_ed":
 			shift_op = "shift0xed(" + number + ")"
-		} else if data_file == "opcodes_ddfd.dat" {
+			opcodeType = "ED"
+		case "opcodes_dd":
 			shift_op = "shift0xdd(" + number + ")"
-		} else if data_file == "opcodes_ddfdcb.dat" {
+			opcodeType = "DD"
+		case "opcodes_fd":
+			shift_op = "shift0xfd(" + number + ")"
+			opcodeType = "FD"
+		case "opcodes_ddfdcb":
 			shift_op = "shift0xddcb(" + number + ")"
-		} else {
+			opcodeType = "DDCB"
+		default:
 			shift_op = number
+			opcodeType = ""
 		}
 
+		var comment string
 		if opcode != "" {
-			comment := "/* " + opcode
+			comment = "/* " + opcode
 			if arguments != "" {
 				comment += " " + arguments
 			}
@@ -985,64 +1026,175 @@ func main() {
 			continue
 		}
 
-		ln("opcodesMap[", shift_op, "] = func (z80 *Z80) {")
+		functionName := "instr" + opcodeType + "__" + turnIntoIdentifier(strings.TrimSpace(opcode+" "+arguments+" "+extra))
+		functionName = strings.Replace(functionName, "ixH", "IXH", -1)
+		functionName = strings.Replace(functionName, "ixL", "IXL", -1)
+		functionName = strings.Replace(functionName, "iyH", "IYH", -1)
+		functionName = strings.Replace(functionName, "iyL", "IYL", -1)
+		functionName = strings.Replace(functionName, "REGISTER", "REG", -1)
+		ln("opcodesMap[", shift_op, "] = ", functionName)
 
-		// Handle the undocumented rotate-shift-or-bit and store-in-register opcodes specially
-		if extra != "" {
-			register, opcode2 := args[0], args[1]
-			lc_register, lc_opcode2 := lc(register), lc(opcode2)
+		outputStream = functions
+		{
+			ln(comment)
+			ln("func ", functionName, "(z80 *Z80) {")
 
-			if (opcode2 == "RES") || (opcode2 == "SET") {
-				bit := strings.Split(extra, ",", -1)[0]
-				bitNum, err2 := strconv.Atoui(bit)
-				if err2 != nil {
-					panic("invalid bit number: " + bit)
+			// Handle the undocumented rotate-shift-or-bit and store-in-register opcodes specially
+			if extra != "" {
+				register, opcode2 := args[0], args[1]
+				lc_register, lc_opcode2 := lc(register), lc(opcode2)
+
+				if (opcode2 == "RES") || (opcode2 == "SET") {
+					bit := strings.Split(extra, ",")[0]
+					bitNum, err2 := strconv.Atoui(bit)
+					if err2 != nil {
+						panic("invalid bit number: " + bit)
+					}
+
+					operator := _if(opcode2 == "RES", "&", "|")
+					hexmask := res_set_hexmask(opcode2, bitNum)
+
+					ln("  z80.", lc_register, " = z80.memory.readByte(z80.tempaddr) ", operator, " ", hexmask)
+					ln("  z80.memory.contendReadNoMreq(z80.tempaddr, 1)")
+					ln("  z80.memory.writeByte(z80.tempaddr, z80.", lc_register, ")")
+					ln("}")
+				} else {
+					ln("  z80.", lc_register, " = z80.memory.readByte(z80.tempaddr)")
+					ln("  z80.memory.contendReadNoMreq( z80.tempaddr, 1 )")
+					ln("  z80.", lc_register, " = z80.", lc_opcode2, "(z80.", lc_register, ")")
+					ln("  z80.memory.writeByte(z80.tempaddr, z80.", lc_register, ")")
+					ln("}")
 				}
 
-				operator := _if(opcode2 == "RES", "&", "|")
-				hexmask := res_set_hexmask(opcode2, bitNum)
-
-				ln("  z80.", lc_register, " = z80.memory.readByte(z80.tempaddr) ", operator, " ", hexmask)
-				ln("  z80.memory.contendReadNoMreq(z80.tempaddr, 1)")
-				ln("  z80.memory.writeByte(z80.tempaddr, z80.", lc_register, ")")
-				ln("}")
-			} else {
-				ln("  z80.", lc_register, " = z80.memory.readByte(z80.tempaddr)")
-				ln("  z80.memory.contendReadNoMreq( z80.tempaddr, 1 )")
-				ln("  z80.", lc_register, " = z80.", lc_opcode2, "(z80.", lc_register, ")")
-				ln("  z80.memory.writeByte(z80.tempaddr, z80.", lc_register, ")")
-				ln("}")
+				outputStream = code
+				continue
 			}
-			continue
+
+			if fn := funcTable[strings.ToUpper(opcode)]; fn.IsValid() {
+				reflect_args := make([]reflect.Value, len(args))
+				for i, arg := range args {
+					reflect_args[i] = reflect.ValueOf(arg)
+				}
+
+				// Missing arguments are substituted with ""
+				fn_numArgs := fn.Type().NumIn()
+				for len(reflect_args) < fn_numArgs {
+					reflect_args = append(reflect_args, reflect.ValueOf(""))
+				}
+
+				//fmt.Printf("%s   %#v\n", opcode, args)
+				//println(fn.String())
+
+				// Call the method. Excessive arguments are simply ignored.
+				fn.Call(reflect_args[0:fn_numArgs])
+			}
+
+			ln("}")
+
+			if len(fallthrough_cases) > 0 {
+				outputStream = code
+				{
+					ln("// Fallthrough cases")
+					for _, fallthrough_case := range fallthrough_cases {
+						ln("opcodesMap[", fallthrough_case, "] = opcodesMap[", shift_op, "]")
+					}
+					fallthrough_cases = fallthrough_cases[0:0]
+				}
+				outputStream = functions
+			}
+		}
+		outputStream = code
+	}
+
+	outputStream = nil
+}
+
+// Main program
+func main() {
+	data_files := [][2]string{
+		{"opcodes_base", "opcodes_base"},
+		{"opcodes_cb", "opcodes_cb"},
+		{"opcodes_ed", "opcodes_ed"},
+		{"opcodes_ddfd", "opcodes_dd"},
+		{"opcodes_ddfd", "opcodes_fd"},
+		{"opcodes_ddfdcb", "opcodes_ddfdcb"},
+	}
+
+	mapping := make(map[string]string)
+
+	// Buffer for implementations (source code in text form) of generated functions
+	var functions bytes.Buffer
+
+	for _, data_file := range data_files {
+		var code bytes.Buffer
+		var functions1 bytes.Buffer
+		processDataFile(data_file[0]+".dat", data_file[1], &code, &functions1)
+
+		codeStr := code.String()
+		fnStr := functions1.String()
+
+		mapping[data_file[1]] = codeStr
+
+		switch data_file[1] {
+		case "opcodes_base":
+			fnStr_base := strings.Replace(fnStr, "setSPHSPL", "setSP", -1)
+			functions.WriteString(fnStr_base)
+		case "opcodes_dd":
+			fnStr_dd := strings.Replace(fnStr, "REGISTER", "ix", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "register", "ix", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "ix()", "IX()", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "setixHixL", "setIX", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "incixH", "incIXH", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "decixH", "decIXH", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "incixL", "incIXL", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "decixL", "decIXL", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "z80.ix()", "z80.IX()", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "ixH", "z80.IXH()", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "ixL", "z80.IXL()", -1)
+			functions.WriteString(fnStr_dd)
+		case "opcodes_fd":
+			fnStr_fd := strings.Replace(fnStr, "REGISTER", "iy", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "register", "iy", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "iy()", "IY()", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "setiyHiyL", "setIY", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "inciyH", "incIYH", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "deciyH", "decIYH", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "inciyL", "incIYL", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "deciyL", "decIYL", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "z80.iy()", "z80.IY()", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "iyH", "z80.IYH()", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "iyL", "z80.IYL()", -1)
+			functions.WriteString(fnStr_fd)
+		default:
+			functions.WriteString(fnStr)
+		}
+	}
+
+	mapping["functions"] = functions.String()
+
+	w, err := os.Create("opcodes_gen.go")
+	if err != nil {
+		panic(err.String())
+	}
+
+	// Execute the template in file "opcodes_gen.go.template"
+	{
+		t := template.New(nil)
+		t.SetDelims("[[", "]]")
+
+		err = t.ParseFile("opcodes_gen.go.template")
+		if err != nil {
+			panic(err.String())
 		}
 
-		if fn := funcTable[strings.ToUpper(opcode)]; fn.IsValid() {
-			reflect_args := make([]reflect.Value, len(args))
-			for i, arg := range args {
-				reflect_args[i] = reflect.ValueOf(arg)
-			}
-
-			// Missing arguments are substituted with ""
-			fn_numArgs := fn.Type().NumIn()
-			for len(reflect_args) < fn_numArgs {
-				reflect_args = append(reflect_args, reflect.ValueOf(""))
-			}
-
-			//fmt.Printf("%s   %#v\n", opcode, args)
-			//println(fn.String())
-
-			// Call the method. Excessive arguments are simply ignored.
-			fn.Call(reflect_args[0:fn_numArgs])
+		err = t.Execute(w, mapping)
+		if err != nil {
+			panic(err.String())
 		}
+	}
 
-		ln("}")
-
-		if len(fallthrough_cases) > 0 {
-			ln("// Fallthrough cases")
-			for _, fallthrough_case := range fallthrough_cases {
-				ln("opcodesMap[", fallthrough_case, "] = opcodesMap[", shift_op, "]")
-			}
-			fallthrough_cases = fallthrough_cases[0:0]
-		}
+	err = w.Close()
+	if err != nil {
+		panic(err.String())
 	}
 }

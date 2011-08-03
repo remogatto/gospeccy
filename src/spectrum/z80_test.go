@@ -66,7 +66,7 @@ func (memory *testMemory) DumpMemory(out *vector.StringVector) {
 		addresses = append(addresses, int(address))
 	}
 
-	sort.SortInts(addresses)
+	sort.Ints(addresses)
 
 	for i := 0; i < len(addresses); i++ {
 		addr := uint16(addresses[i])
@@ -295,7 +295,7 @@ func TestDoOpcodes(t *testing.T) {
 		fmt.Println("Error reading tests.in")
 	} else {
 		content := string(bytes)
-		lines := strings.Split(content, "\n", -1)
+		lines := strings.Split(content, "\n")
 
 		currLine := 0
 
@@ -311,7 +311,7 @@ func TestDoOpcodes(t *testing.T) {
 
 			currLine++
 
-			mainRegs := strings.Split(lines[currLine], " ", -1)
+			mainRegs := strings.Split(lines[currLine], " ")
 
 			// Fill registers
 
@@ -353,7 +353,7 @@ func TestDoOpcodes(t *testing.T) {
 
 			currLine++
 
-			otherRegs := strings.Split(lines[currLine], " ", -1)
+			otherRegs := strings.Split(lines[currLine], " ")
 
 			i, _ := strconv.Btoui64(otherRegs[0], 16)
 			z80.i = byte(i)
@@ -389,7 +389,7 @@ func TestDoOpcodes(t *testing.T) {
 			currLine++
 
 			for lines[currLine] != "-1" {
-				memWrites := strings.Split(lines[currLine], " ", -1)
+				memWrites := strings.Split(lines[currLine], " ")
 				addr, _ := strconv.Btoui64(memWrites[0], 16)
 				for i := 1; i < (len(memWrites)); i++ {
 					byte := memWrites[i]

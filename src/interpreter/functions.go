@@ -123,7 +123,13 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	path = spectrum.ProgramPath(path)
+	var err os.Error
+	path, err = spectrum.ProgramPath(path)
+	if err != nil {
+		fmt.Fprintf(stdout, "%s\n", err)
+		return
+	}
+
 	load(path)
 }
 

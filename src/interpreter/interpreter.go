@@ -280,7 +280,13 @@ func (i *Interpreter) run(w *eval.World, path_orEmpty string, sourceCode string)
 // Loads and evaluates the specified Go script
 func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 	fileName := scriptName + ".go"
-	scriptData, err := ioutil.ReadFile(spectrum.ScriptPath(fileName))
+
+	path, err := spectrum.ScriptPath(fileName)
+	if err != nil {
+		return err
+	}
+
+	scriptData, err := ioutil.ReadFile(path)
 	if err != nil {
 		if !optional {
 			return err

@@ -199,18 +199,26 @@ func newCLISurface(scale2x, fullscreen bool) *clingon.SDLRenderer {
 }
 
 func newFont(scale2x, fullscreen bool) *ttf.Font {
-	var font *ttf.Font
 	if fullscreen {
 		scale2x = true
 	}
-	if scale2x {
-		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 12)
-	} else {
-		font = ttf.OpenFont(spectrum.FontPath("VeraMono.ttf"), 10)
+
+	var font *ttf.Font
+	{
+		path, err := spectrum.FontPath("VeraMono.ttf")
+		if err != nil {
+			panic(err.String())
+		}
+		if scale2x {
+			font = ttf.OpenFont(path, 12)
+		} else {
+			font = ttf.OpenFont(path, 10)
+		}
+		if font == nil {
+			panic(sdl.GetError())
+		}
 	}
-	if font == nil {
-		panic(sdl.GetError())
-	}
+
 	return font
 }
 
@@ -652,7 +660,11 @@ func createApplication(verbose bool) *spectrum.Application {
 
 // Create new emulator core
 func initEmulationCore(app *spectrum.Application, acceleratedLoad bool) os.Error {
-	romPath := spectrum.SystemRomPath("48.rom")
+	romPath, err := spectrum.SystemRomPath("48.rom")
+	if err != nil {
+		return err
+	}
+
 	rom, err := spectrum.ReadROM(romPath)
 	if err != nil {
 		return err
@@ -834,6 +846,7 @@ func main() {
 	}
 
 	if err := initEmulationCore(app, *acceleratedLoad); err != nil {
+		app.PrintfMsg("%s", err)
 		exit(app)
 		return
 	}
@@ -862,9 +875,15 @@ func main() {
 	var program_orNil interface{} = nil
 	if flag.Arg(0) != "" {
 		file := flag.Arg(0)
-		path := spectrum.ProgramPath(file)
 
 		var err os.Error
+		path, err := spectrum.ProgramPath(file)
+		if err != nil {
+			app.PrintfMsg("%s", err)
+			exit(app)
+			return
+		}
+
 		program_orNil, err = formats.ReadProgram(path)
 		if err != nil {
 			app.PrintfMsg("%s", err)

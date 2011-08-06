@@ -39,6 +39,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -58,15 +59,22 @@ func AddCustomSearchPath(path string) {
 	customSearchPaths_mutex.Unlock()
 }
 
-func searchForValidPath(paths []string, fileName string) string {
+func searchForValidPath(paths []string, fileName string) (string, os.Error) {
 	for _, dir := range paths {
+		if _, err := os.Lstat(dir); err == nil {
+			_, err = filepath.EvalSymlinks(dir)
+			if err != nil {
+				return "", os.NewError("path \"" + dir + "\" contains one or more invalid symbolic links")
+			}
+		}
+
 		fullPath := path.Join(dir, fileName)
 		if _, err := os.Stat(fullPath); err == nil {
-			return fullPath
+			return fullPath, nil
 		}
 	}
 
-	return fileName
+	return fileName, nil
 }
 
 func appendCustomSearchPaths(paths *vector.StringVector) {
@@ -78,12 +86,14 @@ func appendCustomSearchPaths(paths *vector.StringVector) {
 }
 
 // Return a valid path for the specified snapshot,
-// or the original filename if the search fails.
+// or the original filename if the search did not find anything.
+//
+// An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
 // 1. ./
 // 2. $HOME/.gospeccy/sna/
-func SnaPath(fileName string) string {
+func SnaPath(fileName string) (string, os.Error) {
 	var (
 		currDir = ""
 		userDir = path.Join(DefaultUserDir, "sna")
@@ -98,12 +108,14 @@ func SnaPath(fileName string) string {
 }
 
 // Return a valid path for the specified tape file,
-// or the original filename if the search fails.
+// or the original filename if the search did not find anything.
+//
+// An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
 // 1. ./
 // 2. $HOME/.gospeccy/tape/
-func TapePath(fileName string) string {
+func TapePath(fileName string) (string, os.Error) {
 	var (
 		currDir = ""
 		userDir = path.Join(DefaultUserDir, "tape")
@@ -118,12 +130,14 @@ func TapePath(fileName string) string {
 }
 
 // Return a valid path for the specified zip file,
-// or the original filename if the search fails.
+// or the original filename if the search did not find anything.
+//
+// An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
 // 1. ./
 // 2. $HOME/.gospeccy/zip/
-func ZipPath(fileName string) string {
+func ZipPath(fileName string) (string, os.Error) {
 	var (
 		currDir = ""
 		userDir = path.Join(DefaultUserDir, "zip")
@@ -138,8 +152,10 @@ func ZipPath(fileName string) string {
 }
 
 // Return a valid path for the file based on its extension,
-// or the original filename if the search fails.
-func ProgramPath(fileName string) string {
+// or the original filename if the search did not find anything.
+//
+// An error is returned if the search could not proceed.
+func ProgramPath(fileName string) (string, os.Error) {
 	ext := strings.ToLower(path.Ext(fileName))
 
 	switch ext {
@@ -153,17 +169,19 @@ func ProgramPath(fileName string) string {
 		return ZipPath(fileName)
 	}
 
-	return fileName
+	return fileName, nil
 }
 
 // Returns a valid path for the 48k system ROM,
-// or the original filename if the search fails.
+// or the original filename if the search did not find anything.
+//
+// An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
 // 1. ./roms
 // 2. $HOME/.gospeccy/roms
 // 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms
-func SystemRomPath(fileName string) string {
+func SystemRomPath(fileName string) (string, os.Error) {
 	var (
 		currDir = "roms"
 		userDir = path.Join(DefaultUserDir, "roms")
@@ -180,13 +198,15 @@ func SystemRomPath(fileName string) string {
 }
 
 // Return a valid path for the specified script,
-// or the original filename if the search fails.
+// or the original filename if the search did not find anything.
+//
+// An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
 // 1. ./scripts/
 // 2. $HOME/.gospeccy/scripts/
 // 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/scripts/
-func ScriptPath(fileName string) string {
+func ScriptPath(fileName string) (string, os.Error) {
 	var (
 		currDir = "scripts"
 		userDir = path.Join(DefaultUserDir, "scripts")
@@ -203,13 +223,15 @@ func ScriptPath(fileName string) string {
 }
 
 // Return a valid path for the specified font file,
-// or the original filename if the search fails.
+// or the original filename if the search did not find anything.
+//
+// An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
 // 1. ./fonts/
 // 2. $HOME/.gospeccy/fonts/
 // 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/fonts/
-func FontPath(fileName string) string {
+func FontPath(fileName string) (string, os.Error) {
 	var (
 		currDir = "fonts"
 		userDir = path.Join(DefaultUserDir, "fonts")

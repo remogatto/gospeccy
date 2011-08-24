@@ -125,6 +125,8 @@ func arithmetic_logical(opcode, arg1, arg2 string) {
 		lc_opcode := lc(opcode)
 		ln("z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 7 )")
 		ln("z80.", lc_opcode, "16(z80.", arg2, "())")
+	} else {
+		panic("invalid arguments")
 	}
 }
 
@@ -157,7 +159,7 @@ func cpi_cpd(opcode string) {
 	ln("z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )")
 	ln("z80.", modifier, "HL(); z80.decBC()")
 	ln("z80.f = (z80.f & FLAG_C) | ternOpB(z80.BC() != 0, FLAG_V | FLAG_N, FLAG_N) | halfcarrySubTable[lookup] | ternOpB(bytetemp != 0, 0, FLAG_Z) | (bytetemp & FLAG_S )")
-	ln("if((z80.f & FLAG_H) != 0) { bytetemp-- }")
+	ln("if (z80.f & FLAG_H) != 0 { bytetemp-- }")
 	ln("z80.f |= (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)")
 }
 
@@ -171,11 +173,11 @@ func cpir_cpdr(opcode string) {
 	ln("z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )")
 	ln("z80.decBC()")
 	ln("z80.f = ( z80.f & FLAG_C ) | ( ternOpB(z80.BC() != 0, ( FLAG_V | FLAG_N ),FLAG_N)) | halfcarrySubTable[lookup] | ( ternOpB(bytetemp != 0, 0, FLAG_Z )) | ( bytetemp & FLAG_S )")
-	ln("if((z80.f & FLAG_H) != 0) {")
+	ln("if (z80.f & FLAG_H) != 0 {")
 	ln("  bytetemp--")
 	ln("}")
 	ln("z80.f |= ( bytetemp & FLAG_3 ) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)")
-	ln("if( ( z80.f & ( FLAG_V | FLAG_Z ) ) == FLAG_V ) {")
+	ln("if ( z80.f & ( FLAG_V | FLAG_Z ) ) == FLAG_V {")
 	ln("  z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )")
 	ln("  z80.pc -= 2")
 	ln("}")
@@ -206,8 +208,9 @@ func inc_dec(opcode, arg string) {
 		ln("z80.memory.contendReadNoMreq( wordtemp, 1 )")
 		ln("z80.", lc(opcode), "(&bytetemp)")
 		ln("z80.memory.writeByte(wordtemp,bytetemp)")
+	} else {
+		panic(arg)
 	}
-
 }
 
 func ini_ind(opcode string) {
@@ -241,7 +244,7 @@ func inir_indr(opcode string) {
 	ln("        ternOpB(parityTable[ ( initemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0) |")
 	ln("        sz53Table[z80.b];")
 	ln()
-	ln("if( z80.b != 0 ) {")
+	ln("if z80.b != 0 {")
 	ln("  z80.memory.contendWriteNoMreq_loop( z80.HL(), 1, 5 )")
 	ln("  z80.pc -= 2")
 	ln("}")
@@ -273,7 +276,7 @@ func ldir_lddr(opcode string) {
 	ln("z80.decBC()")
 	ln("bytetemp += z80.a;")
 	ln("z80.f = (z80.f & ( FLAG_C | FLAG_Z | FLAG_S )) | ternOpB(z80.BC() != 0, FLAG_V, 0 ) | (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02 != 0), FLAG_5, 0 )")
-	ln("if(z80.BC() != 0) {")
+	ln("if z80.BC() != 0 {")
 	ln("  z80.memory.contendWriteNoMreq_loop( z80.DE(), 1, 5 )")
 	ln("  z80.pc -= 2")
 	ln("}")
@@ -295,7 +298,7 @@ func otir_otdr(opcode string) {
 	ln("    ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |")
 	ln("    sz53Table[z80.b]")
 	ln()
-	ln("if( z80.b != 0 ) {")
+	ln("if z80.b != 0 {")
 	ln("  z80.memory.contendReadNoMreq_loop( z80.BC(), 1, 5 )")
 	ln("  z80.pc -= 2")
 	ln("}")
@@ -440,10 +443,10 @@ func (Opcode) CPL() {
 
 func (Opcode) DAA() {
 	ln("var add, carry byte = 0, ( z80.f & FLAG_C )")
-	ln("if( ( (z80.f & FLAG_H ) != 0) || ( ( z80.a & 0x0f ) > 9 ) ) { add = 6 }")
-	ln("if( (carry != 0) || ( z80.a > 0x99 ) ) { add |= 0x60 }")
-	ln("if( z80.a > 0x99 ) { carry = FLAG_C }")
-	ln("if( (z80.f & FLAG_N) != 0 ) {")
+	ln("if ( (z80.f & FLAG_H ) != 0) || ( ( z80.a & 0x0f ) > 9 ) { add = 6 }")
+	ln("if (carry != 0) || ( z80.a > 0x99 ) { add |= 0x60 }")
+	ln("if z80.a > 0x99 { carry = FLAG_C }")
+	ln("if (z80.f & FLAG_N) != 0 {")
 	ln("  z80.sub(add)")
 	ln("} else {")
 	ln("  z80.add(add)")
@@ -459,7 +462,7 @@ func (Opcode) DI() { ln("z80.iff1, z80.iff2 = 0, 0") }
 func (Opcode) DJNZ() {
 	ln("z80.memory.contendReadNoMreq(z80.IR(), 1)")
 	ln("z80.b--")
-	ln("if(z80.b != 0) {")
+	ln("if z80.b != 0 {")
 	ln("  z80.jr()")
 	ln("} else {")
 	ln("  z80.memory.contendRead( z80.pc, 3 )")
@@ -480,8 +483,8 @@ func (Opcode) EX(arg1, arg2 string) {
 		ln("/* Tape saving trap: note this traps the EX AF,AF' at #04d0, not")
 		ln("   #04d1 as PC has already been incremented */")
 		ln("/* 0x76 - Timex 2068 save routine in EXROM */")
-		ln("if( z80.pc == 0x04d1 || z80.pc == 0x0077 ) {")
-		ln("  if( z80.tapeSaveTrap() == 0 ) { /*break*/ }")
+		ln("if z80.pc == 0x04d1 || z80.pc == 0x0077 {")
+		ln("  if z80.tapeSaveTrap() == 0 { /*break*/ }")
 		ln("}")
 		ln()
 		ln("var olda, oldf = z80.a, z80.f")
@@ -790,15 +793,15 @@ func (Opcode) RET(condition string) {
 		ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
 
 		if condition == "NZ" {
-			ln("if( z80.pc==0x056c || z80.pc == 0x0112 ) {")
-			ln("  if(z80.tapeLoadTrap() == 0) { /*break*/ }")
+			ln("if z80.pc==0x056c || z80.pc == 0x0112 {")
+			ln("  if z80.tapeLoadTrap() == 0 { /*break*/ }")
 			ln("}")
 		}
 
 		if not[condition] {
-			ln("if(!((z80.f & FLAG_", flag[condition], ") != 0)) { z80.ret() }")
+			ln("if !((z80.f & FLAG_", flag[condition], ") != 0) { z80.ret() }")
 		} else {
-			ln("if((z80.f & FLAG_", flag[condition], ") != 0) { z80.ret() }")
+			ln("if (z80.f & FLAG_", flag[condition], ") != 0 { z80.ret() }")
 		}
 	}
 }
@@ -991,19 +994,19 @@ func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, fu
 		var opcodeType string
 		switch logical_data_file {
 		case "opcodes_cb":
-			shift_op = "shift0xcb(" + number + ")"
+			shift_op = "SHIFT_0xCB+" + number
 			opcodeType = "CB"
 		case "opcodes_ed":
-			shift_op = "shift0xed(" + number + ")"
+			shift_op = "SHIFT_0xED+" + number
 			opcodeType = "ED"
 		case "opcodes_dd":
-			shift_op = "shift0xdd(" + number + ")"
+			shift_op = "SHIFT_0xDD+" + number
 			opcodeType = "DD"
 		case "opcodes_fd":
-			shift_op = "shift0xfd(" + number + ")"
+			shift_op = "SHIFT_0xFD+" + number
 			opcodeType = "FD"
 		case "opcodes_ddfdcb":
-			shift_op = "shift0xddcb(" + number + ")"
+			shift_op = "SHIFT_0xDDCB+" + number
 			opcodeType = "DDCB"
 		default:
 			shift_op = number

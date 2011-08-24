@@ -53,30 +53,6 @@ const SHIFT_0xDDCB = 1024
 const SHIFT_0xFDCB = 1024
 const SHIFT_0xFD = 1280
 
-func shift0xcb(opcode byte) int {
-	return SHIFT_0xCB + int(opcode)
-}
-
-func shift0xed(opcode byte) int {
-	return SHIFT_0xED + int(opcode)
-}
-
-func shift0xdd(opcode byte) int {
-	return SHIFT_0xDD + int(opcode)
-}
-
-func shift0xddcb(opcode byte) int {
-	return SHIFT_0xDDCB + int(opcode)
-}
-
-func shift0xfdcb(opcode byte) int {
-	return SHIFT_0xFDCB + int(opcode)
-}
-
-func shift0xfd(opcode byte) int {
-	return SHIFT_0xFD + int(opcode)
-}
-
 
 type register16 struct {
 	high, low *byte

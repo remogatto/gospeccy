@@ -46,7 +46,6 @@ func (z80 *Z80) decA() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.a&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.a--
 	z80.f |= (ternOpB(z80.a == 0x7f, FLAG_V, 0)) | sz53Table[z80.a]
-
 }
 
 
@@ -63,7 +62,6 @@ func (z80 *Z80) decB() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.b&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.b--
 	z80.f |= (ternOpB(z80.b == 0x7f, FLAG_V, 0)) | sz53Table[z80.b]
-
 }
 
 
@@ -80,7 +78,6 @@ func (z80 *Z80) decC() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.c&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.c--
 	z80.f |= (ternOpB(z80.c == 0x7f, FLAG_V, 0)) | sz53Table[z80.c]
-
 }
 
 
@@ -97,7 +94,6 @@ func (z80 *Z80) decD() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.d&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.d--
 	z80.f |= (ternOpB(z80.d == 0x7f, FLAG_V, 0)) | sz53Table[z80.d]
-
 }
 
 
@@ -114,7 +110,6 @@ func (z80 *Z80) decE() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.e&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.e--
 	z80.f |= (ternOpB(z80.e == 0x7f, FLAG_V, 0)) | sz53Table[z80.e]
-
 }
 
 
@@ -131,7 +126,6 @@ func (z80 *Z80) decH() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.h&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.h--
 	z80.f |= (ternOpB(z80.h == 0x7f, FLAG_V, 0)) | sz53Table[z80.h]
-
 }
 
 
@@ -148,7 +142,6 @@ func (z80 *Z80) decL() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.l&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.l--
 	z80.f |= (ternOpB(z80.l == 0x7f, FLAG_V, 0)) | sz53Table[z80.l]
-
 }
 
 
@@ -165,7 +158,6 @@ func (z80 *Z80) decIXL() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.ixl&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.ixl--
 	z80.f |= (ternOpB(z80.ixl == 0x7f, FLAG_V, 0)) | sz53Table[z80.ixl]
-
 }
 
 
@@ -182,7 +174,6 @@ func (z80 *Z80) decIXH() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.ixh&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.ixh--
 	z80.f |= (ternOpB(z80.ixh == 0x7f, FLAG_V, 0)) | sz53Table[z80.ixh]
-
 }
 
 
@@ -199,7 +190,6 @@ func (z80 *Z80) decIYL() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.iyl&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.iyl--
 	z80.f |= (ternOpB(z80.iyl == 0x7f, FLAG_V, 0)) | sz53Table[z80.iyl]
-
 }
 
 
@@ -216,28 +206,11 @@ func (z80 *Z80) decIYH() {
 	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.iyh&0x0f != 0, 0, FLAG_H)) | FLAG_N
 	z80.iyh--
 	z80.f |= (ternOpB(z80.iyh == 0x7f, FLAG_V, 0)) | sz53Table[z80.iyh]
-
 }
 
 
 // Generated getters/setters and INC/DEC functions for 16bit registers
 
-
-func (z80 *Z80) AF() uint16 {
-	return z80.af.get()
-}
-
-func (z80 *Z80) setAF(value uint16) {
-	z80.af.set(value)
-}
-
-func (z80 *Z80) decAF() {
-	z80.af.dec()
-}
-
-func (z80 *Z80) incAF() {
-	z80.af.inc()
-}
 
 func (z80 *Z80) BC() uint16 {
 	return z80.bc.get()

@@ -48,7 +48,6 @@ func (z80 *Z80) dec#{reg.upcase}() {
 	z80.f = ( z80.f & FLAG_C ) | ( ternOpB(z80.#{reg} & 0x0f != 0, 0, FLAG_H )) | FLAG_N
 	z80.#{reg}--
 	z80.f |= ( ternOpB(z80.#{reg} == 0x7f, FLAG_V, 0) ) | sz53Table[z80.#{reg}]
-
 }
 
 CODE
@@ -58,7 +57,7 @@ end
 
 // Generated getters/setters and INC/DEC functions for 16bit registers
 
-<%= %w{ af bc de hl bc_ de_ hl_ ix iy }.inject("") do |result, reg|
+<%= %w{ bc de hl bc_ de_ hl_ ix iy }.inject("") do |result, reg|
   result += <<CODE
 
 func (z80 *Z80) #{reg.upcase}() uint16 {

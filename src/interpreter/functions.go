@@ -3,7 +3,7 @@ package interpreter
 import (
 	"bytes"
 	"container/vector"
-	"exp/eval"
+	eval "bitbucket.org/binet/go-eval/pkg/eval"
 	"fmt"
 	"io/ioutil"
 	"os"

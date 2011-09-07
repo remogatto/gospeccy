@@ -7,7 +7,7 @@ package interpreter
 
 import (
 	"bytes"
-	"exp/eval"
+	eval "bitbucket.org/binet/go-eval/pkg/eval"
 	"strconv"
 	"strings"
 )

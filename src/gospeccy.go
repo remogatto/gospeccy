@@ -706,13 +706,17 @@ func initSDLSubSystems(app *spectrum.Application) os.Error {
 }
 
 
-func ftpget_choice(app *spectrum.Application, matches []string) (string, os.Error) {
+func ftpget_choice(app *spectrum.Application, matches []string, freeware []bool) (string, os.Error) {
 	switch len(matches) {
 	case 0:
 		return "", nil
 
 	case 1:
-		return matches[0], nil
+		if freeware[0] {
+			return matches[0], nil
+		} else {
+			// Not freeware - We want the user to make the choice
+		}
 	}
 
 	app.PrintfMsg("")
@@ -900,11 +904,13 @@ func main() {
 		}
 
 		var urls []string
+		var isFreeware []bool
 		for _, record := range records {
 			var freeware bool = (strings.ToLower(record.Publication) == "freeware")
 
 			for _, url := range record.FtpFiles {
 				urls = append(urls, url)
+				isFreeware = append(isFreeware, freeware)
 				if freeware {
 					app.PrintfMsg("[%d] - [Freeware] %s", len(urls)-1, url)
 				} else {
@@ -918,7 +924,7 @@ func main() {
 			app.PrintfMsg("1 match")
 		}
 
-		url, err := ftpget_choice(app, urls)
+		url, err := ftpget_choice(app, urls, isFreeware)
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			exit(app)

@@ -60,7 +60,7 @@ don't forget to fork and send patches, of course ;)
 * Initial support for Kempston joysticks
 * An interactive on-screen console interface based on [clingon](http://github.com/remogatto/clingon)
 * Snapshot support: SNA, Z80 formats (48k versions)
-* Tape support (TAP format)
+* Tape support (TAP format, read-only)
 * Accelerated tape loading
 * ZIP files support
 * SDL backend
@@ -75,10 +75,8 @@ On Ubuntu Linux you'll need to install the following packages:
 GoSpeccy is using the GOAM build tool. To install it:
 
     goinstall github.com/0xe2-0x9a-0x9b/goam
-    cd $GOROOT/src/pkg/github.com/0xe2-0x9a-0x9b/goam
-    make install
 
-To install the dependencies and create the gospeccy executable:
+To download&install all dependencies and create the gospeccy executable:
 
     git clone http://github.com/remogatto/gospeccy.git
     cd gospeccy
@@ -90,13 +88,6 @@ To install (uninstall) gospeccy and its resource files:
     goam install
     (goam uninstall)
 
-The following dependencies are installed automatically:
-
-* [⚛Go-SDL](http://github.com/0xe2-0x9a-0x9b/Go-SDL)
-* [⚛Go-PerfEvents](http://github.com/0xe2-0x9a-0x9b/Go-PerfEvents)
-* [clingon](http://github.com/remogatto/clingon")
-* [prettytest](http://github.com/remogatto/prettytest")
-
 To make the screen bigger try the "-2x" command line option,
 or type "scale(2)" in the interactive console.
 
@@ -107,8 +98,6 @@ To try the classic Hello World try to press the following keys:
     hello world
     CTRL+p
     RETURN
-
-And see your shining new ZX Spectrum 48k responding :)
 
 For a nice picture of the speccy keyboard layout visit this
 [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
@@ -128,6 +117,12 @@ Gerrand included in the gospeccy distribution! In the gospeccy folder,
 run:
 
     ./gospeccy -2x snapshots/Syntax09nF.z80
+
+To automatically download a program from [World of spectrum](http://www.worldofspectrum.org),
+and start it:
+
+    ./gospeccy -wos="horace"
+    ./gospeccy -wos="horace.*tower"
 
 For more, try searching the Internet for ZX Spectrum 48k
 games and demos in Z80 and TAP format. For example:

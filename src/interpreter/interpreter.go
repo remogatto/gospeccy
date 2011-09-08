@@ -3,7 +3,7 @@ package interpreter
 import (
 	"bytes"
 	"clingon"
-	"exp/eval"
+	eval "bitbucket.org/binet/go-eval/pkg/eval"
 	"fmt"
 	"go/ast"
 	"go/parser"

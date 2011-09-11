@@ -10,7 +10,7 @@ import (
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
-	"spectrum/output"
+	output "spectrum/output/sdl_output"
 )
 
 var (

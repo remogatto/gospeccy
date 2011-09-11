@@ -1,4 +1,4 @@
-package output
+package sdl_output
 
 type InitialSettings struct {
 	scale2x            *bool

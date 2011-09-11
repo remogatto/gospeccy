@@ -5,7 +5,7 @@
  * except for usages in immoral contexts.
  */
 
-package output
+package sdl_output
 
 import (
 	"rand"

@@ -1,4 +1,4 @@
-package output
+package sdl_output
 
 import (
 	eval "bitbucket.org/binet/go-eval/pkg/eval"

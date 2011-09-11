@@ -1,7 +1,7 @@
 package pull_modules
 
-import "spectrum/output"
+import "spectrum/output/sdl_output"
 
 func init() {
-	go output.Main()
+	go sdl_output.Main()
 }

@@ -2,7 +2,7 @@
 *.[a68]
 gospeccy
 *.out
-scripts/startup_local.go
+scripts/startup_local*
 _testmain.go
 _test*
 package-test

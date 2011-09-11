@@ -37,6 +37,7 @@ func forwarderLoop(evtLoop *spectrum.EventLoop, audio *SDLAudio) {
 	audioDataChannel := audio.data
 	playback_closed := false
 
+	shutdown.Add(1)
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -84,6 +85,7 @@ func forwarderLoop(evtLoop *spectrum.EventLoop, audio *SDLAudio) {
 				evtLoop.App().PrintfMsg("audio forwarder loop: exit")
 			}
 			evtLoop.Terminate <- 0
+			shutdown.Done()
 			return
 
 		case audioData := <-audioDataChannel:

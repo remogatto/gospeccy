@@ -70,7 +70,7 @@ type Spectrum48k struct {
 	currentFPS       float32
 	currentFPS_mutex sync.Mutex // To respect the Go memory model
 
-	// A value received from this channel indicates the new display refresh frequency.
+	// A value received from this channel sets the display refresh frequency
 	fpsCh chan float32
 
 	// This buffered channel (if not nil) will receive at most one value.

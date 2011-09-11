@@ -139,6 +139,7 @@ type cmd_update struct {
 func (composer *SDLSurfaceComposer) commandLoop(app *spectrum.Application) {
 	evtLoop := app.NewEventLoop()
 
+	shutdown.Add(1)
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -150,6 +151,7 @@ func (composer *SDLSurfaceComposer) commandLoop(app *spectrum.Application) {
 				app.PrintfMsg("surface compositing loop: exit")
 			}
 			evtLoop.Terminate <- 0
+			shutdown.Done()
 			return
 
 		case untyped_cmd := <-composer.commandChannel:
@@ -188,6 +190,7 @@ func (composer *SDLSurfaceComposer) forwarderLoop(s *input_surface_t) {
 	evtLoop := s.forwarderLoop
 	updatedRectsCh_orNil := s.updatedRectsCh
 
+	shutdown.Add(1)
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -207,6 +210,7 @@ func (composer *SDLSurfaceComposer) forwarderLoop(s *input_surface_t) {
 				evtLoop.App().PrintfMsg("surface compositing: a forwarder loop: exit")
 			}
 			evtLoop.Terminate <- 0
+			shutdown.Done()
 			return
 
 		case rects := <-updatedRectsCh_orNil:

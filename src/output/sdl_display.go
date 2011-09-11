@@ -114,6 +114,7 @@ func NewSDLSurface(app *spectrum.Application) *SDLSurface {
 func screenRenderLoop(evtLoop *spectrum.EventLoop, screenChannel <-chan *spectrum.DisplayData, renderer screen_renderer_t) {
 	terminating := false
 
+	shutdown.Add(1)
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -126,6 +127,7 @@ func screenRenderLoop(evtLoop *spectrum.EventLoop, screenChannel <-chan *spectru
 				evtLoop.App().PrintfMsg("screen render loop: exit")
 			}
 			evtLoop.Terminate <- 0
+			shutdown.Done()
 			return
 
 		case screen := <-screenChannel:

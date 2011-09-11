@@ -26,613 +26,23 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package main
 
 import (
+	"bufio"
+	"env"
+	"flag"
+	"fmt"
+	"os"
+	"pull_modules"
+	"runtime"
+	"runtime/pprof"
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
-	"spectrum/output"
-	"⚛sdl"
-	"⚛sdl/ttf"
-	"bufio"
-	"fmt"
-	"flag"
-	"os"
-	"runtime"
-	"runtime/pprof"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
-	"clingon"
+	pathutil "path"
 )
-
-const DEFAULT_JOYSTICK_ID = 0
-
-var (
-	// The speccy instance
-	speccy *spectrum.Spectrum48k
-
-	// The CLI
-	cli *clingon.Console
-
-	// The application renderer
-	r *SDLRenderer
-
-	joystick *sdl.Joystick
-
-	composer *output.SDLSurfaceComposer
-)
-
-type SDLSurfaceAccessor interface {
-	UpdatedRectsCh() <-chan []sdl.Rect
-	GetSurface() *sdl.Surface
-}
-
-type cmd_newSurface struct {
-	surface SDLSurfaceAccessor
-	done    chan bool
-}
-
-type cmd_newCliSurface struct {
-	surface_orNil *clingon.SDLRenderer
-	done          chan bool
-}
-
-const (
-	HIDE = iota
-	SHOW
-)
-
-type cmd_newSlider struct {
-	anim        *clingon.Animation
-	targetState int // Either HIDE or SHOW
-}
-
-type SDLRenderer struct {
-	app                           *spectrum.Application
-	scale2x, fullscreen           bool
-	consoleY                      int16
-	width, height                 int
-	appSurface, speccySurface     SDLSurfaceAccessor
-	cliSurface_orNil              *clingon.SDLRenderer
-	toggling                      bool
-	appSurfaceCh, speccySurfaceCh chan cmd_newSurface
-	cliSurfaceCh                  chan cmd_newCliSurface
-
-	sliderCh chan cmd_newSlider
-
-	audio     bool
-	audioFreq uint
-	hqAudio   bool
-}
-
-// Passed to interpreter.Init()
-type DummyRenderer struct {
-	scale2x    *bool
-	fullscreen *bool
-
-	audio     *bool
-	audioFreq *uint
-	hqAudio   *bool
-}
-
-type wrapSurface struct {
-	surface *sdl.Surface
-}
-
-func (s *wrapSurface) GetSurface() *sdl.Surface {
-	return s.surface
-}
-
-func (s *wrapSurface) UpdatedRectsCh() <-chan []sdl.Rect {
-	return nil
-}
-
-func width(scale2x, fullscreen bool) int {
-	if fullscreen {
-		scale2x = true
-	}
-	if scale2x {
-		return spectrum.TotalScreenWidth * 2
-	}
-	return spectrum.TotalScreenWidth
-}
-
-func height(scale2x, fullscreen bool) int {
-	if fullscreen {
-		scale2x = true
-	}
-	if scale2x {
-		return spectrum.TotalScreenHeight * 2
-	}
-	return spectrum.TotalScreenHeight
-}
-
-func newAppSurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfaceAccessor {
-	var sdlMode uint32
-	if fullscreen {
-		scale2x = true
-		sdlMode = sdl.FULLSCREEN
-		sdl.ShowCursor(sdl.DISABLE)
-	} else {
-		sdl.ShowCursor(sdl.ENABLE)
-		sdlMode = sdl.SWSURFACE
-	}
-
-	<-composer.ReplaceOutputSurface(nil)
-
-	surface := sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)
-	if app.Verbose {
-		app.PrintfMsg("video surface resolution: %dx%d", surface.W, surface.H)
-	}
-
-	<-composer.ReplaceOutputSurface(surface)
-
-	return &wrapSurface{surface}
-}
-
-func newSpeccySurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfaceAccessor {
-	var speccySurface SDLSurfaceAccessor
-	if fullscreen {
-		scale2x = true
-	}
-	if scale2x {
-		sdlScreen := output.NewSDLScreen2x(app)
-		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
-		speccySurface = sdlScreen
-	} else {
-		sdlScreen := output.NewSDLScreen(app)
-		speccy.CommandChannel <- spectrum.Cmd_AddDisplay{sdlScreen}
-		speccySurface = sdlScreen
-	}
-	return speccySurface
-}
-
-func newCLISurface(scale2x, fullscreen bool) *clingon.SDLRenderer {
-	cliSurface := clingon.NewSDLRenderer(
-		sdl.CreateRGBSurface(
-			sdl.SRCALPHA,
-			width(scale2x, fullscreen),
-			height(scale2x, fullscreen)/2, 32, 0, 0, 0, 0),
-		newFont(scale2x, fullscreen),
-	)
-	cliSurface.GetSurface().SetAlpha(sdl.SRCALPHA, 0xdd)
-	return cliSurface
-}
-
-func newFont(scale2x, fullscreen bool) *ttf.Font {
-	if fullscreen {
-		scale2x = true
-	}
-
-	var font *ttf.Font
-	{
-		path, err := spectrum.FontPath("VeraMono.ttf")
-		if err != nil {
-			panic(err.String())
-		}
-		if scale2x {
-			font = ttf.OpenFont(path, 12)
-		} else {
-			font = ttf.OpenFont(path, 10)
-		}
-		if font == nil {
-			panic(sdl.GetError())
-		}
-	}
-
-	return font
-}
-
-func NewSDLRenderer(app *spectrum.Application, scale2x, fullscreen bool, audio, hqAudio bool, audioFreq uint) *SDLRenderer {
-	width := width(scale2x, fullscreen)
-	height := height(scale2x, fullscreen)
-	r := &SDLRenderer{
-		app:              app,
-		scale2x:          scale2x,
-		fullscreen:       fullscreen,
-		appSurfaceCh:     make(chan cmd_newSurface),
-		speccySurfaceCh:  make(chan cmd_newSurface),
-		cliSurfaceCh:     make(chan cmd_newCliSurface),
-		appSurface:       newAppSurface(app, scale2x, fullscreen),
-		speccySurface:    newSpeccySurface(app, scale2x, fullscreen),
-		cliSurface_orNil: nil,
-		width:            width,
-		height:           height,
-		consoleY:         int16(height),
-		sliderCh:         make(chan cmd_newSlider),
-		audio:            audio,
-		audioFreq:        audioFreq,
-		hqAudio:          hqAudio,
-	}
-
-	composer.AddInputSurface(r.speccySurface.GetSurface(), 0, 0, r.speccySurface.UpdatedRectsCh())
-
-	go r.loop()
-	return r
-}
-
-func (r *SDLRenderer) ResizeVideo(scale2x, fullscreen bool) {
-	finished := make(chan byte)
-	speccy.CommandChannel <- spectrum.Cmd_CloseAllDisplays{finished}
-	<-finished
-
-	if r.scale2x != scale2x {
-		if scale2x {
-			// 1x --> 2x
-			y := int16(r.height) - r.consoleY
-			r.consoleY = int16(2*r.height) - 2*y
-		} else {
-			// 2x --> 1x
-			y := int16(r.height) - r.consoleY
-			r.consoleY = int16(r.height/2) - y/2
-		}
-	}
-
-	r.width = width(scale2x, fullscreen)
-	r.height = height(scale2x, fullscreen)
-	r.scale2x = scale2x
-	r.fullscreen = fullscreen
-
-	done := make(chan bool)
-	r.appSurfaceCh <- cmd_newSurface{newAppSurface(r.app, scale2x, fullscreen), done}
-	<-done
-
-	r.speccySurfaceCh <- cmd_newSurface{newSpeccySurface(r.app, scale2x, fullscreen), done}
-	<-done
-
-	if r.cliSurface_orNil != nil {
-		r.cliSurfaceCh <- cmd_newCliSurface{newCLISurface(scale2x, fullscreen), done}
-		<-done
-	}
-}
-
-func (r *SDLRenderer) ShowPaintedRegions(enable bool) {
-	composer.ShowPaintedRegions(enable)
-}
-
-func (r *SDLRenderer) setAudioParameters(enable, hqAudio bool, freq uint) {
-	r.audio = enable
-	r.hqAudio = hqAudio
-	r.audioFreq = freq
-
-	finished := make(chan byte)
-	speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
-	<-finished
-
-	if enable {
-		audio, err := output.NewSDLAudio(r.app, freq, hqAudio)
-		if err == nil {
-			finished := make(chan byte)
-			speccy.CommandChannel <- spectrum.Cmd_CloseAllAudioReceivers{finished}
-			<-finished
-
-			speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
-		} else {
-			r.app.PrintfMsg("%s", err)
-			return
-		}
-	}
-}
-
-func (r *SDLRenderer) EnableAudio(enable bool) {
-	r.setAudioParameters(enable, r.hqAudio, r.audioFreq)
-}
-
-func (r *SDLRenderer) SetAudioFreq(freq uint) {
-	if r.audioFreq != freq {
-		r.setAudioParameters(r.audio, r.hqAudio, freq)
-	}
-}
-
-func (r *SDLRenderer) SetAudioQuality(hqAudio bool) {
-	if r.hqAudio != hqAudio {
-		r.setAudioParameters(r.audio, hqAudio, r.audioFreq)
-	}
-}
-
-func (r *DummyRenderer) ResizeVideo(scale2x, fullscreen bool) {
-	// Overwrite the command-line settings
-	*r.scale2x = scale2x
-	*r.fullscreen = fullscreen
-}
-
-func (r *DummyRenderer) ShowPaintedRegions(enable bool) {
-	composer.ShowPaintedRegions(enable)
-}
-
-func (r *DummyRenderer) EnableAudio(enable bool) {
-	// Overwrite the command-line settings
-	*r.audio = enable
-}
-
-func (r *DummyRenderer) SetAudioFreq(freq uint) {
-	// Overwrite the command-line settings
-	*r.audioFreq = freq
-}
-
-func (r *DummyRenderer) SetAudioQuality(hqAudio bool) {
-	// Overwrite the command-line settings
-	*r.hqAudio = hqAudio
-}
-
-// Synchronously destroy the CLI renderer
-func (r *SDLRenderer) destroyCliRenderer() {
-	if r.cliSurface_orNil != nil {
-		cliSurface := r.cliSurface_orNil
-		r.cliSurface_orNil = nil
-
-		cli.SetRenderer(nil)
-
-		<-composer.RemoveInputSurface(cliSurface.GetSurface())
-
-		done := make(chan bool)
-		cliSurface.EventCh() <- clingon.Cmd_Terminate{done}
-		<-done
-
-		cliSurface.GetSurface().Free()
-		cliSurface.Font.Close()
-	}
-}
-
-func (r *SDLRenderer) loop() {
-	var slider_orNil *clingon.Animation = nil
-	var sliderTargetState int = -1
-	var sliderValueCh_orNil <-chan float64 = nil
-	var sliderFinishedCh_orNil <-chan bool = nil
-
-	evtLoop := r.app.NewEventLoop()
-
-	for {
-		select {
-		case <-evtLoop.Pause:
-			if slider_orNil != nil {
-				slider_orNil.Terminate()
-				<-sliderFinishedCh_orNil
-
-				slider_orNil = nil
-				sliderTargetState = -1
-				sliderValueCh_orNil = nil
-				sliderFinishedCh_orNil = nil
-			}
-
-			r.destroyCliRenderer()
-
-			evtLoop.Pause <- 0
-
-		case <-evtLoop.Terminate:
-			// Terminate this Go routine
-			if r.app.Verbose {
-				r.app.PrintfMsg("frontend SDL renderer event loop: exit")
-			}
-			evtLoop.Terminate <- 0
-			return
-
-		case cmd := <-r.sliderCh:
-			slider_orNil = cmd.anim
-			sliderTargetState = cmd.targetState
-			sliderValueCh_orNil = cmd.anim.ValueCh()
-			sliderFinishedCh_orNil = cmd.anim.FinishedCh()
-
-		case value := <-sliderValueCh_orNil:
-			if sliderTargetState == HIDE {
-				r.consoleY = int16(float64(r.height/2) + value*float64(r.height/2))
-			} else {
-				r.consoleY = int16(float64(r.height) - value*float64(r.height/2))
-			}
-			composer.SetPosition(r.cliSurface_orNil.GetSurface(), 0, int(r.consoleY))
-
-		case <-sliderFinishedCh_orNil:
-			if sliderTargetState == HIDE {
-				r.destroyCliRenderer()
-			}
-
-			slider_orNil = nil
-			sliderTargetState = -1
-			sliderValueCh_orNil = nil
-			sliderFinishedCh_orNil = nil
-
-			r.toggling = false
-
-		case cmd := <-r.cliSurfaceCh:
-			r.destroyCliRenderer()
-
-			r.cliSurface_orNil = cmd.surface_orNil
-			cli.SetRenderer(cmd.surface_orNil)
-
-			if r.cliSurface_orNil != nil {
-				composer.AddInputSurface(r.cliSurface_orNil.GetSurface(), 0, int(r.consoleY), r.cliSurface_orNil.UpdatedRectsCh())
-			}
-
-			cmd.done <- true
-
-		case cmd := <-r.speccySurfaceCh:
-			<-composer.RemoveAllInputSurfaces()
-
-			r.speccySurface.GetSurface().Free()
-			r.speccySurface = cmd.surface
-
-			composer.AddInputSurface(r.speccySurface.GetSurface(), 0, 0, r.speccySurface.UpdatedRectsCh())
-			if r.cliSurface_orNil != nil {
-				composer.AddInputSurface(r.cliSurface_orNil.GetSurface(), 0, int(r.consoleY), r.cliSurface_orNil.UpdatedRectsCh())
-			}
-			cmd.done <- true
-
-		case cmd := <-r.appSurfaceCh:
-			<-composer.ReplaceOutputSurface(nil)
-
-			r.appSurface.GetSurface().Free()
-			r.appSurface = cmd.surface
-
-			<-composer.ReplaceOutputSurface(r.appSurface.GetSurface())
-
-			cmd.done <- true
-		}
-	}
-}
-
-func initCLI() {
-	cli = clingon.NewConsole(interpreter.GetInterpreter())
-	cli.Print(`
-GoSpeccy Command Line Interface (CLI)
--------------------------------------
-Available keys:
-* F10 toggle/untoggle the CLI
-* Up/Down for history browsing
-* PageUp/PageDown for scrolling
-`)
-	cli.SetPrompt("gospeccy> ")
-}
-
-// A Go routine for processing SDL events.
-func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verboseInput bool) {
-	evtLoop := app.NewEventLoop()
-
-	consoleIsVisible := false
-
-	for {
-		select {
-		case <-evtLoop.Pause:
-			evtLoop.Pause <- 0
-
-		case <-evtLoop.Terminate:
-			// Terminate this Go routine
-			if app.Verbose {
-				app.PrintfMsg("SDL event loop: exit")
-			}
-			evtLoop.Terminate <- 0
-			return
-
-		case event := <-sdl.Events:
-			switch e := event.(type) {
-			case sdl.QuitEvent:
-				if app.Verbose {
-					app.PrintfMsg("SDL quit -> request[exit the application]")
-				}
-				app.RequestExit()
-
-			case sdl.JoyAxisEvent:
-				if verboseInput {
-					app.PrintfMsg("[Joystick] Axis: %d, Value: %d", e.Axis, e.Value)
-				}
-				if e.Axis == 0 {
-					if e.Value > 0 {
-						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_RIGHT)
-					} else if e.Value < 0 {
-						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_LEFT)
-					} else {
-						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_RIGHT)
-						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_LEFT)
-					}
-				} else if e.Axis == 1 {
-					if e.Value > 0 {
-						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_UP)
-					} else if e.Value < 0 {
-						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_DOWN)
-					} else {
-						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_UP)
-						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_DOWN)
-					}
-				}
-
-			case sdl.JoyButtonEvent:
-				if verboseInput {
-					app.PrintfMsg("[Joystick] Button: %d, State: %d", e.Button, e.State)
-				}
-				if e.Button == 0 {
-					if e.State > 0 {
-						speccy.Joystick.KempstonDown(spectrum.KEMPSTON_FIRE)
-					} else {
-						speccy.Joystick.KempstonUp(spectrum.KEMPSTON_FIRE)
-					}
-				}
-
-			case sdl.KeyboardEvent:
-				keyName := sdl.GetKeyName(sdl.Key(e.Keysym.Sym))
-
-				if verboseInput {
-					app.PrintfMsg("\n")
-					app.PrintfMsg("%v: %v", e.Keysym.Sym, keyName)
-					app.PrintfMsg("Type: %02x Which: %02x State: %02x\n", e.Type, e.Which, e.State)
-					app.PrintfMsg("Scancode: %02x Sym: %08x Mod: %04x Unicode: %04x\n", e.Keysym.Scancode, e.Keysym.Sym, e.Keysym.Mod, e.Keysym.Unicode)
-				}
-
-				if (keyName == "escape") && (e.Type == sdl.KEYDOWN) {
-					if app.Verbose {
-						app.PrintfMsg("escape key -> request[exit the application]")
-					}
-					app.RequestExit()
-
-				} else if (keyName == "f10") && (e.Type == sdl.KEYDOWN) {
-					//if app.Verbose {
-					//	app.PrintfMsg("f10 key -> toggle console")
-					//}
-					if !r.toggling {
-						r.toggling = true
-
-						if r.cliSurface_orNil == nil {
-							done := make(chan bool)
-							r.cliSurfaceCh <- cmd_newCliSurface{newCLISurface(r.scale2x, r.fullscreen), done}
-							<-done
-						}
-
-						anim := clingon.NewSliderAnimation(0.500, 1.0)
-
-						var targetState int
-						if consoleIsVisible {
-							targetState = HIDE
-						} else {
-							targetState = SHOW
-						}
-
-						r.sliderCh <- cmd_newSlider{anim, targetState}
-						anim.Start()
-
-						consoleIsVisible = !consoleIsVisible
-					}
-				} else {
-					if r.cliSurface_orNil != nil {
-						cliSurface := r.cliSurface_orNil
-
-						if (keyName == "page up") && (e.Type == sdl.KEYDOWN) {
-							cliSurface.EventCh() <- clingon.Cmd_Scroll{clingon.SCROLL_UP}
-						} else if (keyName == "page down") && (e.Type == sdl.KEYDOWN) {
-							cliSurface.EventCh() <- clingon.Cmd_Scroll{clingon.SCROLL_DOWN}
-						} else if (keyName == "up") && (e.Type == sdl.KEYDOWN) {
-							cli.PutReadline(clingon.HISTORY_PREV)
-						} else if (keyName == "down") && (e.Type == sdl.KEYDOWN) {
-							cli.PutReadline(clingon.HISTORY_NEXT)
-						} else if (keyName == "left") && (e.Type == sdl.KEYDOWN) {
-							cli.PutReadline(clingon.CURSOR_LEFT)
-						} else if (keyName == "right") && (e.Type == sdl.KEYDOWN) {
-							cli.PutReadline(clingon.CURSOR_RIGHT)
-						} else {
-							unicode := e.Keysym.Unicode
-							if unicode > 0 {
-								cli.PutUnicode(unicode)
-							}
-						}
-					} else {
-						sequence, haveMapping := spectrum.SDL_KeyMap[keyName]
-
-						if haveMapping {
-							switch e.Type {
-							case sdl.KEYDOWN:
-								// Normal order
-								for i := 0; i < len(sequence); i++ {
-									speccy.Keyboard.KeyDown(sequence[i])
-								}
-							case sdl.KEYUP:
-								// Reverse order
-								for i := len(sequence) - 1; i >= 0; i-- {
-									speccy.Keyboard.KeyUp(sequence[i])
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
 
 type handler_SIGTERM struct {
 	app *spectrum.Application
@@ -652,59 +62,33 @@ func (h *handler_SIGTERM) HandleSignal(s os.Signal) {
 	}
 }
 
-func createApplication(verbose bool) *spectrum.Application {
+func newApplication(verbose bool) *spectrum.Application {
 	app := spectrum.NewApplication()
 	app.Verbose = verbose
+	env.Publish(app)
 	return app
 }
 
-// Create new emulator core
-func initEmulationCore(app *spectrum.Application, acceleratedLoad bool) os.Error {
+func newEmulationCore(app *spectrum.Application, acceleratedLoad bool) (*spectrum.Spectrum48k, os.Error) {
 	romPath, err := spectrum.SystemRomPath("48.rom")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rom, err := spectrum.ReadROM(romPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	speccy = spectrum.NewSpectrum48k(app, *rom)
+	speccy := spectrum.NewSpectrum48k(app, *rom)
 	if acceleratedLoad {
 		speccy.TapeDrive().AcceleratedLoad = true
 	}
 
-	return nil
-}
+	env.Publish(speccy)
 
-func initSDLSubSystems(app *spectrum.Application) os.Error {
-	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO|sdl.INIT_JOYSTICK) != 0 {
-		return os.NewError(sdl.GetError())
-	}
-	if ttf.Init() != 0 {
-		return os.NewError(sdl.GetError())
-	}
-	if sdl.NumJoysticks() > 0 {
-		// Open joystick
-		joystick = sdl.JoystickOpen(DEFAULT_JOYSTICK_ID)
-		if joystick != nil {
-			if app.Verbose {
-				app.PrintfMsg("Opened Joystick %d", DEFAULT_JOYSTICK_ID)
-				app.PrintfMsg("Name: %s", sdl.JoystickName(DEFAULT_JOYSTICK_ID))
-				app.PrintfMsg("Number of Axes: %d", joystick.NumAxes())
-				app.PrintfMsg("Number of Buttons: %d", joystick.NumButtons())
-				app.PrintfMsg("Number of Balls: %d", joystick.NumBalls())
-			}
-		} else {
-			return os.NewError("Couldn't open Joystick!")
-		}
-	}
-	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")
-	sdl.EnableUNICODE(1)
-	return nil
+	return speccy, nil
 }
-
 
 func ftpget_choice(app *spectrum.Application, matches []string, freeware []bool) (string, os.Error) {
 	switch len(matches) {
@@ -748,12 +132,8 @@ func ftpget_choice(app *spectrum.Application, matches []string, freeware []bool)
 	return url, nil
 }
 
-
 func wait(app *spectrum.Application) {
 	<-app.HasTerminated
-	if SDL_initialized {
-		sdl.Quit()
-	}
 
 	if app.Verbose {
 		app.PrintfMsg("GC: %d garbage collections, %f ms total pause time",
@@ -772,24 +152,21 @@ func exit(app *spectrum.Application) {
 }
 
 var (
-	help               = flag.Bool("help", false, "Show usage")
-	scale2x            = flag.Bool("2x", false, "2x display scaler")
-	fullscreen         = flag.Bool("fullscreen", false, "Fullscreen (enable 2x scaler by default)")
-	fps                = flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
-	audio              = flag.Bool("audio", true, "Enable or disable audio")
-	audioFreq          = flag.Uint("audio-freq", output.PLAYBACK_FREQUENCY, "Audio playback frequency (units: Hz)")
-	hqAudio            = flag.Bool("audio-hq", true, "Enable or disable higher-quality audio")
-	acceleratedLoad    = flag.Bool("accelerated-load", false, "Enable or disable accelerated tapes loading")
-	showPaintedRegions = flag.Bool("show-paint", false, "Show painted display regions")
-	verbose            = flag.Bool("verbose", false, "Enable debugging messages")
-	verboseInput       = flag.Bool("verbose-input", false, "Enable debugging messages (input device events)")
-	cpuProfile         = flag.String("hostcpu-profile", "", "Write host-CPU profile to the specified file (for 'pprof')")
-	wos                = flag.String("wos", "", "Download from WorldOfSpectrum; you must provide a query regex (ex: -wos=jetsetwilly)")
-
-	SDL_initialized = false
+	help            = flag.Bool("help", false, "Show usage")
+	acceleratedLoad = flag.Bool("accelerated-load", false, "Accelerated tape loading")
+	fps             = flag.Float64("fps", spectrum.DefaultFPS, "Frames per second")
+	verbose         = flag.Bool("verbose", false, "Enable debugging messages")
+	cpuProfile      = flag.String("hostcpu-profile", "", "Write host-CPU profile to the specified file (for 'pprof')")
+	wos             = flag.String("wos", "", "Download from WorldOfSpectrum; you must provide a query regex (ex: -wos=jetsetwilly)")
 )
 
 func main() {
+	// Pull-in all optional modules into the final executable
+	pull_modules.Pull = 0
+
+	var init_waitGroup sync.WaitGroup
+	env.PublishName("init WaitGroup", &init_waitGroup)
+
 	// Handle options
 	{
 		flag.Usage = func() {
@@ -828,14 +205,11 @@ func main() {
 		}
 	}
 
-	app := createApplication(*verbose)
-
-	composer = output.NewSDLSurfaceComposer(app)
-	composer.ShowPaintedRegions(*showPaintedRegions)
+	app := newApplication(*verbose)
 
 	// Use at least 2 OS threads.
 	// This helps to prevent audio buffer underflows
-	// in case SDL rendering is consuming too much CPU.
+	// in case rendering is consuming too much CPU.
 	if (os.Getenv("GOMAXPROCS") == "") && (runtime.GOMAXPROCS(-1) < 2) {
 		runtime.GOMAXPROCS(2)
 	}
@@ -849,7 +223,8 @@ func main() {
 		spectrum.InstallSignalHandler(&handler)
 	}
 
-	if err := initEmulationCore(app, *acceleratedLoad); err != nil {
+	speccy, err := newEmulationCore(app, *acceleratedLoad)
+	if err != nil {
 		app.PrintfMsg("%s", err)
 		exit(app)
 		return
@@ -859,14 +234,7 @@ func main() {
 	// The startup scripts may change the display settings or enable/disable the audio.
 	// They may also terminate the program.
 	{
-		dummyRenderer := DummyRenderer{
-			scale2x:    scale2x,
-			fullscreen: fullscreen,
-			audio:      audio,
-			audioFreq:  audioFreq,
-			hqAudio:    hqAudio,
-		}
-		interpreter.Init(app, flag.Arg(0), speccy, &dummyRenderer)
+		interpreter.Init(app, flag.Arg(0), speccy)
 
 		if app.TerminationInProgress() || app.Terminated() {
 			exit(app)
@@ -877,8 +245,10 @@ func main() {
 	// Optional: Read and categorize the contents
 	//           of the file specified on the command-line
 	var program_orNil interface{} = nil
+	var programName string
 	if flag.Arg(0) != "" {
 		file := flag.Arg(0)
+		programName = file
 
 		var err os.Error
 		path, err := spectrum.ProgramPath(file)
@@ -945,49 +315,16 @@ func main() {
 				exit(app)
 				return
 			}
+
+			_, programName = pathutil.Split(filePath)
 		} else {
 			exit(app)
 			return
 		}
 	}
 
-	// SDL subsystems init
-	if err := initSDLSubSystems(app); err != nil {
-		app.PrintfMsg("%s", err)
-		exit(app)
-		return
-	} else {
-		SDL_initialized = true
-	}
-
-	{
-		n := make(chan uint)
-
-		// Setup the display
-
-		speccy.CommandChannel <- spectrum.Cmd_GetNumDisplayReceivers{n}
-		if <-n == 0 {
-			r = NewSDLRenderer(app, *scale2x, *fullscreen, *audio, *hqAudio, *audioFreq)
-			interpreter.SetUI(r)
-		}
-
-		initCLI()
-
-		// Setup the audio
-		speccy.CommandChannel <- spectrum.Cmd_GetNumAudioReceivers{n}
-		numAudioReceivers := <-n
-		if *audio && (numAudioReceivers == 0) {
-			audio, err := output.NewSDLAudio(app, *audioFreq, *hqAudio)
-			if err == nil {
-				speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
-			} else {
-				app.PrintfMsg("%s", err)
-			}
-		}
-	}
-
-	// Start the SDL event loop
-	go sdlEventLoop(app, speccy, *verboseInput)
+	// Wait until modules are initialized
+	init_waitGroup.Wait()
 
 	// Begin speccy emulation
 	go speccy.EmulatorLoop()
@@ -998,7 +335,6 @@ func main() {
 	// Optional: Load the program specified on the command-line
 	if program_orNil != nil {
 		program := program_orNil
-		file := flag.Arg(0)
 
 		if _, isTAP := program.(*formats.TAP); isTAP {
 			romLoaded := make(chan (<-chan bool))
@@ -1007,7 +343,7 @@ func main() {
 		}
 
 		errChan := make(chan os.Error)
-		speccy.CommandChannel <- spectrum.Cmd_Load{file, program, errChan}
+		speccy.CommandChannel <- spectrum.Cmd_Load{programName, program, errChan}
 		err := <-errChan
 		if err != nil {
 			app.PrintfMsg("%s", err)
@@ -1015,11 +351,6 @@ func main() {
 			return
 		}
 	}
-
-	hint := ""
-	hint += "Hint: Press F10 to invoke the built-in console.\n"
-	hint += "      Input an empty line in the console to display available commands.\n"
-	fmt.Print(hint)
 
 	wait(app)
 }

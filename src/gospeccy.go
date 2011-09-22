@@ -31,7 +31,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"pull_modules"
 	"runtime"
 	"runtime/pprof"
 	"spectrum"
@@ -42,6 +41,9 @@ import (
 	"sync"
 	"syscall"
 	pathutil "path"
+
+	// Pull-in all optional modules into the final executable
+	_ "pull_modules"
 )
 
 type handler_SIGTERM struct {
@@ -161,9 +163,6 @@ var (
 )
 
 func main() {
-	// Pull-in all optional modules into the final executable
-	pull_modules.Pull = 0
-
 	var init_waitGroup sync.WaitGroup
 	env.PublishName("init WaitGroup", &init_waitGroup)
 

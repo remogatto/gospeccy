@@ -5,14 +5,14 @@
  * except for usages in immoral contexts.
  */
 
-package output
+package sdl_output
 
 import (
 	"fmt"
 	"math"
 	"os"
-	"⚛sdl"
-	sdl_audio "⚛sdl/audio"
+	"atom/sdl"
+	sdl_audio "atom/sdl/audio"
 	"spectrum"
 	"sync"
 )
@@ -37,6 +37,7 @@ func forwarderLoop(evtLoop *spectrum.EventLoop, audio *SDLAudio) {
 	audioDataChannel := audio.data
 	playback_closed := false
 
+	shutdown.Add(1)
 	for {
 		select {
 		case <-evtLoop.Pause:
@@ -84,6 +85,7 @@ func forwarderLoop(evtLoop *spectrum.EventLoop, audio *SDLAudio) {
 				evtLoop.App().PrintfMsg("audio forwarder loop: exit")
 			}
 			evtLoop.Terminate <- 0
+			shutdown.Done()
 			return
 
 		case audioData := <-audioDataChannel:

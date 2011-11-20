@@ -12,6 +12,41 @@ import (
 	"time"
 )
 
+// Contains the names of all defined functions
+var definedFunctions = make(map[string]byte)
+
+func defineFunction(name string, t *eval.FuncType, f eval.FuncValue) {
+	w.DefineVar(name, t, f)
+	definedFunctions[name] = 0
+}
+
+type Function struct {
+	Name       string         // Name of the variable used to access the function
+	Type       *eval.FuncType // Function type
+	Value      eval.FuncValue // The function itself
+	Help_key   string         // Help
+	Help_value string
+}
+
+var functionsToAdd []Function
+
+func DefineFunction(f Function) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if w == nil {
+		// Postpone the function definition until interpreter initialization
+		functionsToAdd = append(functionsToAdd, f)
+	} else {
+		defineFunction(f.Name, f.Type, f.Value)
+
+		if (f.Help_key != "") && (f.Help_value != "") {
+			help_keys.Push(f.Help_key)
+			help_vals.Push(f.Help_value)
+		}
+	}
+}
+
 // ================
 // Various commands
 // ================
@@ -73,6 +108,13 @@ func wrapper_vars(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	slice.Cap = int64(len(vars))
 
 	out[0].(eval.SliceValue).Set(t, slice)
+}
+
+// Signature: func definedFunction(name string) bool
+func wrapper_definedFunction(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	name := in[0].(eval.StringValue).Get(t)
+	_, defined := definedFunctions[name]
+	out[0].(eval.BoolValue).Set(t, defined)
 }
 
 // Signature: func reset()
@@ -167,54 +209,6 @@ func wrapper_save(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 }
 
-// Signature: func scale(n uint)
-func wrapper_scale(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() || app.Terminated() {
-		return
-	}
-	n := in[0].(eval.UintValue).Get(t)
-	switch n {
-	case 1:
-		mutex.Lock()
-		uiSettings.ResizeVideo(false, false)
-		mutex.Unlock()
-	case 2:
-		mutex.Lock()
-		uiSettings.ResizeVideo(true, false)
-		mutex.Unlock()
-	}
-}
-
-// Signature: func fullscreen(enable bool)
-func wrapper_fullscreen(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() || app.Terminated() {
-		return
-	}
-	enable := in[0].(eval.BoolValue).Get(t)
-	if enable {
-		mutex.Lock()
-		uiSettings.ResizeVideo(true, true)
-		mutex.Unlock()
-	} else {
-		mutex.Lock()
-		uiSettings.ResizeVideo(true, false)
-		mutex.Unlock()
-	}
-}
-
-// Signature: func showPaint(enable bool)
-func wrapper_showPaint(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() || app.Terminated() {
-		return
-	}
-
-	enable := in[0].(eval.BoolValue).Get(t)
-
-	mutex.Lock()
-	uiSettings.ShowPaintedRegions(enable)
-	mutex.Unlock()
-}
-
 // Signature: func fps(n float32)
 func wrapper_fps(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	if app.TerminationInProgress() || app.Terminated() {
@@ -233,45 +227,6 @@ func wrapper_ulaAccuracy(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	accurateEmulation := in[0].(eval.BoolValue).Get(t)
 	speccy.CommandChannel <- spectrum.Cmd_SetUlaEmulationAccuracy{accurateEmulation}
-}
-
-// Signature: func audio(enable bool)
-func wrapper_audio(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() || app.Terminated() {
-		return
-	}
-
-	enable := in[0].(eval.BoolValue).Get(t)
-
-	mutex.Lock()
-	uiSettings.EnableAudio(enable)
-	mutex.Unlock()
-}
-
-// Signature: func audioFreq(freq uint)
-func wrapper_audioFreq(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() || app.Terminated() {
-		return
-	}
-
-	freq := uint(in[0].(eval.UintValue).Get(t))
-
-	mutex.Lock()
-	uiSettings.SetAudioFreq(freq)
-	mutex.Unlock()
-}
-
-// Signature: func audioHQ(enable bool)
-func wrapper_audioHQ(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	if app.TerminationInProgress() || app.Terminated() {
-		return
-	}
-
-	hqAudio := in[0].(eval.BoolValue).Get(t)
-
-	mutex.Lock()
-	uiSettings.SetAudioQuality(hqAudio)
-	mutex.Unlock()
 }
 
 // Signature: func wait(milliseconds uint)
@@ -467,176 +422,151 @@ func defineFunctions(w *eval.World) {
 	{
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_help, functionSignature)
-		w.DefineVar("help", funcType, funcValue)
+		defineFunction("help", funcType, funcValue)
 		help_keys.Push("help()")
 		help_vals.Push("This help")
 	}
 	{
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_exit, functionSignature)
-		w.DefineVar("exit", funcType, funcValue)
+		defineFunction("exit", funcType, funcValue)
 		help_keys.Push("exit()")
 		help_vals.Push("Terminate this program")
 	}
 	{
 		var functionSignature func() []string
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_vars, functionSignature)
-		w.DefineVar("vars", funcType, funcValue)
+		defineFunction("vars", funcType, funcValue)
 		help_keys.Push("vars()")
 		help_vals.Push("Get the names of all variables")
 	}
 	{
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_reset, functionSignature)
-		w.DefineVar("reset", funcType, funcValue)
+		defineFunction("reset", funcType, funcValue)
 		help_keys.Push("reset()")
 		help_vals.Push("Reset the emulated machine")
 	}
 	{
+		var functionSignature func(string) bool
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_definedFunction, functionSignature)
+		defineFunction("definedFunction", funcType, funcValue)
+		help_keys.Push("definedFunction(name string) bool")
+		help_vals.Push("Returns whether a Go function exists")
+	}
+	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_addSearchPath, functionSignature)
-		w.DefineVar("addSearchPath", funcType, funcValue)
+		defineFunction("addSearchPath", funcType, funcValue)
 		help_keys.Push("addSearchPath(path string)")
 		help_vals.Push("Append to the paths searched when loading snapshots")
 	}
 	{
 		var functionSignature func() string
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_cmdLineArg, functionSignature)
-		w.DefineVar("cmdLineArg", funcType, funcValue)
+		defineFunction("cmdLineArg", funcType, funcValue)
 		help_keys.Push("cmdLineArg() string)")
 		help_vals.Push("The 1st non-flag command-line argument, or an empty string")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
-		w.DefineVar("load", funcType, funcValue)
+		defineFunction("load", funcType, funcValue)
 		help_keys.Push("load(path string)")
 		help_vals.Push("Load state from file (.SNA, .Z80, .Z80.ZIP, etc)")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_save, functionSignature)
-		w.DefineVar("save", funcType, funcValue)
+		defineFunction("save", funcType, funcValue)
 		help_keys.Push("save(path string)")
 		help_vals.Push("Save state to file (SNA format)")
 	}
 	{
-		var functionSignature func(uint)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_scale, functionSignature)
-		w.DefineVar("scale", funcType, funcValue)
-		help_keys.Push("scale(n uint)")
-		help_vals.Push("Change the display scale (1 or 2)")
-	}
-	{
-		var functionSignature func(bool)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fullscreen, functionSignature)
-		w.DefineVar("fullscreen", funcType, funcValue)
-		help_keys.Push("fullscreen(enable bool)")
-		help_vals.Push("Fullscreen on/off")
-	}
-	{
-		var functionSignature func(bool)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_showPaint, functionSignature)
-		w.DefineVar("showPaint", funcType, funcValue)
-		help_keys.Push("showPaint(enable bool)")
-		help_vals.Push("Show painted regions")
-	}
-	{
 		var functionSignature func(float32)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, functionSignature)
-		w.DefineVar("fps", funcType, funcValue)
+		defineFunction("fps", funcType, funcValue)
 		help_keys.Push("fps(n float32)")
 		help_vals.Push("Change the display refresh frequency (0=default FPS)")
 	}
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_ulaAccuracy, functionSignature)
-		w.DefineVar("ula", funcType, funcValue)
+		defineFunction("ula", funcType, funcValue)
 		help_keys.Push("ula(accurateEmulation bool)")
 		help_vals.Push("Enable/disable accurate ULA emulation")
 	}
 	{
-		var functionSignature func(bool)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audio, functionSignature)
-		w.DefineVar("audio", funcType, funcValue)
-		help_keys.Push("audio(enable bool)")
-		help_vals.Push("Enable or disable audio")
-	}
-	{
-		var functionSignature func(uint)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audioFreq, functionSignature)
-		w.DefineVar("audioFreq", funcType, funcValue)
-		help_keys.Push("audioFreq(freq uint)")
-		help_vals.Push("Set audio playback frequency (0=default frequency)")
-	}
-	{
-		var functionSignature func(bool)
-		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audioHQ, functionSignature)
-		w.DefineVar("audioHQ", funcType, funcValue)
-		help_keys.Push("audioHQ(enable bool)")
-		help_vals.Push("Enable or disable high-quality audio")
-	}
-	{
 		var functionSignature func(uint)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wait, functionSignature)
-		w.DefineVar("wait", funcType, funcValue)
+		defineFunction("wait", funcType, funcValue)
 		help_keys.Push("wait(milliseconds uint)")
 		help_vals.Push("Wait before executing the next command")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_script, functionSignature)
-		w.DefineVar("script", funcType, funcValue)
+		defineFunction("script", funcType, funcValue)
 		help_keys.Push("script(scriptName string)")
 		help_vals.Push("Load and evaluate the specified Go script")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_optionalScript, functionSignature)
-		w.DefineVar("optionalScript", funcType, funcValue)
+		defineFunction("optionalScript", funcType, funcValue)
 		help_keys.Push("optionalScript(scriptName string)")
 		help_vals.Push("Load (if found) and evaluate the specified Go script")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_screenshot, functionSignature)
-		w.DefineVar("screenshot", funcType, funcValue)
+		defineFunction("screenshot", funcType, funcValue)
 		help_keys.Push("screenshot(screenshotName string)")
 		help_vals.Push("Take a screenshot of the current display")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_puts, functionSignature)
-		w.DefineVar("puts", funcType, funcValue)
+		defineFunction("puts", funcType, funcValue)
 		help_keys.Push("puts(str string)")
 		help_vals.Push("Print the given string")
 	}
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_acceleratedLoad, functionSignature)
-		w.DefineVar("acceleratedLoad", funcType, funcValue)
+		defineFunction("acceleratedLoad", funcType, funcValue)
 		help_keys.Push("acceleratedLoad(on bool)")
 		help_vals.Push("Set accelerated tape load on/off")
 	}
 	{
 		var functionSignature func(string) []WOS
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wosFind, functionSignature)
-		w.DefineVar("wosFind", funcType, funcValue)
+		defineFunction("wosFind", funcType, funcValue)
 		help_keys.Push("wosFind(pattern string) []WOS")
 		help_vals.Push("Find tapes and snapshots on worldofspectrum.org")
 	}
 	{
 		var functionSignature func(WOS) string
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wosDownload, functionSignature)
-		w.DefineVar("wosDownload", funcType, funcValue)
+		defineFunction("wosDownload", funcType, funcValue)
 		help_keys.Push("wosDownload(wos WOS) string")
 		help_vals.Push("Download from worldofspectrum.org")
 	}
 	{
 		var functionSignature func(WOS)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wosLoad, functionSignature)
-		w.DefineVar("wosLoad", funcType, funcValue)
+		defineFunction("wosLoad", funcType, funcValue)
 		help_keys.Push("wosLoad(wos WOS)")
 		help_vals.Push("Same as load(wosDownload(wos))")
 	}
+
+	for _, f := range functionsToAdd {
+		defineFunction(f.Name, f.Type, f.Value)
+
+		if (f.Help_key != "") && (f.Help_value != "") {
+			help_keys.Push(f.Help_key)
+			help_vals.Push(f.Help_value)
+		}
+	}
+	functionsToAdd = nil
 }

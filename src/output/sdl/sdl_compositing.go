@@ -9,7 +9,7 @@ package sdl_output
 
 import (
 	"rand"
-	"⚛sdl"
+	"atom/sdl"
 	"spectrum"
 	"unsafe"
 )

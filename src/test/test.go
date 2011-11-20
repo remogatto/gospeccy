@@ -3,8 +3,8 @@ package test
 import (
 	"clingon"
 	"io/ioutil"
-	"⚛sdl"
-	"⚛sdl/ttf"
+	"atom/sdl"
+	"atom/sdl/ttf"
 	"prettytest"
 	"os"
 	"spectrum"

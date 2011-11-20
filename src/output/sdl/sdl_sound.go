@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"⚛sdl"
-	sdl_audio "⚛sdl/audio"
+	"atom/sdl"
+	sdl_audio "atom/sdl/audio"
 	"spectrum"
 	"sync"
 )

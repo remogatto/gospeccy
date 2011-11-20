@@ -28,8 +28,8 @@ package sdl_output
 import (
 	"fmt"
 	"os"
-	"⚛sdl"
-	"⚛sdl/ttf"
+	"atom/sdl"
+	"atom/sdl/ttf"
 	"spectrum"
 	"time"
 	"unsafe"

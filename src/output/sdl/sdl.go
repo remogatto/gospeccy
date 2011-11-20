@@ -11,8 +11,8 @@ import (
 	"spectrum"
 	"spectrum/interpreter"
 	"sync"
-	"⚛sdl"
-	"⚛sdl/ttf"
+	"atom/sdl"
+	"atom/sdl/ttf"
 )
 
 const DEFAULT_JOYSTICK_ID = 0

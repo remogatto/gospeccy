@@ -1,15 +1,16 @@
 package test
 
 import (
-	"io/ioutil"
-	"⚛sdl"
-	"⚛sdl/ttf"
-	"prettytest"
 	"clingon"
+	"io/ioutil"
+	"atom/sdl"
+	"atom/sdl/ttf"
+	"prettytest"
+	"os"
 	"spectrum"
 	"spectrum/formats"
 	"spectrum/interpreter"
-	"spectrum/output"
+	output "spectrum/output/sdl_output"
 )
 
 var (
@@ -52,31 +53,6 @@ func newRenderer(app *spectrum.Application, speccySurface SDLSurfaceAccessor, cl
 		go r.loop(app.NewEventLoop())
 	}
 	return r
-}
-
-// Implement 'interpreter.UserInterfaceSettings'
-func (r *renderer) ResizeVideo(scale2x, fullscreen bool) {
-	// Empty
-}
-
-// Implement 'interpreter.UserInterfaceSettings'
-func (r *renderer) ShowPaintedRegions(enable bool) {
-	// Empty
-}
-
-// Implement 'interpreter.UserInterfaceSettings'
-func (r *renderer) EnableAudio(enable bool) {
-	// Empty
-}
-
-// Implement 'interpreter.UserInterfaceSettings'
-func (r *renderer) SetAudioFreq(freq uint) {
-	// Empty
-}
-
-// Implement 'interpreter.UserInterfaceSettings'
-func (r *renderer) SetAudioQuality(hqAudio bool) {
-	// Empty
 }
 
 func (r *renderer) render(speccyRects, cliRects []sdl.Rect) {
@@ -232,6 +208,14 @@ func (t *cliTestSuite) Before() {
 	t.t.Before()
 }
 
+type interpreterAccess_t struct {}
+
+func (i *interpreterAccess_t) Run(console *clingon.Console, sourceCode string) os.Error {
+	intp := interpreter.GetInterpreter()
+	err := intp.Run(sourceCode)
+	return err
+}
+
 func StartFullEmulation(cli bool) {
 	rom, err := spectrum.ReadROM("testdata/48.rom")
 	if err != nil {
@@ -253,8 +237,8 @@ func StartFullEmulation(cli bool) {
 		r = newRenderer(app, sdlScreen, cliRenderer)
 		r.consoleY = int16(r.height / 2)
 		interpreter.IgnoreStartupScript = true
-		interpreter.Init(app, "", speccy, r)
-		console = clingon.NewConsole(interpreter.GetInterpreter())
+		interpreter.Init(app, "", speccy)
+		console = clingon.NewConsole(&interpreterAccess_t{})
 		console.SetRenderer(cliRenderer)
 		console.SetPrompt("gospeccy> ")
 

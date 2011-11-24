@@ -26,7 +26,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"⚛perf"
+	"atom/perf"
 	"os"
 	"spectrum/formats"
 )

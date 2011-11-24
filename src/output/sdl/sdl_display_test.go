@@ -1,4 +1,4 @@
-package output
+package sdl_output
 
 import (
 	//"image"
@@ -7,7 +7,7 @@ import (
 	//"strings"
 	"spectrum"
 	"spectrum/formats"
-	"⚛sdl"
+	"atom/sdl"
 	"testing"
 	//"unsafe"
 )

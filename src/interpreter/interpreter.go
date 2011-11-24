@@ -1,8 +1,6 @@
 package interpreter
 
 import (
-	"bytes"
-	"clingon"
 	eval "bitbucket.org/binet/go-eval/pkg/eval"
 	"fmt"
 	"go/ast"
@@ -16,14 +14,6 @@ import (
 	"sync"
 )
 
-type UserInterfaceSettings interface {
-	ResizeVideo(scale2x, fullscreen bool)
-	ShowPaintedRegions(enable bool)
-	EnableAudio(enable bool)
-	SetAudioFreq(freq uint) // 0 means "default frequency"
-	SetAudioQuality(hqAudio bool)
-}
-
 // ==============
 // Some variables
 // ==============
@@ -36,13 +26,8 @@ var (
 	speccy              *spectrum.Spectrum48k
 	w                   *eval.World
 	intp                *Interpreter = newInterpreter()
-	stdout              io.Writer
+	stdout              io.Writer = os.Stdout
 	IgnoreStartupScript = false
-)
-
-// These variables are mutable. They require locking.
-var (
-	uiSettings UserInterfaceSettings
 )
 
 var mutex sync.Mutex
@@ -64,54 +49,25 @@ func newInterpreter() *Interpreter {
 	}
 }
 
-func (i *Interpreter) Run(console *clingon.Console, command string) os.Error {
-	command = strings.TrimSpace(command)
-	if command == "" {
-		command = "help()"
+// Returns the previous stdout
+func (i *Interpreter) SetStdout(newStdout io.Writer) io.Writer {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	old := stdout
+	stdout = newStdout
+	return old
+}
+
+func (i *Interpreter) Run(sourceCode string) os.Error {
+	sourceCode = strings.TrimSpace(sourceCode)
+	if sourceCode == "" {
+		sourceCode = "help()"
 	}
 
-	myStdout := newConsoleWriter(console)
-	stdout = myStdout
-
-	err := i.run(w, "", command)
-
-	myStdout.flush()
-	stdout = nil
+	err := i.run(w, "", sourceCode)
 
 	return err
-}
-
-
-type console_writer_t struct {
-	buf     bytes.Buffer
-	console *clingon.Console
-}
-
-func newConsoleWriter(console *clingon.Console) *console_writer_t {
-	return &console_writer_t{
-		console: console,
-	}
-}
-
-// Implement 'io.Writer'
-func (w *console_writer_t) Write(p []byte) (n int, err os.Error) {
-	for _, c := range p {
-		if c == '\n' {
-			w.console.Print(w.buf.String())
-			w.buf.Truncate(0)
-		} else {
-			w.buf.WriteByte(c)
-		}
-	}
-
-	return len(p), nil
-}
-
-func (w *console_writer_t) flush() {
-	if w.buf.Len() > 0 {
-		w.console.Print(w.buf.String())
-		w.buf.Truncate(0)
-	}
 }
 
 
@@ -195,13 +151,13 @@ func addTopLevelVars(node ast.Node, buffer map[string]bool) {
 // The output parameter 'vars' contains the names of new top-level
 // variables potentially defined by the source code.
 // 'vars' may contain some elements even if an error occurred.
-func (i *Interpreter) compile(w *eval.World, fileSet *token.FileSet, sourceCode string) (code eval.Code, vars []string, err os.Error) {
+func (i *Interpreter) compile(w *eval.World, fileSet *token.FileSet, path, sourceCode string) (code eval.Code, vars []string, err os.Error) {
 	var statements []ast.Stmt
 	var declarations []ast.Decl
 
 	vars_buffer := make(map[string]bool)
 
-	statements, err1 := parser.ParseStmtList(fileSet, "input", sourceCode)
+	statements, err1 := parser.ParseStmtList(fileSet, path, sourceCode)
 	if err1 == nil {
 		for _, s := range statements {
 			addTopLevelVars(s, vars_buffer)
@@ -216,7 +172,7 @@ func (i *Interpreter) compile(w *eval.World, fileSet *token.FileSet, sourceCode 
 		return code, vars, err
 	}
 
-	declarations, err2 := parser.ParseDeclList(fileSet, "input", sourceCode)
+	declarations, err2 := parser.ParseDeclList(fileSet, path, sourceCode)
 	if err2 == nil {
 		for _, d := range declarations {
 			addTopLevelVars(d, vars_buffer)
@@ -259,7 +215,7 @@ func (i *Interpreter) run(w *eval.World, path_orEmpty string, sourceCode string)
 		fileSet.AddFile(path_orEmpty, fileSet.Base(), len(sourceCode))
 	}
 
-	code, vars, err = i.compile(w, fileSet, sourceCode)
+	code, vars, err = i.compile(w, fileSet, path_orEmpty, sourceCode)
 	i.tryToAddVars(w, fileSet, vars)
 	if err != nil {
 		return err
@@ -295,26 +251,14 @@ func runScript(w *eval.World, scriptName string, optional bool) os.Error {
 		}
 	}
 
-	parentalStdout := stdout
-	if stdout == nil {
-		stdout = os.Stdout
-	}
-
-	intp.run(w, fileName, string(scriptData))
-
-	stdout = parentalStdout
-
-	return nil
+	err = intp.run(w, fileName, string(scriptData))
+	return err
 }
 
-func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spectrum48k, _uiSettings UserInterfaceSettings) {
+func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spectrum48k) {
 	app = _app
 	cmdLineArg = _cmdLineArg
 	speccy = _speccy
-
-	mutex.Lock()
-	uiSettings = _uiSettings
-	mutex.Unlock()
 
 	if w == nil {
 		w = eval.NewWorld()
@@ -333,12 +277,6 @@ func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spec
 
 func GetInterpreter() *Interpreter {
 	return intp
-}
-
-func SetUI(newUI UserInterfaceSettings) {
-	mutex.Lock()
-	uiSettings = newUI
-	mutex.Unlock()
 }
 
 // Lines below will be uncommented when/if the keypress console

@@ -1,3 +1,20 @@
+0.8.0 / 2012-02-22
+==================
+
+	* Use the 'go' tool to build and install GoSpeccy
+
+	* Enable WorldOfSpectrum searches and downloads ("-wos" command-line
+	  option, wos* script functions). Info about a WorldOfSpectrum file
+	  includes publication type, machine type, and rating.
+
+	* New script functions: vars(), wosFind(string), wosDowload(WOS),
+	  wosLoad(WOS)
+
+	* Evaluating an expression in the console prints the result of the
+	  expression
+
+	* Enable compilation without SDL (this is an experimental feature)
+
 0.7.0 / 2011-05-21
 ==================
 	* Use GOAM [http://github.com/0xe2-0x9a-0x9b/goam] to build and

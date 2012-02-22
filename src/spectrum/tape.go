@@ -1,9 +1,8 @@
 package spectrum
 
 import (
-	"os"
+	"github.com/remogatto/gospeccy/src/formats"
 	"io/ioutil"
-	"spectrum/formats"
 	"sync"
 )
 
@@ -40,7 +39,7 @@ func NewTape(tap *formats.TAP) *Tape {
 	return &Tape{tap}
 }
 
-func NewTapeFromFile(filename string) (*Tape, os.Error) {
+func NewTapeFromFile(filename string) (*Tape, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err

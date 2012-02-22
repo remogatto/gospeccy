@@ -1,3 +1,5 @@
+// +build linux freebsd
+
 package sdl_output
 
 type InitialSettings struct {
@@ -38,4 +40,3 @@ func (s *InitialSettings) SetAudioQuality(hqAudio bool) {
 	// Overwrite the command-line settings
 	*s.hqAudio = hqAudio
 }
-

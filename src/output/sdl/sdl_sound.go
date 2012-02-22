@@ -5,15 +5,18 @@
  * except for usages in immoral contexts.
  */
 
+// +build linux freebsd
+
 package sdl_output
 
 import (
+	"errors"
 	"fmt"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	sdl_audio "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl/audio"
+	"github.com/remogatto/gospeccy/src/spectrum"
 	"math"
 	"os"
-	"atom/sdl"
-	sdl_audio "atom/sdl/audio"
-	"spectrum"
 	"sync"
 )
 
@@ -26,7 +29,6 @@ func init() {
 		os.Exit(1)
 	}
 }
-
 
 // ======================
 // Audio loop (goroutine)
@@ -122,7 +124,6 @@ func playbackLoop(app *spectrum.Application, audio *SDLAudio) {
 	audio.playbackLoopFinished <- 0
 }
 
-
 // ========
 // SDLAudio
 // ========
@@ -208,13 +209,13 @@ var sdlAudio_instance *SDLAudio = nil
 
 // Opens SDL audio.
 // If 'playbackFrequency' is 0, the frequency will be equivalent to PLAYBACK_FREQUENCY.
-func NewSDLAudio(app *spectrum.Application, playbackFrequency uint, hqAudio bool) (*SDLAudio, os.Error) {
+func NewSDLAudio(app *spectrum.Application, playbackFrequency uint, hqAudio bool) (*SDLAudio, error) {
 	if playbackFrequency == 0 {
 		playbackFrequency = PLAYBACK_FREQUENCY
 	}
 
 	if playbackFrequency < MIN_PLAYBACK_FREQUENCY {
-		return nil, os.NewError(fmt.Sprintf("playback frequency of %d Hz is too low", playbackFrequency))
+		return nil, errors.New(fmt.Sprintf("playback frequency of %d Hz is too low", playbackFrequency))
 	}
 
 	// Open SDL audio
@@ -225,7 +226,7 @@ func NewSDLAudio(app *spectrum.Application, playbackFrequency uint, hqAudio bool
 		spec.Channels = 1
 		spec.Samples = uint16(2048 * float32(playbackFrequency) / PLAYBACK_FREQUENCY)
 		if sdl_audio.OpenAudio(&spec, &spec) != 0 {
-			return nil, os.NewError(sdl.GetError())
+			return nil, errors.New(sdl.GetError())
 		}
 		if app.Verbose {
 			app.PrintfMsg("%#v", spec)
@@ -312,7 +313,6 @@ func (audio *SDLAudio) bufferRemove() {
 	}
 	audio.mutex.Unlock()
 }
-
 
 func add_lq(samples []float64, x, w, h float64) {
 	var position0 float64 = x

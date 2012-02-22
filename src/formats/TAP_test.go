@@ -1,9 +1,9 @@
 package formats
 
 import (
-	"path"
-	"io/ioutil"
 	"bytes"
+	"io/ioutil"
+	"path"
 )
 
 const testdataDir = "testdata"

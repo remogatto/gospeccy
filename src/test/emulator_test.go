@@ -1,11 +1,10 @@
 package test
 
 import (
+	"github.com/remogatto/gospeccy/src/formats"
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/remogatto/prettytest"
 	"io/ioutil"
-	"os"
-	"prettytest"
-	"spectrum"
-	"spectrum/formats"
 	"testing"
 	"time"
 )
@@ -69,7 +68,7 @@ func (t *testSuite) Should_load_tapes_using_ROM_routine() {
 	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
 	<-(<-romLoaded)
 
-	errChan := make(chan os.Error)
+	errChan := make(chan error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, tap, errChan}
 	t.Nil(<-errChan)
 
@@ -90,16 +89,16 @@ func (t *testSuite) Should_support_accelerated_loading() {
 	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
 	<-(<-romLoaded)
 
-	start := time.Nanoseconds()
+	start := time.Now()
 	speccy.TapeDrive().AcceleratedLoad = true
 
-	errChan := make(chan os.Error)
+	errChan := make(chan error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, tap, errChan}
 	t.Nil(<-errChan)
 
 	<-speccy.TapeDrive().LoadComplete()
 
-	t.True((time.Nanoseconds() - start) < 10e9)
+	t.True(time.Now().Sub(start).Nanoseconds() < 10e9)
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 
@@ -110,7 +109,7 @@ func (t *testSuite) Should_support_SNA_format() {
 	snapshot, err := formats.ReadProgram(filename)
 	t.Nil(err)
 
-	errChan := make(chan os.Error)
+	errChan := make(chan error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, snapshot, errChan}
 	t.Nil(<-errChan)
 
@@ -122,7 +121,7 @@ func (t *testSuite) Should_support_Z80_format() {
 	snapshot, err := formats.ReadProgram(filename)
 	t.Nil(err)
 
-	errChan := make(chan os.Error)
+	errChan := make(chan error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, snapshot, errChan}
 	t.Nil(<-errChan)
 
@@ -141,7 +140,7 @@ func (t *testSuite) Should_support_TAP_format() {
 	speccy.CommandChannel <- spectrum.Cmd_Reset{romLoaded}
 	<-(<-romLoaded)
 
-	errChan := make(chan os.Error)
+	errChan := make(chan error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{ /*informalFileName*/ filename, tap, errChan}
 	t.Nil(<-errChan)
 

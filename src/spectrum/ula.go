@@ -1,5 +1,8 @@
 package spectrum
 
+import (
+	"time"
+)
 
 type ula_byte_t struct {
 	valid bool
@@ -39,7 +42,6 @@ type ULA struct {
 	ports  PortAccessor
 }
 
-
 func NewULA() *ULA {
 	return &ULA{accurateEmulation: true}
 }
@@ -54,7 +56,6 @@ func (ula *ULA) reset() {
 	ula.frame = 0
 }
 
-
 func (ula *ULA) getBorderColor() byte {
 	return ula.borderColor
 }
@@ -63,11 +64,9 @@ func (ula *ULA) setBorderColor(borderColor byte) {
 	ula.borderColor = borderColor
 }
 
-
 func (ula *ULA) setEmulationAccuracy(accurateEmulation bool) {
 	ula.accurateEmulation = accurateEmulation
 }
-
 
 // This function is called at the beginning of each frame
 func (ula *ULA) frame_begin() {
@@ -276,7 +275,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 	return &screen
 }
 
-func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil chan<- int64) {
+func (ula *ULA) sendScreenToDisplay(display *DisplayInfo, completionTime_orNil chan<- time.Time) {
 	displayData := ula.prepare(display)
 	displayData.CompletionTime_orNil = completionTime_orNil
 

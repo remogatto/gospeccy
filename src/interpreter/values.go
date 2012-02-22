@@ -6,12 +6,11 @@
 package interpreter
 
 import (
-	"bytes"
 	eval "bitbucket.org/binet/go-eval/pkg/eval"
+	"bytes"
 	"strconv"
 	"strings"
 )
-
 
 type print_style_t int
 
@@ -80,7 +79,6 @@ func printValues(buf *bytes.Buffer, values []eval.Value, conf print_config_t) {
 	buf.WriteString("}")
 }
 
-
 //
 // Implementation of 'eval.StringValue'
 //
@@ -102,7 +100,6 @@ func (v *string_value_t) Get(*eval.Thread) string {
 func (v *string_value_t) Set(t *eval.Thread, x string) {
 	*v = string_value_t(x)
 }
-
 
 //
 // Implementation of 'eval.Array'
@@ -151,7 +148,6 @@ func (v *array_value_t) Sub(i int64, length int64) eval.ArrayValue {
 	return &res
 }
 
-
 //
 // Implementation of 'eval.SliceValue'
 //
@@ -178,7 +174,6 @@ func (v *slice_value_t) Get(*eval.Thread) eval.Slice {
 func (v *slice_value_t) Set(t *eval.Thread, x eval.Slice) {
 	v.Slice = x
 }
-
 
 //
 // Implementation of 'eval.StructValue'

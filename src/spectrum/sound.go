@@ -51,7 +51,6 @@ var Audio16_Table = [4]float32{
 	0x7fff,
 }
 
-
 // Interface to an audio device awaiting audio data
 type AudioReceiver interface {
 	GetAudioDataChannel() chan<- *AudioData

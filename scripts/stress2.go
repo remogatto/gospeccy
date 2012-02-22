@@ -1,3 +1,5 @@
+// +build ignore
+
 // A simple audio stress-test.
 //
 // The ideal behavior is:

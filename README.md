@@ -1,23 +1,23 @@
 # GoSpeccy - An evolving ZX Spectrum 48k Emulator
 
-GoSpeccy is yet another ZX Spectrum (Speccy for friends) Emulator. The
-interesting fact is that it is written in [Go](http://golang.org) and - AFAIK - it's the
-first and only 8-bit machine emulator coded with the new language designed by
-certain well known Google employees. Last but not least, GoSpeccy is Free Software.
+GoSpeccy is a free ZX Spectrum (Speccy for friends) emulator
+written in [Go](http://golang.org).
 
-There are a lot of ZX Spectrum emulators around - so why reinvent
-the wheel? Well, mainly for [amarcord](http://en.wikipedia.org/wiki/Amarcord)
-reasons and then because it was a great learning experience about emulators
-and Go. In addition, thanks to the fundamental contribution of
-[⚛](http://github.com/0xe2-0x9a-0x9b), GoSpeccy is now based on a
-[concurrent](http://github.com/remogatto/gospeccy/wiki/Architecture)
-architecture. We think the concurrency is a strong peculiarity of GoSpeccy
-as it opens new interesting scenarios when developing and using the emulator.
+# Quick start
 
-Among other things, coding an emulator in Go is very enjoyable. The
-language is simple, pragmatic and fast (well... fast enough to run a
-Z80 emulator!). It has a lot of features that help in emulators
-development:
+Installing and starting GoSpeccy with Go1 is simple:
+
+    go get -v github.com/remogatto/gospeccy/...
+    gospeccy
+    gospeccy -wos="interlace demo"
+
+# Description
+
+GoSpeccy is based on a [concurrent](http://github.com/remogatto/gospeccy/wiki/Architecture) architecture.
+We think the concurrency is a strong peculiarity of GoSpeccy as it opens new
+interesting scenarios when developing and using the emulator.
+
+Go has interesting features that help in emulators development:
  
 * it has "low-level" similarities with C while allowing more productivity
   than C in certain cases
@@ -25,15 +25,15 @@ development:
 * it is strongly typed and type safe so you are aware about certain errors at
   compile-time
 
-* it is garbage collected so you haven't to worry about memory leaks
+* it is garbage collected so there is small chance of memory leaks
 
-* it has an int16 built-in type that helps dealing with 8/16 bit
+* it has an uint16 built-in type that helps dealing with 8/16 bit
   emulation
 
-* as already mentioned, it has goroutines to enable concurrency in the
-  emulator design and implementation
+* it has goroutines to enable concurrency in the emulator design
+  and implementation
 
-The Zilog Z80 emulation is the core of GoSpeccy. The CPU emulation
+The Zilog Z80 CPU emulation is the core of GoSpeccy. The CPU emulation
 code is generated using a modified version of the <tt>z80.pl</tt> script
 shipped with [FUSE](http://fuse-emulator.sourceforge.net/) (one of the best ZX
 Spectrum emulators around). The script has been hacked to generate Go
@@ -54,7 +54,7 @@ don't forget to fork and send patches, of course ;)
 
 # Features
 
-* Complete Zilog Z80 emulation
+* Complete (almost) Zilog Z80 emulation
 * Concurrent [architecture](http://github.com/remogatto/gospeccy/wiki/Architecture)
 * Beeper support
 * Initial support for Kempston joysticks
@@ -66,27 +66,7 @@ don't forget to fork and send patches, of course ;)
 * SDL backend
 * 2x scaler and fullscreen
 
-# Quick start
-
-On Ubuntu Linux you'll need to install the following packages:
-
-    sudo apt-get install libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev libsdl-ttf2.0-dev git-core
-
-GoSpeccy is using the GOAM build tool. To install it:
-
-    goinstall github.com/0xe2-0x9a-0x9b/goam
-
-To download&install all dependencies and create the gospeccy executable:
-
-    git clone http://github.com/remogatto/gospeccy.git
-    cd gospeccy
-    goam make
-    ./gospeccy
-
-To install (uninstall) gospeccy and its resource files:
-
-    goam install
-    (goam uninstall)
+# Using GoSpeccy
 
 To make the screen bigger try the "-2x" command line option,
 or type "scale(2)" in the interactive console.
@@ -102,27 +82,26 @@ To try the classic Hello World try to press the following keys:
 For a nice picture of the speccy keyboard layout visit this
 [page](http://www.guybrush.demon.co.uk/spectrum/docs/Basic.htm).
 
-To load a program simply run:
+To load a program run:
 
-    ./gospeccy file.tap
+    gospeccy file.tap
 
 To enable tape loading acceleration use the <tt>accelerated-load</tt>
 option. For a complete list of the command-line options run:
 
-    ./gospeccy -help
+    gospeccy -help
 
 If you can't wait to see what this machine can do, try the nice
 [Fire104b](http://pouet.net/prod.php?which=54076) intro by Andrew
 Gerrand included in the gospeccy distribution! In the gospeccy folder,
 run:
 
-    ./gospeccy -2x snapshots/Syntax09nF.z80
+    gospeccy -2x snapshots/Syntax09nF.z80
 
 To automatically download a program from [World of spectrum](http://www.worldofspectrum.org),
 and start it:
 
-    ./gospeccy -wos="horace"
-    ./gospeccy -wos="horace.*tower"
+    gospeccy -wos="horace*tower"
 
 For more, try searching the Internet for ZX Spectrum 48k
 games and demos in Z80 and TAP format. For example:
@@ -140,13 +119,13 @@ games and demos in Z80 and TAP format. For example:
     [a-z0-9]        [A-Z0-9]
     SPACE           SPACE
 
-For more info about key bindings see <tt>spectrum/keyboard.go</tt>
+For more info about key bindings see file <tt>spectrum/keyboard.go</tt>
 
 # Proprietary games and system ROM
 
 Generally, games/programs are protected by copyright so none of them
-is included in GoSpeccy. BTW, you can find tons of games for the ZX
-Spectrum on the Internet. The system ROM for Spectrum 48k can be freely
+is included in GoSpeccy. However, it is possible to find tons of games for
+the ZX Spectrum on the Internet. The system ROM for Spectrum 48k can be freely
 distributed and so it's included in the GoSpeccy distribution.
 
 # Convention over Configuration
@@ -161,7 +140,7 @@ mkdir -p $HOME/.gospeccy/roms		# System roms folder
 mkdir -p $HOME/.gospeccy/scripts	# Scripts folder
 </pre>
 
-Then put your snapshots, system roms or script files in the
+Then put your snapshots, system rom or scripts in the
 corresponding folder. After this, to load
 `$HOME/.gospeccy/sna/somegame.z80` simply execute:
 
@@ -171,12 +150,6 @@ gospeccy somegame.z80
 
 The same applies to `load()` and `script()` functions in the
 interactive console.
-
-The default Spectrum 48k system ROM is copied in
-`$GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms` during the installation
-process. This is the default system rom loaded by the emulator. You
-can override this behaviour copying your 48k rom in
-`$HOME/.gospeccy/roms`.
 
 # Screenshots
 

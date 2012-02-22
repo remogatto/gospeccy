@@ -1,14 +1,12 @@
 package interpreter
 
 import (
-	"bytes"
-	"container/vector"
 	eval "bitbucket.org/binet/go-eval/pkg/eval"
+	"bytes"
 	"fmt"
+	"github.com/remogatto/gospeccy/src/formats"
+	"github.com/remogatto/gospeccy/src/spectrum"
 	"io/ioutil"
-	"os"
-	"spectrum"
-	"spectrum/formats"
 	"time"
 )
 
@@ -41,8 +39,8 @@ func DefineFunction(f Function) {
 		defineFunction(f.Name, f.Type, f.Value)
 
 		if (f.Help_key != "") && (f.Help_value != "") {
-			help_keys.Push(f.Help_key)
-			help_vals.Push(f.Help_value)
+			help_keys = append(help_keys, f.Help_key)
+			help_vals = append(help_vals, f.Help_value)
 		}
 	}
 }
@@ -51,21 +49,21 @@ func DefineFunction(f Function) {
 // Various commands
 // ================
 
-var help_keys vector.StringVector
-var help_vals vector.StringVector
+var help_keys []string
+var help_vals []string
 
 // Signature: func help()
 func wrapper_help(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	fmt.Fprintf(stdout, "\nAvailable commands:\n")
 
 	maxKeyLen := 1
-	for i := 0; i < help_keys.Len(); i++ {
+	for i := 0; i < len(help_keys); i++ {
 		if len(help_keys[i]) > maxKeyLen {
 			maxKeyLen = len(help_keys[i])
 		}
 	}
 
-	for i := 0; i < help_keys.Len(); i++ {
+	for i := 0; i < len(help_keys); i++ {
 		fmt.Fprintf(stdout, "  %s", help_keys[i])
 		for j := len(help_keys[i]); j < maxKeyLen; j++ {
 			fmt.Fprintf(stdout, " ")
@@ -147,7 +145,7 @@ func load(path string) {
 		<-(<-romLoaded)
 	}
 
-	errChan := make(chan os.Error)
+	errChan := make(chan error)
 	speccy.CommandChannel <- spectrum.Cmd_Load{path, program, errChan}
 
 	err = <-errChan
@@ -165,7 +163,7 @@ func wrapper_load(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 	path := in[0].(eval.StringValue).Get(t)
 
-	var err os.Error
+	var err error
 	path, err = spectrum.ProgramPath(path)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s\n", err)
@@ -235,8 +233,8 @@ func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
 		return
 	}
 
-	milliseconds := uint(in[0].(eval.UintValue).Get(t))
-	time.Sleep(1e6 * int64(milliseconds))
+	milliseconds := in[0].(eval.UintValue).Get(t)
+	time.Sleep(time.Millisecond * time.Duration(milliseconds))
 }
 
 // Signature: func script(scriptName string)
@@ -423,149 +421,149 @@ func defineFunctions(w *eval.World) {
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_help, functionSignature)
 		defineFunction("help", funcType, funcValue)
-		help_keys.Push("help()")
-		help_vals.Push("This help")
+		help_keys = append(help_keys, "help()")
+		help_vals = append(help_vals, "This help")
 	}
 	{
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_exit, functionSignature)
 		defineFunction("exit", funcType, funcValue)
-		help_keys.Push("exit()")
-		help_vals.Push("Terminate this program")
+		help_keys = append(help_keys, "exit()")
+		help_vals = append(help_vals, "Terminate this program")
 	}
 	{
 		var functionSignature func() []string
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_vars, functionSignature)
 		defineFunction("vars", funcType, funcValue)
-		help_keys.Push("vars()")
-		help_vals.Push("Get the names of all variables")
+		help_keys = append(help_keys, "vars()")
+		help_vals = append(help_vals, "Get the names of all variables")
 	}
 	{
 		var functionSignature func()
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_reset, functionSignature)
 		defineFunction("reset", funcType, funcValue)
-		help_keys.Push("reset()")
-		help_vals.Push("Reset the emulated machine")
+		help_keys = append(help_keys, "reset()")
+		help_vals = append(help_vals, "Reset the emulated machine")
 	}
 	{
 		var functionSignature func(string) bool
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_definedFunction, functionSignature)
 		defineFunction("definedFunction", funcType, funcValue)
-		help_keys.Push("definedFunction(name string) bool")
-		help_vals.Push("Returns whether a Go function exists")
+		help_keys = append(help_keys, "definedFunction(name string) bool")
+		help_vals = append(help_vals, "Returns whether a Go function exists")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_addSearchPath, functionSignature)
 		defineFunction("addSearchPath", funcType, funcValue)
-		help_keys.Push("addSearchPath(path string)")
-		help_vals.Push("Append to the paths searched when loading snapshots")
+		help_keys = append(help_keys, "addSearchPath(path string)")
+		help_vals = append(help_vals, "Append to the paths searched when loading snapshots")
 	}
 	{
 		var functionSignature func() string
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_cmdLineArg, functionSignature)
 		defineFunction("cmdLineArg", funcType, funcValue)
-		help_keys.Push("cmdLineArg() string)")
-		help_vals.Push("The 1st non-flag command-line argument, or an empty string")
+		help_keys = append(help_keys, "cmdLineArg() string)")
+		help_vals = append(help_vals, "The 1st non-flag command-line argument, or an empty string")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_load, functionSignature)
 		defineFunction("load", funcType, funcValue)
-		help_keys.Push("load(path string)")
-		help_vals.Push("Load state from file (.SNA, .Z80, .Z80.ZIP, etc)")
+		help_keys = append(help_keys, "load(path string)")
+		help_vals = append(help_vals, "Load state from file (.SNA, .Z80, .Z80.ZIP, etc)")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_save, functionSignature)
 		defineFunction("save", funcType, funcValue)
-		help_keys.Push("save(path string)")
-		help_vals.Push("Save state to file (SNA format)")
+		help_keys = append(help_keys, "save(path string)")
+		help_vals = append(help_vals, "Save state to file (SNA format)")
 	}
 	{
 		var functionSignature func(float32)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fps, functionSignature)
 		defineFunction("fps", funcType, funcValue)
-		help_keys.Push("fps(n float32)")
-		help_vals.Push("Change the display refresh frequency (0=default FPS)")
+		help_keys = append(help_keys, "fps(n float32)")
+		help_vals = append(help_vals, "Change the display refresh frequency (0=default FPS)")
 	}
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_ulaAccuracy, functionSignature)
 		defineFunction("ula", funcType, funcValue)
-		help_keys.Push("ula(accurateEmulation bool)")
-		help_vals.Push("Enable/disable accurate ULA emulation")
+		help_keys = append(help_keys, "ula(accurateEmulation bool)")
+		help_vals = append(help_vals, "Enable/disable accurate ULA emulation")
 	}
 	{
 		var functionSignature func(uint)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wait, functionSignature)
 		defineFunction("wait", funcType, funcValue)
-		help_keys.Push("wait(milliseconds uint)")
-		help_vals.Push("Wait before executing the next command")
+		help_keys = append(help_keys, "wait(milliseconds uint)")
+		help_vals = append(help_vals, "Wait before executing the next command")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_script, functionSignature)
 		defineFunction("script", funcType, funcValue)
-		help_keys.Push("script(scriptName string)")
-		help_vals.Push("Load and evaluate the specified Go script")
+		help_keys = append(help_keys, "script(scriptName string)")
+		help_vals = append(help_vals, "Load and evaluate the specified Go script")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_optionalScript, functionSignature)
 		defineFunction("optionalScript", funcType, funcValue)
-		help_keys.Push("optionalScript(scriptName string)")
-		help_vals.Push("Load (if found) and evaluate the specified Go script")
+		help_keys = append(help_keys, "optionalScript(scriptName string)")
+		help_vals = append(help_vals, "Load (if found) and evaluate the specified Go script")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_screenshot, functionSignature)
 		defineFunction("screenshot", funcType, funcValue)
-		help_keys.Push("screenshot(screenshotName string)")
-		help_vals.Push("Take a screenshot of the current display")
+		help_keys = append(help_keys, "screenshot(screenshotName string)")
+		help_vals = append(help_vals, "Take a screenshot of the current display")
 	}
 	{
 		var functionSignature func(string)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_puts, functionSignature)
 		defineFunction("puts", funcType, funcValue)
-		help_keys.Push("puts(str string)")
-		help_vals.Push("Print the given string")
+		help_keys = append(help_keys, "puts(str string)")
+		help_vals = append(help_vals, "Print the given string")
 	}
 	{
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_acceleratedLoad, functionSignature)
 		defineFunction("acceleratedLoad", funcType, funcValue)
-		help_keys.Push("acceleratedLoad(on bool)")
-		help_vals.Push("Set accelerated tape load on/off")
+		help_keys = append(help_keys, "acceleratedLoad(on bool)")
+		help_vals = append(help_vals, "Set accelerated tape load on/off")
 	}
 	{
 		var functionSignature func(string) []WOS
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wosFind, functionSignature)
 		defineFunction("wosFind", funcType, funcValue)
-		help_keys.Push("wosFind(pattern string) []WOS")
-		help_vals.Push("Find tapes and snapshots on worldofspectrum.org")
+		help_keys = append(help_keys, "wosFind(pattern string) []WOS")
+		help_vals = append(help_vals, "Find tapes and snapshots on worldofspectrum.org")
 	}
 	{
 		var functionSignature func(WOS) string
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wosDownload, functionSignature)
 		defineFunction("wosDownload", funcType, funcValue)
-		help_keys.Push("wosDownload(wos WOS) string")
-		help_vals.Push("Download from worldofspectrum.org")
+		help_keys = append(help_keys, "wosDownload(wos WOS) string")
+		help_vals = append(help_vals, "Download from worldofspectrum.org")
 	}
 	{
 		var functionSignature func(WOS)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_wosLoad, functionSignature)
 		defineFunction("wosLoad", funcType, funcValue)
-		help_keys.Push("wosLoad(wos WOS)")
-		help_vals.Push("Same as load(wosDownload(wos))")
+		help_keys = append(help_keys, "wosLoad(wos WOS)")
+		help_vals = append(help_vals, "Same as load(wosDownload(wos))")
 	}
 
 	for _, f := range functionsToAdd {
 		defineFunction(f.Name, f.Type, f.Value)
 
 		if (f.Help_key != "") && (f.Help_value != "") {
-			help_keys.Push(f.Help_key)
-			help_vals.Push(f.Help_value)
+			help_keys = append(help_keys, f.Help_key)
+			help_vals = append(help_vals, f.Help_value)
 		}
 	}
 	functionsToAdd = nil

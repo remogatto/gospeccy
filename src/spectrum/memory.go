@@ -27,7 +27,6 @@ type Memory struct {
 	speccy *Spectrum48k
 }
 
-
 func NewMemory() *Memory {
 	return &Memory{}
 }
@@ -41,7 +40,6 @@ func (memory *Memory) reset() {
 		memory.data[i] = 0
 	}
 }
-
 
 func (memory *Memory) readByteInternal(address uint16) byte {
 	return memory.data[address]

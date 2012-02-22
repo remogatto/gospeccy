@@ -1,8 +1,6 @@
 package formats
 
-import (
-	"os"
-)
+import "errors"
 
 type SNA struct {
 	cpu CpuState
@@ -11,9 +9,9 @@ type SNA struct {
 }
 
 // Decode SNA from binary data
-func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
+func (data SnapshotData) DecodeSNA() (*SNA, error) {
 	if len(data) != 49179 {
-		return nil, os.NewError("snapshot has invalid size")
+		return nil, errors.New("snapshot has invalid size")
 	}
 
 	var s SNA
@@ -54,7 +52,7 @@ func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
 	case 0, 1, 2:
 		s.cpu.IM = IM
 	default:
-		return nil, os.NewError("invalid interrupt mode")
+		return nil, errors.New("invalid interrupt mode")
 	}
 
 	s.ula.Border = data[26] & 0x07
@@ -72,7 +70,7 @@ func (data SnapshotData) DecodeSNA() (*SNA, os.Error) {
 }
 
 // Turn snapshot into binary data (SNA format)
-func (s *FullSnapshot) EncodeSNA() ([]byte, os.Error) {
+func (s *FullSnapshot) EncodeSNA() ([]byte, error) {
 	var data [49179]byte
 
 	// Save registers
@@ -110,7 +108,7 @@ func (s *FullSnapshot) EncodeSNA() ([]byte, os.Error) {
 	sp_afterSimulatedPushPC := s.Cpu.SP - 2
 	if (sp_afterSimulatedPushPC < 0x4000) || (sp_afterSimulatedPushPC > 0xfffe) {
 		// We would be saving the PC to ROM or outside of memory
-		return nil, os.NewError("failed to simulate a RETN")
+		return nil, errors.New("failed to simulate a RETN")
 	}
 
 	data[23] = byte(sp_afterSimulatedPushPC & 0xff)
@@ -132,7 +130,6 @@ func (s *FullSnapshot) EncodeSNA() ([]byte, os.Error) {
 
 	return data[:], nil
 }
-
 
 func (s *SNA) CpuState() CpuState {
 	return s.cpu

@@ -1,8 +1,8 @@
 package formats
 
 import (
+	"errors"
 	"io/ioutil"
-	"os"
 	"path"
 	"strings"
 )
@@ -55,9 +55,8 @@ type SnapshotData []byte
 
 type Archive interface {
 	Filenames() []string
-	Read(fileIndex int) ([]byte, os.Error)
+	Read(fileIndex int) ([]byte, error)
 }
-
 
 const (
 	FORMAT_SNA = iota
@@ -78,11 +77,11 @@ type FormatInfo struct {
 // Determines the format of the specified file based on its name,
 // or based on the names of embedded files in case the file is an archive.
 // Returns an error if the format could not be detected.
-func DetectFormat(filePath string) (*FormatInfo, os.Error) {
+func DetectFormat(filePath string) (*FormatInfo, error) {
 	return detectFormat(filePath, ENCAPSULATION_NONE, true)
 }
 
-func detectFormat(filePath string, encapsulation int, allowEncapsulation bool) (*FormatInfo, os.Error) {
+func detectFormat(filePath string, encapsulation int, allowEncapsulation bool) (*FormatInfo, error) {
 	ext := strings.ToLower(path.Ext(filePath))
 
 	switch ext {
@@ -114,25 +113,25 @@ func detectFormat(filePath string, encapsulation int, allowEncapsulation bool) (
 				}
 
 				if n == 0 {
-					return nil, os.NewError("the archive does not contain any supported files")
+					return nil, errors.New("the archive does not contain any supported files")
 				}
 				if n >= 2 {
-					return nil, os.NewError("the archive contains multiple supported files")
+					return nil, errors.New("the archive contains multiple supported files")
 				}
 			}
 
 			return embeddedFile_format, nil
 		} else {
-			return nil, os.NewError("unrecognized file format")
+			return nil, errors.New("unrecognized file format")
 		}
 	}
 
-	return nil, os.NewError("unrecognized file format")
+	return nil, errors.New("unrecognized file format")
 }
 
 // Decode a snapshot from binary data.
 // The filename is a hint used to determine the snapshot format.
-func (data SnapshotData) Decode(format int) (Snapshot, os.Error) {
+func (data SnapshotData) Decode(format int) (Snapshot, error) {
 	switch format {
 	case FORMAT_SNA:
 		return data.DecodeSNA()
@@ -141,10 +140,10 @@ func (data SnapshotData) Decode(format int) (Snapshot, os.Error) {
 		return data.DecodeZ80()
 	}
 
-	return nil, os.NewError("unknown snapshot format")
+	return nil, errors.New("unknown snapshot format")
 }
 
-func readZIP(filePath string) (interface{}, os.Error) {
+func readZIP(filePath string) (interface{}, error) {
 	archive, err := ReadZipFile(filePath)
 	if err != nil {
 		return nil, err
@@ -164,10 +163,10 @@ func readZIP(filePath string) (interface{}, os.Error) {
 		}
 
 		if n == 0 {
-			return nil, os.NewError("the archive does not contain any supported program files")
+			return nil, errors.New("the archive does not contain any supported program files")
 		}
 		if n >= 2 {
-			return nil, os.NewError("the archive contains multiple program files")
+			return nil, errors.New("the archive contains multiple program files")
 		}
 	}
 
@@ -187,7 +186,7 @@ func readZIP(filePath string) (interface{}, os.Error) {
 // Read a program from the specified file.
 // Return the program and errors if any.
 // The file can be compressed.
-func ReadProgram(filePath string) (interface{}, os.Error) {
+func ReadProgram(filePath string) (interface{}, error) {
 	ext := strings.ToLower(path.Ext(filePath))
 
 	// ZIP archive

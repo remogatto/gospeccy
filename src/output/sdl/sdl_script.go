@@ -1,8 +1,10 @@
+// +build linux freebsd
+
 package sdl_output
 
 import (
-	eval "bitbucket.org/binet/go-eval/pkg/eval"
-	intp "spectrum/interpreter"
+	"bitbucket.org/binet/go-eval/pkg/eval"
+	intp "github.com/remogatto/gospeccy/src/interpreter"
 	"sync"
 )
 
@@ -118,10 +120,10 @@ func defineFunctions() {
 		var functionSignature func(uint)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_scale, functionSignature)
 		intp.DefineFunction(intp.Function{
-			Name: "scale",
-			Type: funcType,
-			Value: funcValue,
-			Help_key: "scale(n uint)",
+			Name:       "scale",
+			Type:       funcType,
+			Value:      funcValue,
+			Help_key:   "scale(n uint)",
 			Help_value: "Change the display scale (1 or 2)",
 		})
 	}
@@ -129,10 +131,10 @@ func defineFunctions() {
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_fullscreen, functionSignature)
 		intp.DefineFunction(intp.Function{
-			Name: "fullscreen",
-			Type: funcType,
-			Value: funcValue,
-			Help_key: "fullscreen(enable bool)",
+			Name:       "fullscreen",
+			Type:       funcType,
+			Value:      funcValue,
+			Help_key:   "fullscreen(enable bool)",
 			Help_value: "Fullscreen on/off",
 		})
 	}
@@ -140,10 +142,10 @@ func defineFunctions() {
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_showPaint, functionSignature)
 		intp.DefineFunction(intp.Function{
-			Name: "showPaint",
-			Type: funcType,
-			Value: funcValue,
-			Help_key: "showPaint(enable bool)",
+			Name:       "showPaint",
+			Type:       funcType,
+			Value:      funcValue,
+			Help_key:   "showPaint(enable bool)",
 			Help_value: "Show painted regions",
 		})
 	}
@@ -151,10 +153,10 @@ func defineFunctions() {
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audio, functionSignature)
 		intp.DefineFunction(intp.Function{
-			Name: "audio",
-			Type: funcType,
-			Value: funcValue,
-			Help_key: "audio(enable bool)",
+			Name:       "audio",
+			Type:       funcType,
+			Value:      funcValue,
+			Help_key:   "audio(enable bool)",
 			Help_value: "Enable or disable audio",
 		})
 	}
@@ -162,10 +164,10 @@ func defineFunctions() {
 		var functionSignature func(uint)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audioFreq, functionSignature)
 		intp.DefineFunction(intp.Function{
-			Name: "audioFreq",
-			Type: funcType,
-			Value: funcValue,
-			Help_key: "audioFreq(freq uint)",
+			Name:       "audioFreq",
+			Type:       funcType,
+			Value:      funcValue,
+			Help_key:   "audioFreq(freq uint)",
 			Help_value: "Set audio playback frequency (0=default frequency)",
 		})
 	}
@@ -173,10 +175,10 @@ func defineFunctions() {
 		var functionSignature func(bool)
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_audioHQ, functionSignature)
 		intp.DefineFunction(intp.Function{
-			Name: "audioHQ",
-			Type: funcType,
-			Value: funcValue,
-			Help_key: "audioHQ(enable bool)",
+			Name:       "audioHQ",
+			Type:       funcType,
+			Value:      funcValue,
+			Help_key:   "audioHQ(enable bool)",
 			Help_value: "Enable or disable high-quality audio",
 		})
 	}

@@ -25,6 +25,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
+import (
+	"time"
+)
+
 const (
 	ScreenWidth  = 256
 	ScreenHeight = 192
@@ -75,7 +79,6 @@ const (
 	BORDER_TSTATE_ADJUSTMENT = 2
 )
 
-
 type RGBA struct {
 	R, G, B, A byte
 }
@@ -103,7 +106,6 @@ var Palette [16]uint32 = [16]uint32{
 	RGBA{255, 255, 255, 255}.value32(),
 }
 
-
 func screenAddr_to_xy(screenAddr uint16) (x, y uint8) {
 	// address: [0 1 0 y7 y6 y2 y1 y0 / y5 y4 y3 x4 x3 x2 x1 x0]
 	x = uint8((screenAddr & 0x001f) << 3)
@@ -124,7 +126,6 @@ func xy_to_screenAddr(x, y uint8) uint16 {
 	return uint16(addr_y | uint(x>>3))
 }
 
-
 // The lower 4 bits define the paper, the higher 4 bits define the ink.
 // Note that the paper is in the *lower* half.
 // There is no flash bit.
@@ -143,7 +144,7 @@ type DisplayData struct {
 	BorderEvents []BorderEvent
 
 	// From structure Cmd_RenderFrame
-	CompletionTime_orNil chan<- int64
+	CompletionTime_orNil chan<- time.Time
 }
 
 // Interface to a rendering backend awaiting display changes
@@ -153,7 +154,6 @@ type DisplayReceiver interface {
 	// Closes the display associated with this DisplayReceiver
 	Close()
 }
-
 
 // Let 'addr' be in range 0x4000 ... 0x5800-1.
 // Then 'screenline_start_tstates[(addr-0x4000)/BytesPerLine]' is the T-state when the Spectrum
@@ -166,7 +166,6 @@ func init() {
 		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
 	}
 }
-
 
 func init() {
 	// Some sanity checks

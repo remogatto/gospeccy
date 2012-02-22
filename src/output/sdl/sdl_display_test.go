@@ -1,16 +1,19 @@
+// +build linux freebsd
+
 package sdl_output
 
 import (
 	//"image"
 	//"image/png"
-	"os"
+
 	//"strings"
-	"spectrum"
-	"spectrum/formats"
-	"atom/sdl"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	"github.com/remogatto/gospeccy/src/formats"
+	"github.com/remogatto/gospeccy/src/spectrum"
 	"testing"
 	//"unsafe"
 )
+
 
 // func (s *SDLSurface) At(x, y int) image.Color {
 // 	var bpp = int(s.surface.Format.BytesPerPixel)
@@ -205,7 +208,7 @@ func BenchmarkRender(b *testing.B) {
 		panic(err)
 	}
 
-	errChan := make(chan os.Error)
+	errChan := make(chan error)
 	speccy.CommandChannel <- spectrum.Cmd_LoadSnapshot{"<fire>", snapshot.(formats.Snapshot), errChan}
 	err = <-errChan
 	if err != nil {

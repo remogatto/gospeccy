@@ -1,13 +1,13 @@
 package test
 
 import (
-	"testing"
 	"fmt"
+	"github.com/remogatto/gospeccy/src/spectrum"
+	pt "github.com/remogatto/prettytest"
 	"os"
 	"regexp"
+	"testing"
 	"time"
-	pt "prettytest"
-	"spectrum"
 )
 
 func (t *cliTestSuite) Should_allow_loading_tapes_using_ROM_routine() {
@@ -19,14 +19,14 @@ func (t *cliTestSuite) Should_allow_loading_tapes_using_ROM_routine() {
 func (t *cliTestSuite) Should_allow_accelerated_tape_load() {
 	console.PutCommand("acceleratedLoad(true)")
 
-	start := time.Nanoseconds()
+	start := time.Now()
 	console.PutCommand(fmt.Sprintf("load(\"%s\")", "testdata/hello.tap"))
 
 	<-speccy.TapeDrive().LoadComplete()
 
 	console.PutCommand("acceleratedLoad(false)")
 
-	t.True((time.Nanoseconds() - start) < 10e9)
+	t.True(time.Since(start).Nanoseconds() < 10e9)
 	t.False(speccy.TapeDrive().AcceleratedLoad)
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }

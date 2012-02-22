@@ -1,7 +1,7 @@
 package env
 
 import (
-	"os"
+	"errors"
 	"reflect"
 )
 
@@ -27,7 +27,7 @@ func (i *objectInfo_t) Remove() {
 	}
 	result := <-resultCh
 	if result.err != nil {
-		panic(result.err.String())
+		panic(result.err.Error())
 	}
 }
 
@@ -48,7 +48,7 @@ type cmd_publish struct {
 
 type cmd_publish_result struct {
 	pub PublishedObject
-	err os.Error
+	err error
 }
 
 func do_publish(cmd cmd_publish) {
@@ -76,11 +76,11 @@ func do_publish(cmd cmd_publish) {
 		}
 	} else {
 		if info.object_orNil != nil {
-			var err os.Error
+			var err error
 			if cmd.name_orEmpty != "" {
-				err = os.NewError("conflict with an already published object (name \"" + cmd.name_orEmpty + "\")")
+				err = errors.New("conflict with an already published object (name \"" + cmd.name_orEmpty + "\")")
 			} else {
-				err = os.NewError("conflict with an already published object (type " + objectType.String() + ")")
+				err = errors.New("conflict with an already published object (type " + objectType.String() + ")")
 			}
 			cmd.resultCh <- cmd_publish_result{
 				pub: nil,
@@ -216,7 +216,7 @@ type cmd_remove struct {
 }
 
 type cmd_remove_result struct {
-	err os.Error
+	err error
 }
 
 func do_remove(cmd cmd_remove) {
@@ -227,13 +227,13 @@ func do_remove(cmd cmd_remove) {
 				panic("this cannot happen")
 			}
 
-			namedObjects[cmd.name_orEmpty] = nil, false
+			delete(namedObjects, cmd.name_orEmpty)
 			cmd.resultCh <- cmd_remove_result{
 				err: nil,
 			}
 		} else {
 			cmd.resultCh <- cmd_remove_result{
-				err: os.NewError("no such object (name \"" + cmd.name_orEmpty + "\")"),
+				err: errors.New("no such object (name \"" + cmd.name_orEmpty + "\")"),
 			}
 		}
 	} else {
@@ -243,13 +243,13 @@ func do_remove(cmd cmd_remove) {
 				panic("this cannot happen")
 			}
 
-			objects[cmd.objectType] = nil, false
+			delete(objects, cmd.objectType)
 			cmd.resultCh <- cmd_remove_result{
 				err: nil,
 			}
 		} else {
 			cmd.resultCh <- cmd_remove_result{
-				err: os.NewError("no such object (type " + cmd.objectType.String() + ")"),
+				err: errors.New("no such object (type " + cmd.objectType.String() + ")"),
 			}
 		}
 	}

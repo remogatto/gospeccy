@@ -1,8 +1,6 @@
 package formats
 
-import (
-	"os"
-)
+import "errors"
 
 const (
 	TAP_FILE_PROGRAM         = 0
@@ -33,7 +31,6 @@ type tapBlock interface {
 	checksum() bool
 }
 
-
 type tapBlockHeader struct {
 	data       []byte
 	tapType    byte // Usually, the value is one of TAP_FILE_*
@@ -58,7 +55,6 @@ func (header *tapBlockHeader) checksum() bool {
 	return checksum(header.data)
 }
 
-
 type tapBlockData []byte
 
 func (data tapBlockData) BlockType() byte {
@@ -77,13 +73,12 @@ func (data tapBlockData) checksum() bool {
 	return checksum(data)
 }
 
-
 type TAP struct {
 	data   []byte
 	blocks []tapBlock
 }
 
-func NewTAP(data []byte) (*TAP, os.Error) {
+func NewTAP(data []byte) (*TAP, error) {
 	tap := &TAP{}
 
 	err := tap.read(data)
@@ -123,7 +118,7 @@ func readBlock_data(data []byte) tapBlockData {
 	return tapBlockData(data)
 }
 
-func (tap *TAP) readBlock(data []byte) (tapBlock, os.Error) {
+func (tap *TAP) readBlock(data []byte) (tapBlock, error) {
 	var block tapBlock
 	if data[0] == TAP_BLOCK_HEADER {
 		block = readBlock_header(data)
@@ -132,33 +127,33 @@ func (tap *TAP) readBlock(data []byte) (tapBlock, os.Error) {
 	}
 
 	if !block.checksum() {
-		return nil, os.NewError("checksum failed")
+		return nil, errors.New("checksum failed")
 	}
 
 	return block, nil
 }
 
-func (tap *TAP) read(data []byte) os.Error {
+func (tap *TAP) read(data []byte) error {
 	length := uint(len(data))
 	if length == 0 {
-		return os.NewError("no TAP data to read")
+		return errors.New("no TAP data to read")
 	}
 
 	pos := uint(0)
 	for pos != length {
 		if !(pos+1 <= length) {
-			return os.NewError("invalid TAP data")
+			return errors.New("invalid TAP data")
 		}
 
 		blockLength := uint(joinBytes(data[pos+1], data[pos]))
 		if blockLength == 0 {
-			return os.NewError("block size can't be 0")
+			return errors.New("block size can't be 0")
 		}
 
 		pos += 2
 
 		if !(pos+blockLength <= length) {
-			return os.NewError("invalid TAP data")
+			return errors.New("invalid TAP data")
 		}
 
 		block, err := tap.readBlock(data[pos : pos+blockLength])

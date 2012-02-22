@@ -2,9 +2,9 @@ package formats
 
 import (
 	"archive/zip"
+	"errors"
 	"io"
 	"io/ioutil"
-	"os"
 )
 
 type ZipArchive struct {
@@ -19,9 +19,9 @@ func (a *ZipArchive) Filenames() []string {
 	return filenames
 }
 
-func (a *ZipArchive) Read(fileIndex int) ([]byte, os.Error) {
+func (a *ZipArchive) Read(fileIndex int) ([]byte, error) {
 	if (fileIndex < 0) || (fileIndex >= len(a.reader.File)) {
-		return nil, os.NewError("invalid file index")
+		return nil, errors.New("invalid file index")
 	}
 
 	readCloser, err := a.reader.File[fileIndex].Open()
@@ -34,7 +34,7 @@ func (a *ZipArchive) Read(fileIndex int) ([]byte, os.Error) {
 	return ioutil.ReadAll(readCloser)
 }
 
-func ReadZip(r io.ReaderAt, size int64) (*ZipArchive, os.Error) {
+func ReadZip(r io.ReaderAt, size int64) (*ZipArchive, error) {
 	reader, err := zip.NewReader(r, size)
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func ReadZip(r io.ReaderAt, size int64) (*ZipArchive, os.Error) {
 	return &ZipArchive{reader}, nil
 }
 
-func ReadZipFile(filePath string) (*ZipArchive, os.Error) {
+func ReadZipFile(filePath string) (*ZipArchive, error) {
 	reader, err := zip.OpenReader(filePath)
 	if err != nil {
 		return nil, err

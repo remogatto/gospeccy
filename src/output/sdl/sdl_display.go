@@ -23,14 +23,16 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
+// +build linux freebsd
+
 package sdl_output
 
 import (
 	"fmt"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/ttf"
+	"github.com/remogatto/gospeccy/src/spectrum"
 	"os"
-	"atom/sdl"
-	"atom/sdl/ttf"
-	"spectrum"
 	"time"
 	"unsafe"
 )
@@ -205,8 +207,8 @@ func (display *SDLScreen) render(screen *spectrum.DisplayData) {
 	unscaledDisplay.render(screen)
 
 	surface := display.screenSurface
-	bpp     := surface.Bpp()
-	pixels  := &unscaledDisplay.pixels
+	bpp := surface.Bpp()
+	pixels := &unscaledDisplay.pixels
 
 	surface.surface.Lock()
 	for _, r := range *unscaledDisplay.changedRegions {
@@ -225,14 +227,13 @@ func (display *SDLScreen) render(screen *spectrum.DisplayData) {
 	surface.surface.Unlock()
 
 	if screen.CompletionTime_orNil != nil {
-		screen.CompletionTime_orNil <- time.Nanoseconds()
+		screen.CompletionTime_orNil <- time.Now()
 	}
 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, display.updatedRectsCh)
 	unscaledDisplay.releaseMemory()
 
 }
-
 
 // ===========
 // SDLScreen2x
@@ -291,10 +292,10 @@ func (display *SDLScreen2x) render(screen *spectrum.DisplayData) {
 	unscaledDisplay.render(screen)
 
 	surface := display.screenSurface
-	bpp     := uintptr(surface.Bpp())
-	bpp2    := 2 * bpp
-	pitch   := uintptr(surface.Pitch())
-	pixels  := &unscaledDisplay.pixels
+	bpp := uintptr(surface.Bpp())
+	bpp2 := 2 * bpp
+	pitch := uintptr(surface.Pitch())
+	pixels := &unscaledDisplay.pixels
 
 	surface.surface.Lock()
 	for _, r := range *unscaledDisplay.changedRegions {
@@ -321,13 +322,12 @@ func (display *SDLScreen2x) render(screen *spectrum.DisplayData) {
 	surface.surface.Unlock()
 
 	if screen.CompletionTime_orNil != nil {
-		screen.CompletionTime_orNil <- time.Nanoseconds()
+		screen.CompletionTime_orNil <- time.Now()
 	}
 
 	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, display.updatedRectsCh)
 	unscaledDisplay.releaseMemory()
 }
-
 
 // ==============
 // Misc functions
@@ -384,7 +384,6 @@ func SDL_updateRects(surface *sdl.Surface, surfaceChanges *ListOfRects, scale ui
 	updatedRectsCh <- []sdl.Rect{{int16(x), int16(y), uint16(w), uint16(h)}}
 }
 
-
 // ===========
 // ListOfRects
 // ===========
@@ -427,12 +426,11 @@ func (l *ListOfRects) addBorder(scale uint) {
 	const BH = spectrum.ScreenBorderY
 	const TW = spectrum.TotalScreenWidth
 
-	l.add( int(s*0)     , int(s*0)     , s*TW, s*BH )	// Top
-	l.add( int(s*0)     , int(s*(BH+H)), s*TW, s*BH )	// Bottom
-	l.add( int(s*0)     , int(s*BH)    , s*BW, s*H  )	// Left
-	l.add( int(s*(BW+W)), int(s*BH)    , s*BW, s*H  )	// Right
+	l.add(int(s*0), int(s*0), s*TW, s*BH)      // Top
+	l.add(int(s*0), int(s*(BH+H)), s*TW, s*BH) // Bottom
+	l.add(int(s*0), int(s*BH), s*BW, s*H)      // Left
+	l.add(int(s*(BW+W)), int(s*BH), s*BW, s*H) // Right
 }
-
 
 // ===============
 // UnscaledDisplay
@@ -506,10 +504,10 @@ func (disp *UnscaledDisplay) renderBorderBetweenTwoEvents(start spectrum.BorderE
 	}
 
 	start_y := (start.TState - DISPLAY_START) / TSTATES_PER_LINE
-	end_y   := (end.TState-1 - DISPLAY_START) / TSTATES_PER_LINE
+	end_y := (end.TState - 1 - DISPLAY_START) / TSTATES_PER_LINE
 
 	start_x := (start.TState - DISPLAY_START) % TSTATES_PER_LINE
-	end_x   := (end.TState-1 - DISPLAY_START) % TSTATES_PER_LINE
+	end_x := (end.TState - 1 - DISPLAY_START) % TSTATES_PER_LINE
 
 	start_x = (start_x << spectrum.PIXELS_PER_TSTATE_LOG2) &^ 7
 	end_x = (end_x << spectrum.PIXELS_PER_TSTATE_LOG2) &^ 7
@@ -600,7 +598,7 @@ func (disp *UnscaledDisplay) render(screen *spectrum.DisplayData) {
 			if screen_dirty[attr_wy+attr_x] {
 				dst_X0 := X0 + 8*attr_x
 
-				var y       uint = 0
+				var y uint = 0
 				var src_ofs uint = ((8 * attr_y) << spectrum.BytesPerLine_log2) + attr_x
 				var dst_ofs uint = spectrum.TotalScreenWidth*(dst_Y0+y) + dst_X0
 				for y < 8 {
@@ -608,7 +606,7 @@ func (disp *UnscaledDisplay) render(screen *spectrum.DisplayData) {
 					var paperInk spectrum.Attr_4bit = screen_attr[src_ofs]
 					paperInk_array := [2]uint8{uint8(paperInk) & 0xf, (uint8(paperInk) >> 4) & 0xf}
 
-					var value          byte     = screen_bitmap[src_ofs]
+					var value byte = screen_bitmap[src_ofs]
 					var unpacked_value *[8]uint = &bitmap_unpack_table[value]
 
 					for x := 0; x < 8; x++ {

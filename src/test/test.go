@@ -1,16 +1,15 @@
 package test
 
 import (
-	"clingon"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/ttf"
+	"github.com/remogatto/gospeccy/src/formats"
+	"github.com/remogatto/gospeccy/src/interpreter"
+	output "github.com/remogatto/gospeccy/src/output/sdl"
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/remogatto/clingon"
+	"github.com/remogatto/prettytest"
 	"io/ioutil"
-	"atom/sdl"
-	"atom/sdl/ttf"
-	"prettytest"
-	"os"
-	"spectrum"
-	"spectrum/formats"
-	"spectrum/interpreter"
-	output "spectrum/output/sdl_output"
 )
 
 var (
@@ -208,9 +207,9 @@ func (t *cliTestSuite) Before() {
 	t.t.Before()
 }
 
-type interpreterAccess_t struct {}
+type interpreterAccess_t struct{}
 
-func (i *interpreterAccess_t) Run(console *clingon.Console, sourceCode string) os.Error {
+func (i *interpreterAccess_t) Run(console *clingon.Console, sourceCode string) error {
 	intp := interpreter.GetInterpreter()
 	err := intp.Run(sourceCode)
 	return err

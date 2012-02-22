@@ -1,7 +1,7 @@
 package formats
 
 import (
-	"prettytest"
+	"github.com/remogatto/prettytest"
 	"strings"
 	"testing"
 )
@@ -45,7 +45,7 @@ func (t *testSuite) TestReadProgram_SNA_ZIP() {
 func (t *testSuite) TestReadProgram_ZIP_ambiguous() {
 	_, err := ReadProgram("testdata/ambiguous.zip")
 	t.NotNil(err)
-	t.True(strings.Contains(err.String(), "multiple"))
+	t.True(strings.Contains(err.Error(), "multiple"))
 }
 
 func TestFormats(t *testing.T) {

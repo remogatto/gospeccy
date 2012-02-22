@@ -2,13 +2,12 @@ package spectrum
 
 import (
 	"fmt"
-	"sync"
-	"time"
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
+	"time"
 )
-
 
 // ===========
 // Application
@@ -30,7 +29,7 @@ type Application struct {
 	Verbose         bool
 	VerboseShutdown bool
 
-	CreationTime int64 // The time when this Application object was created, see time.Nanoseconds()
+	CreationTime time.Time // The time when this Application object was created
 }
 
 func NewApplication() *Application {
@@ -38,7 +37,7 @@ func NewApplication() *Application {
 		exitApp:       make(chan byte),
 		HasTerminated: make(chan byte),
 		eventLoops:    make([]*EventLoop, 0, 8),
-		CreationTime:  time.Nanoseconds(),
+		CreationTime:  time.Now(),
 		messageOutput: &stdoutMessageOutput{},
 	}
 
@@ -51,9 +50,9 @@ func appGoroutine(app *Application) {
 	// Block until there is a request to exit the application
 	<-app.exitApp
 
-	var startTime int64
+	var startTime time.Time
 	if app.Verbose {
-		startTime = time.Nanoseconds()
+		startTime = time.Now()
 	}
 
 	// Cycle until there are no EventLoop objects.
@@ -113,8 +112,8 @@ func appGoroutine(app *Application) {
 	}
 
 	if app.Verbose {
-		endTime := time.Nanoseconds()
-		app.PrintfMsg("application shutdown completed after %f milliseconds", float64(endTime-startTime)/1e6)
+		endTime := time.Now()
+		app.PrintfMsg("application shutdown completed after %s", endTime.Sub(startTime))
 		app.PrintfMsg("application has terminated")
 	}
 
@@ -198,7 +197,6 @@ func (app *Application) PrintfMsg(format string, a ...interface{}) {
 
 	out.PrintfMsg(format, a...)
 }
-
 
 // =========
 // EventLoop
@@ -331,7 +329,6 @@ func (e *EventLoop) Delete() <-chan byte {
 	return doneCh
 }
 
-
 // =============
 // MessageOutput
 // =============
@@ -364,7 +361,6 @@ func (out *stdoutMessageOutput) PrintfMsg(format string, a ...interface{}) {
 	out.mutex.Unlock()
 }
 
-
 // ==============
 // Misc functions
 // ==============
@@ -380,7 +376,6 @@ loop:
 	}
 }
 
-
 // ======================
 // (Unix) signal handling
 // ======================
@@ -394,7 +389,7 @@ type SignalHandler interface {
 }
 
 // Actually, this is a set
-var signalHandlers map[SignalHandler]byte = make(map[SignalHandler]byte)
+var signalHandlers = make(map[SignalHandler]bool)
 
 var signalHandlers_mutex sync.Mutex
 
@@ -402,7 +397,7 @@ var signalHandlers_mutex sync.Mutex
 // Trying to re-install an already installed handler is effectively a NOOP.
 func InstallSignalHandler(handler SignalHandler) {
 	signalHandlers_mutex.Lock()
-	signalHandlers[handler] = 0, true
+	signalHandlers[handler] = true
 	signalHandlers_mutex.Unlock()
 }
 
@@ -410,15 +405,15 @@ func InstallSignalHandler(handler SignalHandler) {
 // Trying to uninstall an non-existent handler is effectively a NOOP.
 func UninstallSignalHandler(handler SignalHandler) {
 	signalHandlers_mutex.Lock()
-	signalHandlers[handler] = 0, false
+	delete(signalHandlers, handler)
 	signalHandlers_mutex.Unlock()
 }
 
 func init() {
 	go func() {
-		for {
-			signal := <-signal.Incoming
-
+		c := make(chan os.Signal, 10)
+		signal.Notify(c)
+		for sig := range c {
 			signalHandlers_mutex.Lock()
 			handlers_copy := make([]SignalHandler, len(signalHandlers))
 			{
@@ -431,7 +426,7 @@ func init() {
 			signalHandlers_mutex.Unlock()
 
 			for _, handler := range handlers_copy {
-				handler.HandleSignal(signal)
+				handler.HandleSignal(sig)
 			}
 		}
 	}()

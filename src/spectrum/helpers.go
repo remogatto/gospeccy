@@ -35,36 +35,41 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"container/vector"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 )
 
 var DefaultUserDir = path.Join(os.Getenv("HOME"), ".gospeccy")
-var distDir = path.Join(runtime.GOROOT(), "pkg", runtime.GOOS+"_"+runtime.GOARCH, "gospeccy")
+var distDir string
 
-var customSearchPaths vector.StringVector
+func init() {
+	gopaths := os.Getenv("GOPATH")
+	gopath0 := strings.Split(gopaths, string(os.PathListSeparator))[0]
+	distDir = path.Join(gopath0, "src", "github.com", "remogatto", "gospeccy")
+}
+
+var customSearchPaths []string
 var customSearchPaths_mutex sync.RWMutex
 
 func AddCustomSearchPath(path string) {
 	customSearchPaths_mutex.Lock()
 	{
-		customSearchPaths.Push(path)
+		customSearchPaths = append(customSearchPaths, path)
 	}
 	customSearchPaths_mutex.Unlock()
 }
 
-func searchForValidPath(paths []string, fileName string) (string, os.Error) {
+func searchForValidPath(paths []string, fileName string) (string, error) {
 	for _, dir := range paths {
 		if _, err := os.Lstat(dir); err == nil {
 			_, err = filepath.EvalSymlinks(dir)
 			if err != nil {
-				return "", os.NewError("path \"" + dir + "\" contains one or more invalid symbolic links")
+				return "", errors.New("path \"" + dir + "\" contains one or more invalid symbolic links")
 			}
 		}
 
@@ -77,10 +82,10 @@ func searchForValidPath(paths []string, fileName string) (string, os.Error) {
 	return fileName, nil
 }
 
-func appendCustomSearchPaths(paths *vector.StringVector) {
+func appendCustomSearchPaths(paths *[]string) {
 	customSearchPaths_mutex.RLock()
 	{
-		paths.AppendVector(&customSearchPaths)
+		*paths = append(*paths, customSearchPaths...)
 	}
 	customSearchPaths_mutex.RUnlock()
 }
@@ -93,15 +98,14 @@ func appendCustomSearchPaths(paths *vector.StringVector) {
 // The search is performed in this order:
 // 1. ./
 // 2. $HOME/.gospeccy/sna/
-func SnaPath(fileName string) (string, os.Error) {
+func SnaPath(fileName string) (string, error) {
 	var (
 		currDir = ""
 		userDir = path.Join(DefaultUserDir, "sna")
 	)
 
-	var paths vector.StringVector
-	paths.Push(currDir)
-	paths.Push(userDir)
+	var paths []string
+	paths = append(paths, currDir, userDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
@@ -115,15 +119,14 @@ func SnaPath(fileName string) (string, os.Error) {
 // The search is performed in this order:
 // 1. ./
 // 2. $HOME/.gospeccy/tape/
-func TapePath(fileName string) (string, os.Error) {
+func TapePath(fileName string) (string, error) {
 	var (
 		currDir = ""
 		userDir = path.Join(DefaultUserDir, "tape")
 	)
 
-	var paths vector.StringVector
-	paths.Push(currDir)
-	paths.Push(userDir)
+	var paths []string
+	paths = append(paths, currDir, userDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
@@ -137,15 +140,14 @@ func TapePath(fileName string) (string, os.Error) {
 // The search is performed in this order:
 // 1. ./
 // 2. $HOME/.gospeccy/zip/
-func ZipPath(fileName string) (string, os.Error) {
+func ZipPath(fileName string) (string, error) {
 	var (
 		currDir = ""
 		userDir = path.Join(DefaultUserDir, "zip")
 	)
 
-	var paths vector.StringVector
-	paths.Push(currDir)
-	paths.Push(userDir)
+	var paths []string
+	paths = append(paths, currDir, userDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
@@ -155,7 +157,7 @@ func ZipPath(fileName string) (string, os.Error) {
 // or the original filename if the search did not find anything.
 //
 // An error is returned if the search could not proceed.
-func ProgramPath(fileName string) (string, os.Error) {
+func ProgramPath(fileName string) (string, error) {
 	ext := strings.ToLower(path.Ext(fileName))
 
 	switch ext {
@@ -178,20 +180,18 @@ func ProgramPath(fileName string) (string, os.Error) {
 // An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
-// 1. ./roms
-// 2. $HOME/.gospeccy/roms
-// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/roms
-func SystemRomPath(fileName string) (string, os.Error) {
+// 1. ./roms/
+// 2. $HOME/.gospeccy/roms/
+// 3. $GOPATH/src/github.com/remogatto/gospeccy/roms/
+func SystemRomPath(fileName string) (string, error) {
 	var (
 		currDir = "roms"
 		userDir = path.Join(DefaultUserDir, "roms")
 		distDir = path.Join(distDir, "roms")
 	)
 
-	var paths vector.StringVector
-	paths.Push(currDir)
-	paths.Push(userDir)
-	paths.Push(distDir)
+	var paths []string
+	paths = append(paths, currDir, userDir, distDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
@@ -205,18 +205,16 @@ func SystemRomPath(fileName string) (string, os.Error) {
 // The search is performed in this order:
 // 1. ./scripts/
 // 2. $HOME/.gospeccy/scripts/
-// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/scripts/
-func ScriptPath(fileName string) (string, os.Error) {
+// 3. $GOPATH/src/github.com/remogatto/gospeccy/scripts/
+func ScriptPath(fileName string) (string, error) {
 	var (
 		currDir = "scripts"
 		userDir = path.Join(DefaultUserDir, "scripts")
 		distDir = path.Join(distDir, "scripts")
 	)
 
-	var paths vector.StringVector
-	paths.Push(currDir)
-	paths.Push(userDir)
-	paths.Push(distDir)
+	var paths []string
+	paths = append(paths, currDir, userDir, distDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
@@ -230,31 +228,29 @@ func ScriptPath(fileName string) (string, os.Error) {
 // The search is performed in this order:
 // 1. ./fonts/
 // 2. $HOME/.gospeccy/fonts/
-// 3. $GOROOT/pkg/$GOOS_$GOARCH/gospeccy/fonts/
-func FontPath(fileName string) (string, os.Error) {
+// 3. $GOPATH/src/github.com/remogatto/gospeccy/fonts/
+func FontPath(fileName string) (string, error) {
 	var (
 		currDir = "fonts"
 		userDir = path.Join(DefaultUserDir, "fonts")
 		distDir = path.Join(distDir, "fonts")
 	)
 
-	var paths vector.StringVector
-	paths.Push(currDir)
-	paths.Push(userDir)
-	paths.Push(distDir)
+	var paths []string
+	paths = append(paths, currDir, userDir, distDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
 }
 
 // Reads the 16KB ROM from the specified file
-func ReadROM(path string) (*[0x4000]byte, os.Error) {
+func ReadROM(path string) (*[0x4000]byte, error) {
 	fileData, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	if len(fileData) != 0x4000 {
-		return nil, os.NewError(path + ":invalid ROM file")
+		return nil, errors.New(path + ":invalid ROM file")
 	}
 
 	var rom [0x4000]byte

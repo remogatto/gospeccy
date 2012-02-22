@@ -26,8 +26,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"os"
-	"spectrum/formats"
+	"errors"
+	"github.com/remogatto/gospeccy/src/formats"
 	"sync"
 	"time"
 )
@@ -112,7 +112,7 @@ type Cmd_RenderFrame struct {
 	// If there are multiple displays, the time includes the 1st display only.
 	//
 	// The time is obtained via a call to time.Nanoseconds().
-	CompletionTime_orNil chan<- int64
+	CompletionTime_orNil chan<- time.Time
 }
 type Cmd_GetNumDisplayReceivers struct {
 	N chan<- uint
@@ -142,12 +142,12 @@ type Cmd_CloseAllAudioReceivers struct {
 type Cmd_LoadSnapshot struct {
 	InformalFilename string // This is only used for logging purposes
 	Snapshot         formats.Snapshot
-	ErrChan          chan<- os.Error
+	ErrChan          chan<- error
 }
 type Cmd_Load struct {
 	InformalFilename string // This is only used for logging purposes
 	Program          interface{}
-	ErrChan          chan<- os.Error
+	ErrChan          chan<- error
 }
 type Cmd_MakeSnapshot struct {
 	Chan chan<- *formats.FullSnapshot
@@ -243,8 +243,8 @@ func (speccy *Spectrum48k) GetCurrentFPS() float32 {
 }
 
 // Load a program (tape or snapshot)
-func (speccy *Spectrum48k) load(program interface{}) os.Error {
-	var err os.Error
+func (speccy *Spectrum48k) load(program interface{}) error {
+	var err error
 
 	switch program := program.(type) {
 
@@ -253,7 +253,7 @@ func (speccy *Spectrum48k) load(program interface{}) os.Error {
 	case *formats.TAP:
 		speccy.loadTape(program)
 	default:
-		err = os.NewError("Invalid program type.")
+		err = errors.New("Invalid program type.")
 		return err
 	}
 
@@ -274,18 +274,18 @@ func (speccy *Spectrum48k) EmulatorLoop() {
 	app := evtLoop.App()
 
 	fps := <-speccy.fpsCh
-	ticker := time.NewTicker(int64(1e9 / fps))
+	ticker := time.NewTicker(time.Duration(1e9 / fps))
 
 	// Render the 1st frame (the 2nd frame will be rendered after 1/FPS seconds)
 	{
-		completionTime := make(chan int64)
+		completionTime := make(chan time.Time)
 		speccy.CommandChannel <- Cmd_RenderFrame{completionTime}
 
 		go func() {
 			start := app.CreationTime
 			end := <-completionTime
 			if app.Verbose {
-				app.PrintfMsg("first frame latency: %d ms", (end-start)/1e6)
+				app.PrintfMsg("first frame latency: %s", end.Sub(start))
 			}
 		}()
 	}
@@ -317,11 +317,11 @@ func (speccy *Spectrum48k) EmulatorLoop() {
 				}
 				ticker.Stop()
 				Drain(ticker)
-				ticker = time.NewTicker(int64(1e9 / newFPS))
+				ticker = time.NewTicker(time.Duration(1e9 / newFPS))
 				fps = newFPS
 			}
 
-			//app.PrintfMsg("%d", time.Nanoseconds()/1e6)
+			//app.PrintfMsg("%d", time.Now().UnixNano()/1e6)
 			speccy.CommandChannel <- Cmd_RenderFrame{}
 
 		case newFPS := <-speccy.fpsCh:
@@ -464,7 +464,7 @@ func commandLoop(speccy *Spectrum48k) {
 	}
 }
 
-func (speccy *Spectrum48k) reset(systemROMLoaded_orNil chan<- <-chan bool) os.Error {
+func (speccy *Spectrum48k) reset(systemROMLoaded_orNil chan<- <-chan bool) error {
 	speccy.Cpu.reset()
 	speccy.Memory.reset()
 	speccy.ula.reset()
@@ -524,7 +524,7 @@ func (speccy *Spectrum48k) closeAllAudioReceivers() {
 	}
 }
 
-func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
+func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- time.Time) {
 	speccy.Ports.frame_begin()
 	speccy.ula.frame_begin()
 
@@ -538,7 +538,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	if len(speccy.displays) > 0 {
 		firstDisplay := true
 		for _, display := range speccy.displays {
-			var tm chan<- int64
+			var tm chan<- time.Time
 			if firstDisplay {
 				tm = completionTime_orNil
 			} else {
@@ -549,7 +549,7 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 		}
 	} else {
 		if completionTime_orNil != nil {
-			completionTime_orNil <- time.Nanoseconds()
+			completionTime_orNil <- time.Now()
 		}
 	}
 
@@ -576,10 +576,9 @@ func (speccy *Spectrum48k) renderFrame(completionTime_orNil chan<- int64) {
 	}
 }
 
-
 // Initializes state from the specified snapshot.
 // Returns nil on success.
-func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) os.Error {
+func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) error {
 	speccy.reset(nil)
 
 	err := speccy.Cpu.loadSnapshot(s)

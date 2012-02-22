@@ -1,7 +1,6 @@
 package env
 
 import (
-	"os"
 	"reflect"
 	"sync"
 	"testing"
@@ -17,7 +16,7 @@ func add() {
 	waitGroup.Done()
 }
 
-func publish_remove() os.Error {
+func publish_remove() error {
 	var t T
 	pub, err := Publish(t)
 	if err != nil {

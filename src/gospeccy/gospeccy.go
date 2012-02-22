@@ -27,23 +27,25 @@ package main
 
 import (
 	"bufio"
-	"env"
+	"errors"
 	"flag"
 	"fmt"
+	"github.com/remogatto/gospeccy/src/env"
+	"github.com/remogatto/gospeccy/src/formats"
+	"github.com/remogatto/gospeccy/src/interpreter"
+	"github.com/remogatto/gospeccy/src/spectrum"
 	"os"
+	pathutil "path"
 	"runtime"
 	"runtime/pprof"
-	"spectrum"
-	"spectrum/formats"
-	"spectrum/interpreter"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
-	pathutil "path"
+	"time"
 
 	// Pull-in all optional modules into the final executable
-	_ "pull_modules"
+	_ "github.com/remogatto/gospeccy/src/pull_modules"
 )
 
 type handler_SIGTERM struct {
@@ -52,7 +54,7 @@ type handler_SIGTERM struct {
 
 func (h *handler_SIGTERM) HandleSignal(s os.Signal) {
 	switch ss := s.(type) {
-	case os.UnixSignal:
+	case syscall.Signal:
 		switch ss {
 		case syscall.SIGTERM, syscall.SIGINT:
 			if h.app.Verbose {
@@ -71,7 +73,7 @@ func newApplication(verbose bool) *spectrum.Application {
 	return app
 }
 
-func newEmulationCore(app *spectrum.Application, acceleratedLoad bool) (*spectrum.Spectrum48k, os.Error) {
+func newEmulationCore(app *spectrum.Application, acceleratedLoad bool) (*spectrum.Spectrum48k, error) {
 	romPath, err := spectrum.SystemRomPath("48.rom")
 	if err != nil {
 		return nil, err
@@ -92,7 +94,7 @@ func newEmulationCore(app *spectrum.Application, acceleratedLoad bool) (*spectru
 	return speccy, nil
 }
 
-func ftpget_choice(app *spectrum.Application, matches []string, freeware []bool) (string, os.Error) {
+func ftpget_choice(app *spectrum.Application, matches []string, freeware []bool) (string, error) {
 	switch len(matches) {
 	case 0:
 		return "", nil
@@ -124,7 +126,7 @@ func ftpget_choice(app *spectrum.Application, matches []string, freeware []bool)
 		return "", err
 	}
 	if (id < 0) || (id >= len(matches)) {
-		return "", os.NewError("Invalid selection")
+		return "", errors.New("Invalid selection")
 	}
 
 	url := matches[id]
@@ -138,8 +140,10 @@ func wait(app *spectrum.Application) {
 	<-app.HasTerminated
 
 	if app.Verbose {
-		app.PrintfMsg("GC: %d garbage collections, %f ms total pause time",
-			runtime.MemStats.NumGC, float64(runtime.MemStats.PauseTotalNs)/1e6)
+		var memstats runtime.MemStats
+		runtime.ReadMemStats(&memstats)
+		app.PrintfMsg("GC: %d garbage collections, %s total pause time",
+			memstats.NumGC, time.Nanosecond*time.Duration(memstats.PauseTotalNs))
 	}
 
 	// Stop host-CPU profiling
@@ -188,7 +192,7 @@ func main() {
 	// The setup code is based on the contents of Go's file "src/pkg/testing/testing.go".
 	var pprof_file *os.File
 	if *cpuProfile != "" {
-		var err os.Error
+		var err error
 
 		pprof_file, err = os.Create(*cpuProfile)
 		if err != nil {
@@ -249,7 +253,7 @@ func main() {
 		file := flag.Arg(0)
 		programName = file
 
-		var err os.Error
+		var err error
 		path, err := spectrum.ProgramPath(file)
 		if err != nil {
 			app.PrintfMsg("%s", err)
@@ -341,7 +345,7 @@ func main() {
 			<-(<-romLoaded)
 		}
 
-		errChan := make(chan os.Error)
+		errChan := make(chan error)
 		speccy.CommandChannel <- spectrum.Cmd_Load{programName, program, errChan}
 		err := <-errChan
 		if err != nil {

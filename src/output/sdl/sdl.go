@@ -1,18 +1,20 @@
+// +build linux freebsd
+
 package sdl_output
 
 import (
 	"bytes"
-	"clingon"
-	"env"
+	"errors"
 	"flag"
 	"fmt"
-	"os"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/ttf"
+	"github.com/remogatto/gospeccy/src/env"
+	"github.com/remogatto/gospeccy/src/interpreter"
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/remogatto/clingon"
 	"reflect"
-	"spectrum"
-	"spectrum/interpreter"
 	"sync"
-	"atom/sdl"
-	"atom/sdl/ttf"
 )
 
 const DEFAULT_JOYSTICK_ID = 0
@@ -110,19 +112,19 @@ func height(scale2x, fullscreen bool) int {
 }
 
 func newAppSurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfaceAccessor {
-	var sdlMode uint32
+	var sdlMode int32
 	if fullscreen {
 		scale2x = true
-		sdlMode = sdl.FULLSCREEN
+		sdlMode |= sdl.FULLSCREEN
 		sdl.ShowCursor(sdl.DISABLE)
 	} else {
 		sdl.ShowCursor(sdl.ENABLE)
-		sdlMode = sdl.SWSURFACE
+		sdlMode |= sdl.SWSURFACE
 	}
 
 	<-composer.ReplaceOutputSurface(nil)
 
-	surface := sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, sdlMode)
+	surface := sdl.SetVideoMode(int(width(scale2x, fullscreen)), int(height(scale2x, fullscreen)), 32, uint32(sdlMode))
 	if app.Verbose {
 		app.PrintfMsg("video surface resolution: %dx%d", surface.W, surface.H)
 	}
@@ -170,7 +172,7 @@ func newFont(scale2x, fullscreen bool) *ttf.Font {
 	{
 		path, err := spectrum.FontPath("VeraMono.ttf")
 		if err != nil {
-			panic(err.String())
+			panic(err.Error())
 		}
 		if scale2x {
 			font = ttf.OpenFont(path, 12)
@@ -426,7 +428,7 @@ func newConsoleWriter(console *clingon.Console) *console_writer_t {
 }
 
 // Implement 'io.Writer'
-func (w *console_writer_t) Write(p []byte) (n int, err os.Error) {
+func (w *console_writer_t) Write(p []byte) (n int, err error) {
 	for _, c := range p {
 		if c == '\n' {
 			w.console.Print(w.buf.String())
@@ -446,9 +448,9 @@ func (w *console_writer_t) flush() {
 	}
 }
 
-type interpreterAccess_t struct {}
+type interpreterAccess_t struct{}
 
-func (i *interpreterAccess_t) Run(console *clingon.Console, sourceCode string) os.Error {
+func (i *interpreterAccess_t) Run(console *clingon.Console, sourceCode string) error {
 	intp := interpreter.GetInterpreter()
 
 	myStdout := newConsoleWriter(console)
@@ -629,12 +631,12 @@ func sdlEventLoop(app *spectrum.Application, speccy *spectrum.Spectrum48k, verbo
 	}
 }
 
-func initSDLSubSystems(app *spectrum.Application) os.Error {
+func initSDLSubSystems(app *spectrum.Application) error {
 	if sdl.Init(sdl.INIT_VIDEO|sdl.INIT_AUDIO|sdl.INIT_JOYSTICK) != 0 {
-		return os.NewError(sdl.GetError())
+		return errors.New(sdl.GetError())
 	}
 	if ttf.Init() != 0 {
-		return os.NewError(sdl.GetError())
+		return errors.New(sdl.GetError())
 	}
 	if sdl.NumJoysticks() > 0 {
 		// Open joystick
@@ -648,7 +650,7 @@ func initSDLSubSystems(app *spectrum.Application) os.Error {
 				app.PrintfMsg("Number of Balls: %d", joystick.NumBalls())
 			}
 		} else {
-			return os.NewError("Couldn't open Joystick!")
+			return errors.New("Couldn't open Joystick!")
 		}
 	}
 	sdl.WM_SetCaption("GoSpeccy - ZX Spectrum Emulator", "")

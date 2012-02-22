@@ -1,3 +1,5 @@
+// +build ignore
+
 // A simple display stress-test.
 // If GoSpeccy audio is enabled, there shouldn't be any audio buffer underruns.
 func stress1(verbose bool) {

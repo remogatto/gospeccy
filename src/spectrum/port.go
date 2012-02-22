@@ -57,7 +57,6 @@ type FrameStatusOfPorts struct {
 	shouldPlayTheTape bool
 }
 
-
 type BorderEvent struct {
 	// The moment when the border color was changed.
 	// It is the number of T-states since the beginning of the frame.
@@ -71,7 +70,6 @@ func (e *BorderEvent) GetTState() uint {
 	return e.TState
 }
 
-
 type BeeperEvent struct {
 	// The moment when the beeper-event occurred.
 	// It is the number of T-states since the beginning of the frame.
@@ -84,7 +82,6 @@ type BeeperEvent struct {
 func (e *BeeperEvent) GetTState() uint {
 	return e.TState
 }
-
 
 type Ports struct {
 	speccy *Spectrum48k
@@ -102,7 +99,6 @@ type Ports struct {
 // If 'tapeReadCount' is equal to or above this threshold,
 // the program running within the emulated machine probably wants to read data from the tape
 const tapeReadCount_tapeAccessThreshold = 400
-
 
 func NewPorts() *Ports {
 	p := &Ports{}
@@ -126,7 +122,6 @@ func (p *Ports) reset() {
 	p.beeperEvents = append(p.beeperEvents, BeeperEvent{TState: 0, Level: p.beeperLevel})
 }
 
-
 func SameBorderEvents(l1, l2 []BorderEvent) bool {
 	if len(l1) != len(l2) {
 		return false
@@ -143,7 +138,6 @@ func SameBorderEvents(l1, l2 []BorderEvent) bool {
 
 	return true
 }
-
 
 func (p *Ports) frame_begin() {
 	p.tapeReadCount = 0

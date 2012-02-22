@@ -1,15 +1,15 @@
 package interpreter
 
 import (
-	eval "bitbucket.org/binet/go-eval/pkg/eval"
+	"bitbucket.org/binet/go-eval/pkg/eval"
 	"fmt"
+	"github.com/remogatto/gospeccy/src/spectrum"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
 	"io/ioutil"
 	"os"
-	"spectrum"
 	"strings"
 	"sync"
 )
@@ -26,8 +26,8 @@ var (
 	speccy              *spectrum.Spectrum48k
 	w                   *eval.World
 	intp                *Interpreter = newInterpreter()
-	stdout              io.Writer = os.Stdout
-	IgnoreStartupScript = false
+	stdout              io.Writer    = os.Stdout
+	IgnoreStartupScript              = false
 )
 
 var mutex sync.Mutex
@@ -59,7 +59,7 @@ func (i *Interpreter) SetStdout(newStdout io.Writer) io.Writer {
 	return old
 }
 
-func (i *Interpreter) Run(sourceCode string) os.Error {
+func (i *Interpreter) Run(sourceCode string) error {
 	sourceCode = strings.TrimSpace(sourceCode)
 	if sourceCode == "" {
 		sourceCode = "help()"
@@ -69,7 +69,6 @@ func (i *Interpreter) Run(sourceCode string) os.Error {
 
 	return err
 }
-
 
 type ast_state_t int
 
@@ -135,7 +134,6 @@ func (v *ast_visitor_t) Visit(node ast.Node) ast.Visitor {
 	return nil
 }
 
-
 // Adds declarations of top-level variables to 'buffer'
 func addTopLevelVars(node ast.Node, buffer map[string]bool) {
 	v := &ast_visitor_t{
@@ -145,19 +143,35 @@ func addTopLevelVars(node ast.Node, buffer map[string]bool) {
 	ast.Walk(v, node)
 }
 
+func parseStmtList(fset *token.FileSet, src string) ([]ast.Stmt, error) {
+	f, err := parser.ParseFile(fset, "input", "package p;func _(){"+src+"\n}", 0)
+	if err != nil {
+		return nil, err
+	}
+	return f.Decls[0].(*ast.FuncDecl).Body.List, nil
+}
+
+func parseDeclList(fset *token.FileSet, src string) ([]ast.Decl, error) {
+	f, err := parser.ParseFile(fset, "input", "package p;"+src, 0)
+	if err != nil {
+		return nil, err
+	}
+	return f.Decls, nil
+}
+
 // Parse and compile the specified source code.
 // If the code was successfully compiled, 'err' is nil.
 //
 // The output parameter 'vars' contains the names of new top-level
 // variables potentially defined by the source code.
 // 'vars' may contain some elements even if an error occurred.
-func (i *Interpreter) compile(w *eval.World, fileSet *token.FileSet, path, sourceCode string) (code eval.Code, vars []string, err os.Error) {
+func (i *Interpreter) compile(w *eval.World, fileSet *token.FileSet, sourceCode string) (code eval.Code, vars []string, err error) {
 	var statements []ast.Stmt
 	var declarations []ast.Decl
 
 	vars_buffer := make(map[string]bool)
 
-	statements, err1 := parser.ParseStmtList(fileSet, path, sourceCode)
+	statements, err1 := parseStmtList(fileSet, sourceCode)
 	if err1 == nil {
 		for _, s := range statements {
 			addTopLevelVars(s, vars_buffer)
@@ -172,7 +186,7 @@ func (i *Interpreter) compile(w *eval.World, fileSet *token.FileSet, path, sourc
 		return code, vars, err
 	}
 
-	declarations, err2 := parser.ParseDeclList(fileSet, path, sourceCode)
+	declarations, err2 := parseDeclList(fileSet, sourceCode)
 	if err2 == nil {
 		for _, d := range declarations {
 			addTopLevelVars(d, vars_buffer)
@@ -205,17 +219,17 @@ func (i *Interpreter) tryToAddVars(w *eval.World, fileSet *token.FileSet, vars [
 }
 
 // Runs the specified Go source code in the context of 'w'
-func (i *Interpreter) run(w *eval.World, path_orEmpty string, sourceCode string) os.Error {
+func (i *Interpreter) run(w *eval.World, path_orEmpty string, sourceCode string) error {
 	var code eval.Code
 	var vars []string
-	var err os.Error
+	var err error
 
 	fileSet := token.NewFileSet()
 	if len(path_orEmpty) > 0 {
 		fileSet.AddFile(path_orEmpty, fileSet.Base(), len(sourceCode))
 	}
 
-	code, vars, err = i.compile(w, fileSet, path_orEmpty, sourceCode)
+	code, vars, err = i.compile(w, fileSet, sourceCode)
 	i.tryToAddVars(w, fileSet, vars)
 	if err != nil {
 		return err
@@ -234,7 +248,7 @@ func (i *Interpreter) run(w *eval.World, path_orEmpty string, sourceCode string)
 }
 
 // Loads and evaluates the specified Go script
-func runScript(w *eval.World, scriptName string, optional bool) os.Error {
+func runScript(w *eval.World, scriptName string, optional bool) error {
 	fileName := scriptName + ".go"
 
 	path, err := spectrum.ScriptPath(fileName)
@@ -265,7 +279,7 @@ func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spec
 		defineFunctions(w)
 
 		// Run the startup script
-		var err os.Error
+		var err error
 		err = runScript(w, STARTUP_SCRIPT, /*optional*/ IgnoreStartupScript)
 		if err != nil {
 			app.PrintfMsg("%s", err)
@@ -288,7 +302,6 @@ func GetInterpreter() *Interpreter {
 // 	vp := uintV(v)
 // 	return &vp
 // }
-
 
 // func (v *uintV) String() string { return fmt.Sprint(*v) }
 // func (v *uintV) Assign(t *eval.Thread, o eval.Value) { *v = uintV(o.(eval.UintValue).Get(t)) }

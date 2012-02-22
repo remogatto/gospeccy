@@ -1,6 +1,10 @@
+// +build linux freebsd
+
 package pull_modules
 
-import "spectrum/output/sdl_output"
+import (
+	"github.com/remogatto/gospeccy/src/output/sdl"
+)
 
 func init() {
 	go sdl_output.Main()

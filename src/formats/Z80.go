@@ -1,8 +1,6 @@
 package formats
 
-import (
-	"os"
-)
+import "errors"
 
 type Z80 struct {
 	cpu CpuState
@@ -16,7 +14,6 @@ type Z80 struct {
 	joystick                 byte // 0..3
 }
 
-
 const (
 	_Z80_V1_HEADER_SIZE  = 30
 	_Z80_V2_HEADER_SIZE  = 30 + 2 + 23
@@ -24,11 +21,10 @@ const (
 	_Z80_V3X_HEADER_SIZE = 30 + 2 + 55
 )
 
-
 // Decode [Z80 snapshot] from binary data
-func (data SnapshotData) DecodeZ80() (*Z80, os.Error) {
+func (data SnapshotData) DecodeZ80() (*Z80, error) {
 	if len(data) < _Z80_V1_HEADER_SIZE {
-		return nil, os.NewError("invalid Z80 snapshot")
+		return nil, errors.New("invalid Z80 snapshot")
 	}
 
 	PC := uint16(data[6]) | (uint16(data[7]) << 8)
@@ -38,7 +34,7 @@ func (data SnapshotData) DecodeZ80() (*Z80, os.Error) {
 		return data.decodeZ80_v1()
 	} else {
 		if len(data) < _Z80_V2_HEADER_SIZE {
-			return nil, os.NewError("invalid Z80 snapshot")
+			return nil, errors.New("invalid Z80 snapshot")
 		}
 
 		extendedHeaderLength := uint16(data[30]) | (uint16(data[31]) << 8)
@@ -54,10 +50,10 @@ func (data SnapshotData) DecodeZ80() (*Z80, os.Error) {
 		}
 	}
 
-	return nil, os.NewError("invalid Z80 snapshot, or unsupported Z80 snapshot version")
+	return nil, errors.New("invalid Z80 snapshot, or unsupported Z80 snapshot version")
 }
 
-func (data SnapshotData) readHeader_v1(s *Z80) os.Error {
+func (data SnapshotData) readHeader_v1(s *Z80) error {
 	data12 := data[12]
 	if data12 == 255 {
 		data12 = 1
@@ -107,7 +103,7 @@ func (data SnapshotData) readHeader_v1(s *Z80) os.Error {
 	case 0, 1, 2:
 		s.cpu.IM = IM
 	default:
-		return os.NewError("invalid interrupt mode")
+		return errors.New("invalid interrupt mode")
 	}
 
 	s.issue2_emulation = ((data[29] & 0x04) != 0)
@@ -116,18 +112,18 @@ func (data SnapshotData) readHeader_v1(s *Z80) os.Error {
 	s.joystick = ((data[29] >> 6) & 0x03)
 
 	if s.samRom {
-		return os.NewError("unsupported feature: SamRom")
+		return errors.New("unsupported feature: SamRom")
 	}
 	if s.issue2_emulation {
-		return os.NewError("unsupported feature: Issue 2 emulation")
+		return errors.New("unsupported feature: Issue 2 emulation")
 	}
 
 	return nil
 }
 
-func (data SnapshotData) decodeZ80_v1() (*Z80, os.Error) {
+func (data SnapshotData) decodeZ80_v1() (*Z80, error) {
 	var s Z80
-	var err os.Error
+	var err error
 
 	err = data.readHeader_v1(&s)
 	if err != nil {
@@ -153,7 +149,7 @@ func (data SnapshotData) decodeZ80_v1() (*Z80, os.Error) {
 			last2 := data[len(data)-2]
 			last3 := data[len(data)-1]
 			if !((last0 == 0x00) && (last1 == 0xED) && (last2 == 0xED) && (last3 == 0x00)) {
-				return nil, os.NewError("invalid Z80 snapshot: no end-marker")
+				return nil, errors.New("invalid Z80 snapshot: no end-marker")
 			}
 
 			mem = z80_decompress(data[30 : len(data)-4])
@@ -162,7 +158,7 @@ func (data SnapshotData) decodeZ80_v1() (*Z80, os.Error) {
 		}
 
 		if len(mem) != 48*1024 {
-			return nil, os.NewError("invalid Z80 snapshot")
+			return nil, errors.New("invalid Z80 snapshot")
 		}
 
 		for i := 0; i < (48 * 1024); i++ {
@@ -173,9 +169,9 @@ func (data SnapshotData) decodeZ80_v1() (*Z80, os.Error) {
 	return &s, nil
 }
 
-func (data SnapshotData) decodeZ80_v2() (*Z80, os.Error) {
+func (data SnapshotData) decodeZ80_v2() (*Z80, error) {
 	var s Z80
-	var err os.Error
+	var err error
 
 	err = data.readHeader_v1(&s)
 	if err != nil {
@@ -183,12 +179,12 @@ func (data SnapshotData) decodeZ80_v2() (*Z80, os.Error) {
 	}
 
 	if len(data) < _Z80_V2_HEADER_SIZE {
-		return nil, os.NewError("invalid Z80 snapshot")
+		return nil, errors.New("invalid Z80 snapshot")
 	}
 
 	extendedHeaderLength := uint16(data[30]) | (uint16(data[31]) << 8)
 	if extendedHeaderLength != 23 {
-		return nil, os.NewError("invalid Z80 snapshot")
+		return nil, errors.New("invalid Z80 snapshot")
 	}
 
 	s.cpu.PC = uint16(data[32]) | (uint16(data[33]) << 8)
@@ -200,7 +196,7 @@ func (data SnapshotData) decodeZ80_v2() (*Z80, os.Error) {
 	case 1:
 		// 48k + If.1
 	default:
-		return nil, os.NewError("read Z80 snapshot version 2.01: unsupported hardware mode")
+		return nil, errors.New("read Z80 snapshot version 2.01: unsupported hardware mode")
 	}
 
 	// data[35]: no meaning in 48k mode
@@ -208,7 +204,7 @@ func (data SnapshotData) decodeZ80_v2() (*Z80, os.Error) {
 
 	var modifyHardware bool = ((data[37] >> 7) != 0)
 	if modifyHardware {
-		return nil, os.NewError("read Z80 snapshot version 2.01: unsupported hardware mode")
+		return nil, errors.New("read Z80 snapshot version 2.01: unsupported hardware mode")
 	}
 
 	// rest of data[37]: ignored
@@ -227,9 +223,9 @@ func (data SnapshotData) decodeZ80_v2() (*Z80, os.Error) {
 	return &s, nil
 }
 
-func (data SnapshotData) decodeZ80_v3() (*Z80, os.Error) {
+func (data SnapshotData) decodeZ80_v3() (*Z80, error) {
 	var s Z80
-	var err os.Error
+	var err error
 
 	err = data.readHeader_v1(&s)
 	if err != nil {
@@ -237,12 +233,12 @@ func (data SnapshotData) decodeZ80_v3() (*Z80, os.Error) {
 	}
 
 	if len(data) < _Z80_V3X_HEADER_SIZE {
-		return nil, os.NewError("invalid Z80 snapshot")
+		return nil, errors.New("invalid Z80 snapshot")
 	}
 
 	extendedHeaderLength := uint16(data[30]) | (uint16(data[31]) << 8)
 	if !((extendedHeaderLength == 54) || (extendedHeaderLength == 55)) {
-		return nil, os.NewError("invalid Z80 snapshot")
+		return nil, errors.New("invalid Z80 snapshot")
 	}
 
 	s.cpu.PC = uint16(data[32]) | (uint16(data[33]) << 8)
@@ -254,7 +250,7 @@ func (data SnapshotData) decodeZ80_v3() (*Z80, os.Error) {
 	case 1:
 		// 48k + If.1
 	default:
-		return nil, os.NewError("read Z80 snapshot version 3.0x: unsupported hardware mode")
+		return nil, errors.New("read Z80 snapshot version 3.0x: unsupported hardware mode")
 	}
 
 	// data[35]: no meaning in 48k mode
@@ -262,7 +258,7 @@ func (data SnapshotData) decodeZ80_v3() (*Z80, os.Error) {
 
 	var modifyHardware bool = ((data[37] >> 7) != 0)
 	if modifyHardware {
-		return nil, os.NewError("read Z80 snapshot version 3.0x: unsupported hardware mode")
+		return nil, errors.New("read Z80 snapshot version 3.0x: unsupported hardware mode")
 	}
 
 	// rest of data[37]: ignored
@@ -292,16 +288,16 @@ func (data SnapshotData) decodeZ80_v3() (*Z80, os.Error) {
 	}
 
 	if MGT_rom_paged {
-		return nil, os.NewError("read Z80 snapshot version 3.0x: unsupported feature: MGT ROM paging")
+		return nil, errors.New("read Z80 snapshot version 3.0x: unsupported feature: MGT ROM paging")
 	}
 	if multiface_rom_paged {
-		return nil, os.NewError("read Z80 snapshot version 3.0x: unsupported feature: Multiface ROM paging")
+		return nil, errors.New("read Z80 snapshot version 3.0x: unsupported feature: Multiface ROM paging")
 	}
 	if rom0_writable {
-		return nil, os.NewError("read Z80 snapshot version 3.0x: unsupported feature: RAM 0..8191")
+		return nil, errors.New("read Z80 snapshot version 3.0x: unsupported feature: RAM 0..8191")
 	}
 	if rom1_writable {
-		return nil, os.NewError("read Z80 snapshot version 3.0x: unsupported feature: RAM 8192..16383")
+		return nil, errors.New("read Z80 snapshot version 3.0x: unsupported feature: RAM 8192..16383")
 	}
 
 	// Memory blocks
@@ -316,7 +312,7 @@ func (data SnapshotData) decodeZ80_v3() (*Z80, os.Error) {
 	return &s, nil
 }
 
-func z80_loadMemBlocks(s *Z80, data []byte) os.Error {
+func z80_loadMemBlocks(s *Z80, data []byte) error {
 	pages := make(map[byte]([]byte))
 
 	i := 0
@@ -333,7 +329,7 @@ func z80_loadMemBlocks(s *Z80, data []byte) os.Error {
 		}
 
 		if !(i+length <= len(data)) {
-			return os.NewError("invalid Z80 snapshot")
+			return errors.New("invalid Z80 snapshot")
 		}
 
 		if !compressed {
@@ -347,11 +343,11 @@ func z80_loadMemBlocks(s *Z80, data []byte) os.Error {
 	}
 
 	if i != len(data) {
-		return os.NewError("invalid Z80 snapshot")
+		return errors.New("invalid Z80 snapshot")
 	}
 
 	if len(pages) != 3 {
-		return os.NewError("invalid Z80 snapshot")
+		return errors.New("invalid Z80 snapshot")
 	}
 
 	for page, pageData := range pages {
@@ -368,11 +364,11 @@ func z80_loadMemBlocks(s *Z80, data []byte) os.Error {
 			addr = 0xc000
 			length = 0x4000
 		default:
-			return os.NewError("invalid Z80 snapshot")
+			return errors.New("invalid Z80 snapshot")
 		}
 
 		if len(pageData) != length {
-			return os.NewError("invalid Z80 snapshot")
+			return errors.New("invalid Z80 snapshot")
 		}
 
 		for i := 0; i < length; i++ {
@@ -433,7 +429,6 @@ func z80_decompress(in []byte) []byte {
 
 	return out
 }
-
 
 func (s *Z80) CpuState() CpuState {
 	return s.cpu

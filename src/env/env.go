@@ -1,15 +1,12 @@
 package env
 
-import (
-	"os"
-	"reflect"
-)
+import "reflect"
 
 // Publish an object for other agents to find.
 //
 // In case the environment already contains an object of the same type,
 // this function returns an error.
-func Publish(object interface{}) (PublishedObject, os.Error) {
+func Publish(object interface{}) (PublishedObject, error) {
 	if object == nil {
 		panic("nil object")
 	}
@@ -35,7 +32,7 @@ type PublishedObject interface {
 //
 // In case the environment already contains an object with the same name,
 // this function returns an error.
-func PublishName(name string, object interface{}) (PublishedObject, os.Error) {
+func PublishName(name string, object interface{}) (PublishedObject, error) {
 	if name == "" {
 		panic("empty name")
 	}

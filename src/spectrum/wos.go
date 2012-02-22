@@ -2,10 +2,10 @@ package spectrum
 
 import (
 	"fmt"
-	"ftp"
-	"http"
+	"github.com/remogatto/ftpget"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"regexp"
@@ -36,7 +36,7 @@ type WosRecord struct {
 }
 
 // Query [www.worldofspectrum.org] for matching files
-func WosQuery(app *Application, query string) ([]WosRecord, os.Error) {
+func WosQuery(app *Application, query string) ([]WosRecord, error) {
 	client := new(http.Client)
 	query = queryBaseURL + query
 	if app.Verbose {
@@ -117,7 +117,7 @@ func WosQuery(app *Application, query string) ([]WosRecord, os.Error) {
 			{
 				publication = "unknown"
 
-				startIndex2 := strings.Index(string(body2), ">Publication<")
+				startIndex2 := strings.Index(string(body2), ">Original publication<")
 				if startIndex2 != -1 {
 					var b2 []int = regexp2.FindSubmatchIndex(body2[startIndex2:])
 
@@ -179,7 +179,7 @@ func WosQuery(app *Application, query string) ([]WosRecord, os.Error) {
 
 // Download from [ftp.worldofspectrum.org].
 // An URL can be obtained by calling function WosQuery.
-func WosGet(app *Application, stdout io.Writer, url string) (string, os.Error) {
+func WosGet(app *Application, stdout io.Writer, url string) (string, error) {
 	filename := path.Base(url)
 	dir := path.Join(DefaultUserDir, "zip")
 	filePath := path.Join(dir, filename)

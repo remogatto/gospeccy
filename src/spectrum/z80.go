@@ -26,9 +26,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
-	"atom/perf"
-	"os"
-	"spectrum/formats"
+	"github.com/0xe2-0x9a-0x9b/Go-PerfEvents"
+	"github.com/remogatto/gospeccy/src/formats"
 )
 
 /* The flags */
@@ -43,7 +42,6 @@ const FLAG_5 = 0x20
 const FLAG_Z = 0x40
 const FLAG_S = 0x80
 
-
 var opcodesMap [1536]func(z80 *Z80)
 
 const SHIFT_0xCB = 256
@@ -52,7 +50,6 @@ const SHIFT_0xDD = 768
 const SHIFT_0xDDCB = 1024
 const SHIFT_0xFDCB = 1024
 const SHIFT_0xFD = 1280
-
 
 type register16 struct {
 	high, low *byte
@@ -118,7 +115,7 @@ type Z80 struct {
 	z80_instructionCounter     uint64 // Number of Z80 instructions executed
 	z80_instructionsMeasured   uint64 // Number of Z80 instrs that can be related to 'hostCpu_instructionCounter'
 	hostCpu_instructionCounter uint64
-	perfCounter_hostCpuInstr   *perf.PerfCounter // Can be nil (if creating the counter fails)
+	perfCounter_hostCpuInstr   *perf.Counter // Can be nil (if creating the counter fails)
 
 	readFromTape bool
 
@@ -182,10 +179,9 @@ func (z80 *Z80) reset() {
 	z80.interruptsEnabledAt = 0
 }
 
-
 // Initializes state from the specified snapshot.
 // Returns nil on success.
-func (z80 *Z80) loadSnapshot(s formats.Snapshot) os.Error {
+func (z80 *Z80) loadSnapshot(s formats.Snapshot) error {
 	cpu := s.CpuState()
 	ula := s.UlaState()
 	mem := s.Memory()
@@ -275,7 +271,6 @@ func (z80 *Z80) MakeSnapshot() *formats.FullSnapshot {
 
 	return &s
 }
-
 
 func splitWord(word uint16) (byte, byte) {
 	return byte(word >> 8), byte(word & 0xff)
@@ -600,7 +595,6 @@ func (z80 *Z80) writePort(address uint16, b byte) {
 	z80.ports.writePort(address, b)
 }
 
-
 // The following functions can not be generated as they need special treatments
 
 func (z80 *Z80) PC() uint16 {
@@ -623,7 +617,6 @@ func (z80 *Z80) decSP() {
 	z80.sp--
 }
 
-
 func (z80 *Z80) IR() uint16 {
 	var ir uint16
 	ir |= uint16(z80.i) << 8
@@ -645,7 +638,7 @@ func (z80 *Z80) doOpcodes() {
 	}
 
 	var hostCpu_instrCount_start uint64 = 0
-	var hostCpu_instrCount_startErr os.Error = nil
+	var hostCpu_instrCount_startErr error = nil
 	if z80.perfCounter_hostCpuInstr != nil {
 		hostCpu_instrCount_start, hostCpu_instrCount_startErr = z80.perfCounter_hostCpuInstr.Read()
 	}
@@ -709,7 +702,7 @@ func (z80 *Z80) doOpcodes() {
 		ttid_end := z80.perfCounter_hostCpuInstr.Gettid()
 
 		var hostCpu_instrCount_end uint64
-		var hostCpu_instrCount_endErr os.Error
+		var hostCpu_instrCount_endErr error
 		hostCpu_instrCount_end, hostCpu_instrCount_endErr = z80.perfCounter_hostCpuInstr.Read()
 
 		z80.z80_instructionCounter += uint64(z80_localInstructionCounter)
@@ -743,7 +736,6 @@ func (z80 *Z80) doOpcodes() {
 		}
 	}
 }
-
 
 func invalidOpcode(z80 *Z80) {
 	panic("invalid opcode")
@@ -823,7 +815,6 @@ func opcode_fd(z80 *Z80) {
 		}
 	}
 }
-
 
 func init() {
 	initOpcodes()

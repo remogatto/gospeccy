@@ -5,12 +5,14 @@
  * except for usages in immoral contexts.
  */
 
+// +build linux freebsd
+
 package sdl_output
 
 import (
-	"rand"
-	"atom/sdl"
-	"spectrum"
+	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"math/rand"
 	"unsafe"
 )
 
@@ -98,7 +100,6 @@ func (composer *SDLSurfaceComposer) ReplaceOutputSurface(surface_orNil *sdl.Surf
 func (composer *SDLSurfaceComposer) ShowPaintedRegions(enable bool) {
 	composer.commandChannel <- cmd_showPaintedRegions{enable}
 }
-
 
 type cmd_add struct {
 	surface        *sdl.Surface

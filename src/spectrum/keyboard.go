@@ -65,12 +65,12 @@ func (keyboard *Keyboard) init(speccy *Spectrum48k) {
 
 func (keyboard *Keyboard) delayAfterKeyDown() {
 	// Sleep for 1 frame
-	time.Sleep(1e9 / int64(keyboard.speccy.GetCurrentFPS()))
+	time.Sleep(1e9 / time.Duration(keyboard.speccy.GetCurrentFPS()))
 }
 
 func (keyboard *Keyboard) delayAfterKeyUp() {
-	// Sleep for 15 frames
-	time.Sleep(10 * 1e9 / int64(keyboard.speccy.GetCurrentFPS()))
+	// Sleep for 10 frames
+	time.Sleep(10 * 1e9 / time.Duration(keyboard.speccy.GetCurrentFPS()))
 }
 
 func (keyboard *Keyboard) commandLoop() {

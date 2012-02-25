@@ -131,6 +131,12 @@ func wrapper_addSearchPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	spectrum.AddCustomSearchPath(path)
 }
 
+// Signature: func setDownloadPath(path string)
+func wrapper_setDownloadPath(t *eval.Thread, in []eval.Value, out []eval.Value) {
+	path := in[0].(eval.StringValue).Get(t)
+	spectrum.SetDownloadPath(path)
+}
+
 func load(path string) {
 	var program interface{}
 	program, err := formats.ReadProgram(path)
@@ -457,7 +463,14 @@ func defineFunctions(w *eval.World) {
 		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_addSearchPath, functionSignature)
 		defineFunction("addSearchPath", funcType, funcValue)
 		help_keys = append(help_keys, "addSearchPath(path string)")
-		help_vals = append(help_vals, "Append to the paths searched when loading snapshots")
+		help_vals = append(help_vals, "Append to the paths searched when loading snapshots, scripts, etc")
+	}
+	{
+		var functionSignature func(string)
+		funcType, funcValue := eval.FuncFromNativeTyped(wrapper_setDownloadPath, functionSignature)
+		defineFunction("setDownloadPath", funcType, funcValue)
+		help_keys = append(help_keys, "setDownloadPath(path string)")
+		help_vals = append(help_vals, `Set path where to download files (""=default path)`)
 	}
 	{
 		var functionSignature func() string

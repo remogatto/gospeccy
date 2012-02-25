@@ -135,21 +135,23 @@ Configuration approach. To enjoy it, you should create the following
 folder structure:
 
 <pre>
-mkdir -p $HOME/.gospeccy/sna		# Snapshots folder
-mkdir -p $HOME/.gospeccy/roms		# System roms folder
-mkdir -p $HOME/.gospeccy/scripts	# Scripts folder
+mkdir -p $HOME/.config/gospeccy/roms	# System roms folder
+mkdir -p $HOME/.config/gospeccy/scripts	# Scripts folder
 </pre>
 
-Then put your snapshots, system rom or scripts in the
-corresponding folder. After this, to load
-`$HOME/.gospeccy/sna/somegame.z80` simply execute:
+In the scripts folder, create file `config_local.go` with the following
+contents:
+
+<pre>
+// Search path for snapshots, scripts, etc
+addSearchPath("/home/user/gospeccy")
+</pre>
+
+After this, to load `/home/user/gospeccy/somegame.z80` simply execute:
 
 <pre>
 gospeccy somegame.z80
 </pre>
-
-The same applies to `load()` and `script()` functions in the
-interactive console.
 
 # Screenshots
 

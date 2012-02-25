@@ -44,24 +44,40 @@ import (
 	"sync"
 )
 
-var DefaultUserDir = path.Join(os.Getenv("HOME"), ".gospeccy")
-var distDir string
+var DefaultUserDir = path.Join(os.Getenv("HOME"), ".config", "gospeccy")
+var srcDir string
 
 func init() {
 	gopaths := os.Getenv("GOPATH")
 	gopath0 := strings.Split(gopaths, string(os.PathListSeparator))[0]
-	distDir = path.Join(gopath0, "src", "github.com", "remogatto", "gospeccy")
+	srcDir = path.Join(gopath0, "src", "github.com", "remogatto", "gospeccy")
 }
 
 var customSearchPaths []string
-var customSearchPaths_mutex sync.RWMutex
+var downloadPath string
+var mutex sync.RWMutex
 
 func AddCustomSearchPath(path string) {
-	customSearchPaths_mutex.Lock()
-	{
-		customSearchPaths = append(customSearchPaths, path)
+	mutex.Lock()
+	customSearchPaths = append(customSearchPaths, path)
+	mutex.Unlock()
+}
+
+func DownloadPath() string {
+	mutex.RLock()
+	p := downloadPath
+	mutex.RUnlock()
+
+	if p == "" {
+		p = path.Join(DefaultUserDir, "snapshots")
 	}
-	customSearchPaths_mutex.Unlock()
+	return p
+}
+
+func SetDownloadPath(path string) {
+	mutex.Lock()
+	downloadPath = path
+	mutex.Unlock()
 }
 
 func searchForValidPath(paths []string, fileName string) (string, error) {
@@ -69,7 +85,7 @@ func searchForValidPath(paths []string, fileName string) (string, error) {
 		if _, err := os.Lstat(dir); err == nil {
 			_, err = filepath.EvalSymlinks(dir)
 			if err != nil {
-				return "", errors.New("path \"" + dir + "\" contains one or more invalid symbolic links")
+				return "", errors.New("path \"" + dir + "\" contains an invalid symbolic link")
 			}
 		}
 
@@ -83,95 +99,28 @@ func searchForValidPath(paths []string, fileName string) (string, error) {
 }
 
 func appendCustomSearchPaths(paths *[]string) {
-	customSearchPaths_mutex.RLock()
-	{
-		*paths = append(*paths, customSearchPaths...)
-	}
-	customSearchPaths_mutex.RUnlock()
-}
-
-// Return a valid path for the specified snapshot,
-// or the original filename if the search did not find anything.
-//
-// An error is returned if the search could not proceed.
-//
-// The search is performed in this order:
-// 1. ./
-// 2. $HOME/.gospeccy/sna/
-func SnaPath(fileName string) (string, error) {
-	var (
-		currDir = ""
-		userDir = path.Join(DefaultUserDir, "sna")
-	)
-
-	var paths []string
-	paths = append(paths, currDir, userDir)
-	appendCustomSearchPaths(&paths)
-
-	return searchForValidPath(paths, fileName)
-}
-
-// Return a valid path for the specified tape file,
-// or the original filename if the search did not find anything.
-//
-// An error is returned if the search could not proceed.
-//
-// The search is performed in this order:
-// 1. ./
-// 2. $HOME/.gospeccy/tape/
-func TapePath(fileName string) (string, error) {
-	var (
-		currDir = ""
-		userDir = path.Join(DefaultUserDir, "tape")
-	)
-
-	var paths []string
-	paths = append(paths, currDir, userDir)
-	appendCustomSearchPaths(&paths)
-
-	return searchForValidPath(paths, fileName)
-}
-
-// Return a valid path for the specified zip file,
-// or the original filename if the search did not find anything.
-//
-// An error is returned if the search could not proceed.
-//
-// The search is performed in this order:
-// 1. ./
-// 2. $HOME/.gospeccy/zip/
-func ZipPath(fileName string) (string, error) {
-	var (
-		currDir = ""
-		userDir = path.Join(DefaultUserDir, "zip")
-	)
-
-	var paths []string
-	paths = append(paths, currDir, userDir)
-	appendCustomSearchPaths(&paths)
-
-	return searchForValidPath(paths, fileName)
+	mutex.RLock()
+	*paths = append(*paths, customSearchPaths...)
+	mutex.RUnlock()
 }
 
 // Return a valid path for the file based on its extension,
 // or the original filename if the search did not find anything.
 //
 // An error is returned if the search could not proceed.
+//
+// The search is performed in this order:
+// 1. ./
+// 2. $GOPATH/src/github.com/remogatto/gospeccy/snapshots/
+// 3. Custom search paths
+// 4. Download path
 func ProgramPath(fileName string) (string, error) {
-	ext := strings.ToLower(path.Ext(fileName))
-
-	switch ext {
-	case ".sna", ".z80":
-		return SnaPath(fileName)
-
-	case ".tap":
-		return TapePath(fileName)
-
-	case ".zip":
-		return ZipPath(fileName)
-	}
-
-	return fileName, nil
+	var paths []string
+	paths = append(paths, "")
+	paths = append(paths, path.Join(srcDir, "snapshots"))
+	appendCustomSearchPaths(&paths)
+	paths = append(paths, DownloadPath())
+	return searchForValidPath(paths, fileName)
 }
 
 // Returns a valid path for the 48k system ROM,
@@ -181,17 +130,18 @@ func ProgramPath(fileName string) (string, error) {
 //
 // The search is performed in this order:
 // 1. ./roms/
-// 2. $HOME/.gospeccy/roms/
+// 2. $HOME/.config/gospeccy/roms/
 // 3. $GOPATH/src/github.com/remogatto/gospeccy/roms/
+// 4. Custom search paths
 func SystemRomPath(fileName string) (string, error) {
 	var (
 		currDir = "roms"
 		userDir = path.Join(DefaultUserDir, "roms")
-		distDir = path.Join(distDir, "roms")
+		srcDir = path.Join(srcDir, "roms")
 	)
 
 	var paths []string
-	paths = append(paths, currDir, userDir, distDir)
+	paths = append(paths, currDir, userDir, srcDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
@@ -204,17 +154,18 @@ func SystemRomPath(fileName string) (string, error) {
 //
 // The search is performed in this order:
 // 1. ./scripts/
-// 2. $HOME/.gospeccy/scripts/
+// 2. $HOME/.config/gospeccy/scripts/
 // 3. $GOPATH/src/github.com/remogatto/gospeccy/scripts/
+// 4. Custom search paths
 func ScriptPath(fileName string) (string, error) {
 	var (
 		currDir = "scripts"
 		userDir = path.Join(DefaultUserDir, "scripts")
-		distDir = path.Join(distDir, "scripts")
+		srcDir = path.Join(srcDir, "scripts")
 	)
 
 	var paths []string
-	paths = append(paths, currDir, userDir, distDir)
+	paths = append(paths, currDir, userDir, srcDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)
@@ -227,17 +178,18 @@ func ScriptPath(fileName string) (string, error) {
 //
 // The search is performed in this order:
 // 1. ./fonts/
-// 2. $HOME/.gospeccy/fonts/
+// 2. $HOME/.config/gospeccy/fonts/
 // 3. $GOPATH/src/github.com/remogatto/gospeccy/fonts/
+// 4. Custom search paths
 func FontPath(fileName string) (string, error) {
 	var (
 		currDir = "fonts"
 		userDir = path.Join(DefaultUserDir, "fonts")
-		distDir = path.Join(distDir, "fonts")
+		srcDir = path.Join(srcDir, "fonts")
 	)
 
 	var paths []string
-	paths = append(paths, currDir, userDir, distDir)
+	paths = append(paths, currDir, userDir, srcDir)
 	appendCustomSearchPaths(&paths)
 
 	return searchForValidPath(paths, fileName)

@@ -181,7 +181,7 @@ func WosQuery(app *Application, query string) ([]WosRecord, error) {
 // An URL can be obtained by calling function WosQuery.
 func WosGet(app *Application, stdout io.Writer, url string) (string, error) {
 	filename := path.Base(url)
-	dir := path.Join(DefaultUserDir, "zip")
+	dir := DownloadPath()
 	filePath := path.Join(dir, filename)
 	ftpURL := url[6:len(url)]
 

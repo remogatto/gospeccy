@@ -7,7 +7,7 @@
 	  option, wos* script functions). Info about a WorldOfSpectrum file
 	  includes publication type, machine type, and rating.
 
-	* New script functions: vars(), wosFind(string), wosDowload(WOS),
+	* New script functions: vars(), wosFind(string), wosDownload(WOS),
 	  wosLoad(WOS)
 
 	* Evaluating an expression in the console prints the result of the

@@ -1,7 +1,5 @@
-/*
- * Implementation of Value... interfaces which are defined in
- * Go package "exp/eval".
- */
+// Implementation of Value... interfaces which are defined in
+// Go package "bitbucket.org/binet/go-eval".
 
 package interpreter
 

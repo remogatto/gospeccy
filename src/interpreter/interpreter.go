@@ -1,3 +1,4 @@
+// GoSpeccy's scripting language based on "bitbucket.org/binet/go-eval"
 package interpreter
 
 import (

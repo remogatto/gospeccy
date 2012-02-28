@@ -1,5 +1,6 @@
 // +build linux freebsd
 
+// GoSpeccy SDL interface (audio&video output, keyboard input)
 package sdl_output
 
 import (

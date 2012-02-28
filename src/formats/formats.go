@@ -1,3 +1,4 @@
+// Decoding and encoding of ZX Spectrum emulator file formats
 package formats
 
 import (

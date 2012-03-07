@@ -7,7 +7,7 @@ written in [Go](http://golang.org).
 
 Installing and starting GoSpeccy with Go1 is simple:
 
-    go get -v github.com/remogatto/gospeccy/...
+    go get -v github.com/remogatto/gospeccy/src/gospeccy
     gospeccy
     gospeccy -wos="interlace demo"
 

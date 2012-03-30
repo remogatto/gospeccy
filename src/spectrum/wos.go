@@ -14,7 +14,7 @@ import (
 
 var (
 	fileSuffixes = []string{".tap.zip", ".sna.zip", ".z80.zip"}
-	queryBaseURL = "http://www.worldofspectrum.org/infoseek.cgi?regexp="
+	queryBaseURL = "http://www.worldofspectrum.org/infoseek.cgi?"
 )
 
 func knownType(filename string) bool {
@@ -40,7 +40,7 @@ func WosQuery(app *Application, query string) ([]WosRecord, error) {
 	client := new(http.Client)
 	query = queryBaseURL + query
 	if app.Verbose {
-		app.PrintfMsg("Query string: %s", query)
+		app.PrintfMsg("WOS query: %s", query)
 		app.PrintfMsg("Fetching...")
 	}
 	response, err := client.Get(query)
@@ -54,7 +54,7 @@ func WosQuery(app *Application, query string) ([]WosRecord, error) {
 		return nil, err
 	}
 	if app.Verbose {
-		app.PrintfMsg(response.Status)
+		app.PrintfMsg("Response status: %s", response.Status)
 	}
 
 	var matches []WosRecord

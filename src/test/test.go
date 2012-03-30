@@ -3,11 +3,11 @@ package test
 import (
 	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 	"github.com/0xe2-0x9a-0x9b/Go-SDL/ttf"
+	"github.com/remogatto/clingon"
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/gospeccy/src/interpreter"
 	output "github.com/remogatto/gospeccy/src/output/sdl"
 	"github.com/remogatto/gospeccy/src/spectrum"
-	"github.com/remogatto/clingon"
 	"github.com/remogatto/prettytest"
 	"io/ioutil"
 )
@@ -246,7 +246,7 @@ Welcome to the GoSpeccy CLI Testing Mode
 ----------------------------------------
 `)
 	}
-	audio, err := output.NewSDLAudio(app, output.PLAYBACK_FREQUENCY, /*hqAudio*/ true)
+	audio, err := output.NewSDLAudio(app, output.PLAYBACK_FREQUENCY, true /*hqAudio*/)
 	if err == nil {
 		speccy.CommandChannel <- spectrum.Cmd_AddAudioReceiver{audio}
 	} else {

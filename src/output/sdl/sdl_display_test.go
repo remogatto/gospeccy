@@ -14,7 +14,6 @@ import (
 	//"unsafe"
 )
 
-
 // func (s *SDLSurface) At(x, y int) image.Color {
 // 	var bpp = int(s.surface.Format.BytesPerPixel)
 

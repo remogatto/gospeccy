@@ -209,7 +209,7 @@ func (i *Interpreter) compile(w *eval.World, fileSet *token.FileSet, sourceCode 
 // For each successfully found/verified variable, the variable's name is added to 'i.vars'.
 func (i *Interpreter) tryToAddVars(w *eval.World, fileSet *token.FileSet, vars []string) {
 	for _, name := range vars {
-		_, err := w.Compile(fileSet, /*sourceCode*/ name)
+		_, err := w.Compile(fileSet, name /*sourceCode*/)
 		if err == nil {
 			// The variable exists, add its name to 'i.vars'
 			i.vars[name] = true
@@ -281,7 +281,7 @@ func Init(_app *spectrum.Application, _cmdLineArg string, _speccy *spectrum.Spec
 
 		// Run the startup script
 		var err error
-		err = runScript(w, STARTUP_SCRIPT, /*optional*/ IgnoreStartupScript)
+		err = runScript(w, STARTUP_SCRIPT, IgnoreStartupScript /*optional*/)
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			app.RequestExit()

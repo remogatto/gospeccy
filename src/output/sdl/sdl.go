@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
 	"github.com/0xe2-0x9a-0x9b/Go-SDL/ttf"
+	"github.com/remogatto/clingon"
 	"github.com/remogatto/gospeccy/src/env"
 	"github.com/remogatto/gospeccy/src/interpreter"
 	"github.com/remogatto/gospeccy/src/spectrum"
-	"github.com/remogatto/clingon"
 	"reflect"
 	"sync"
 )

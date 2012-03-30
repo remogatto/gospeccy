@@ -230,7 +230,7 @@ func (display *SDLScreen) render(screen *spectrum.DisplayData) {
 		screen.CompletionTime_orNil <- time.Now()
 	}
 
-	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 1, display.updatedRectsCh)
+	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, 1 /*scale*/, display.updatedRectsCh)
 	unscaledDisplay.releaseMemory()
 
 }
@@ -325,7 +325,7 @@ func (display *SDLScreen2x) render(screen *spectrum.DisplayData) {
 		screen.CompletionTime_orNil <- time.Now()
 	}
 
-	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, /*scale*/ 2, display.updatedRectsCh)
+	SDL_updateRects(surface.surface, unscaledDisplay.changedRegions, 2 /*scale*/, display.updatedRectsCh)
 	unscaledDisplay.releaseMemory()
 }
 

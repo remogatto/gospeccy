@@ -137,7 +137,7 @@ func NewZ80(memory MemoryAccessor, ports PortAccessor) *Z80 {
 	z80.iy = register16{&z80.iyh, &z80.iyl}
 	z80.de_ = register16{&z80.d_, &z80.e_}
 
-	z80.perfCounter_hostCpuInstr, _ = perf.NewCounter_Instructions( /*user*/ true, /*kernel*/ false)
+	z80.perfCounter_hostCpuInstr, _ = perf.NewCounter_Instructions(true /*user*/, false /*kernel*/)
 
 	return z80
 }
@@ -220,7 +220,7 @@ func (z80 *Z80) loadSnapshot(s formats.Snapshot) error {
 	z80.sp = cpu.SP
 
 	// Border color
-	z80.ports.writePortInternal(0xfe, ula.Border&0x07, /*contend*/ false)
+	z80.ports.writePortInternal(0xfe, ula.Border&0x07, false /*contend*/)
 
 	// Populate memory
 	copy(z80.memory.Data()[0x4000:], mem[:])

@@ -35,6 +35,7 @@ import (
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/gospeccy/src/interpreter"
 	"github.com/remogatto/gospeccy/src/spectrum"
+	"net/url"
 	"os"
 	pathutil "path"
 	"runtime"
@@ -270,7 +271,7 @@ func main() {
 		}
 	} else if *wos != "" {
 		var records []spectrum.WosRecord
-		records, err := spectrum.WosQuery(app, *wos)
+		records, err := spectrum.WosQuery(app, "regexp="+url.QueryEscape(strings.Replace(*wos, " ", "*", -1)))
 		if err != nil {
 			app.PrintfMsg("%s", err)
 			exit(app)

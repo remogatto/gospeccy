@@ -7,6 +7,8 @@ import (
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/gospeccy/src/spectrum"
 	"io/ioutil"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -247,7 +249,7 @@ func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	scriptName := in[0].(eval.StringValue).Get(t)
 
-	err := runScript(w, scriptName, /*optional*/ false)
+	err := runScript(w, scriptName, false /*optional*/)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s\n", err)
 		return
@@ -258,7 +260,7 @@ func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
 func wrapper_optionalScript(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	scriptName := in[0].(eval.StringValue).Get(t)
 
-	err := runScript(w, scriptName, /*optional*/ true)
+	err := runScript(w, scriptName, true /*optional*/)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s\n", err)
 		return
@@ -346,9 +348,10 @@ func wrapper_wosFind(t *eval.Thread, in []eval.Value, out []eval.Value) {
 	}
 
 	pattern := in[0].(eval.StringValue).Get(t)
+	pattern = strings.Replace(pattern, " ", "*", -1)
 
 	var records []spectrum.WosRecord
-	records, err := spectrum.WosQuery(app, pattern)
+	records, err := spectrum.WosQuery(app, "regexp="+url.QueryEscape(pattern))
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", err)
 

@@ -279,7 +279,7 @@ func TestDoOpcodes(t *testing.T) {
 	// Instantiate a Z80 processor
 	z80 := NewZ80(&memory, &port)
 	ula := NewULA()
-	z80.init(ula, /*tapeDrive_orNil*/ nil)
+	z80.init(ula, nil /*tapeDrive_orNil*/)
 	ula.init(z80, &memory, &port)
 
 	memory.z80 = z80
@@ -393,7 +393,7 @@ func TestDoOpcodes(t *testing.T) {
 					byte := memWrites[i]
 					if byte != "-1" {
 						value, _ := strconv.ParseUint(byte, 16, 0)
-						z80.memory.Write(uint16(addr), uint8(value), /*protectROM*/ false)
+						z80.memory.Write(uint16(addr), uint8(value), false /*protectROM*/)
 						addr++
 					}
 				}
@@ -496,7 +496,7 @@ func BenchmarkZ80(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		speccy.CommandChannel <- Cmd_RenderFrame{CompletionTime_orNil: nil}
-		//speccy.renderFrame(/*completionTime_orNil*/ nil)
+		//speccy.renderFrame(nil /*completionTime_orNil*/)
 	}
 
 	app.RequestExit()

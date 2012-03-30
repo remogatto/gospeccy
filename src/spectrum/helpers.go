@@ -137,7 +137,7 @@ func SystemRomPath(fileName string) (string, error) {
 	var (
 		currDir = "roms"
 		userDir = path.Join(DefaultUserDir, "roms")
-		srcDir = path.Join(srcDir, "roms")
+		srcDir  = path.Join(srcDir, "roms")
 	)
 
 	var paths []string
@@ -161,7 +161,7 @@ func ScriptPath(fileName string) (string, error) {
 	var (
 		currDir = "scripts"
 		userDir = path.Join(DefaultUserDir, "scripts")
-		srcDir = path.Join(srcDir, "scripts")
+		srcDir  = path.Join(srcDir, "scripts")
 	)
 
 	var paths []string
@@ -185,7 +185,7 @@ func FontPath(fileName string) (string, error) {
 	var (
 		currDir = "fonts"
 		userDir = path.Join(DefaultUserDir, "fonts")
-		srcDir = path.Join(srcDir, "fonts")
+		srcDir  = path.Join(srcDir, "fonts")
 	)
 
 	var paths []string

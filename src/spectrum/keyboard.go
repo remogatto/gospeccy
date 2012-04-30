@@ -39,7 +39,9 @@ type Cmd_KeyPress struct {
 	done           chan bool
 }
 
-type Cmd_SendLoad struct{}
+type Cmd_SendLoad struct {
+	romType RomType
+}
 
 type Keyboard struct {
 	speccy    *Spectrum48k
@@ -99,28 +101,62 @@ func (keyboard *Keyboard) commandLoop() {
 				cmd.done <- true
 
 			case Cmd_SendLoad:
-				keyboard.KeyDown(KEY_J)
-				keyboard.delayAfterKeyDown()
-				keyboard.KeyUp(KEY_J)
-				keyboard.delayAfterKeyUp()
+				if cmd.romType == ROM_OPENSE {
+					// Sleep for 30 frames
+					time.Sleep(30e9 / time.Duration(keyboard.speccy.GetCurrentFPS()))
 
-				keyboard.KeyDown(KEY_SymbolShift)
-				{
-					keyboard.KeyDown(KEY_P)
+					// l o a d
+					for _, keycode := range []uint{KEY_L, KEY_O, KEY_A, KEY_D} {
+						keyboard.KeyDown(keycode)
+						keyboard.delayAfterKeyDown()
+						keyboard.KeyUp(keycode)
+						keyboard.delayAfterKeyUp()
+					}
+
+					// " "
+					keyboard.KeyDown(KEY_SymbolShift)
+					{
+						keyboard.KeyDown(KEY_P)
+						keyboard.delayAfterKeyDown()
+						keyboard.KeyUp(KEY_P)
+						keyboard.delayAfterKeyUp()
+
+						keyboard.KeyDown(KEY_P)
+						keyboard.delayAfterKeyDown()
+						keyboard.KeyUp(KEY_P)
+						keyboard.delayAfterKeyUp()
+					}
+					keyboard.KeyUp(KEY_SymbolShift)
+
+					keyboard.KeyDown(KEY_Enter)
 					keyboard.delayAfterKeyDown()
-					keyboard.KeyUp(KEY_P)
+					keyboard.KeyUp(KEY_Enter)
+				} else {
+					// LOAD
+					keyboard.KeyDown(KEY_J)
+					keyboard.delayAfterKeyDown()
+					keyboard.KeyUp(KEY_J)
 					keyboard.delayAfterKeyUp()
 
-					keyboard.KeyDown(KEY_P)
+					// " "
+					keyboard.KeyDown(KEY_SymbolShift)
+					{
+						keyboard.KeyDown(KEY_P)
+						keyboard.delayAfterKeyDown()
+						keyboard.KeyUp(KEY_P)
+						keyboard.delayAfterKeyUp()
+
+						keyboard.KeyDown(KEY_P)
+						keyboard.delayAfterKeyDown()
+						keyboard.KeyUp(KEY_P)
+						keyboard.delayAfterKeyUp()
+					}
+					keyboard.KeyUp(KEY_SymbolShift)
+
+					keyboard.KeyDown(KEY_Enter)
 					keyboard.delayAfterKeyDown()
-					keyboard.KeyUp(KEY_P)
-					keyboard.delayAfterKeyUp()
+					keyboard.KeyUp(KEY_Enter)
 				}
-				keyboard.KeyUp(KEY_SymbolShift)
-
-				keyboard.KeyDown(KEY_Enter)
-				keyboard.delayAfterKeyDown()
-				keyboard.KeyUp(KEY_Enter)
 			}
 		}
 	}

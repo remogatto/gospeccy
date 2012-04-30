@@ -113,7 +113,7 @@ func height(scale2x, fullscreen bool) int {
 }
 
 func newAppSurface(app *spectrum.Application, scale2x, fullscreen bool) SDLSurfaceAccessor {
-	var sdlMode int32
+	var sdlMode int64
 	if fullscreen {
 		scale2x = true
 		sdlMode |= sdl.FULLSCREEN

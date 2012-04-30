@@ -27,6 +27,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package spectrum
 
 import (
+	"bytes"
 	"errors"
 	"github.com/remogatto/gospeccy/src/formats"
 	"sync"
@@ -36,6 +37,13 @@ import (
 const TStatesPerFrame = 69888 // Number of T-states per frame
 const InterruptLength = 32    // How long does an interrupt last in T-states
 const DefaultFPS = 50.08
+
+type RomType int
+
+const (
+	ROM_UNKNOWN RomType = iota
+	ROM_OPENSE          // OpenSE BASIC (http://www.worldofspectrum.org/infoseekid.cgi?id=0027510)
+)
 
 type DisplayInfo struct {
 	displayReceiver DisplayReceiver
@@ -63,7 +71,8 @@ type Spectrum48k struct {
 
 	Ports PortAccessor
 
-	rom [0x4000]byte
+	rom     [0x4000]byte
+	romType RomType
 
 	// The current display refresh frequency.
 	// The initial value is 'DefaultFPS'.
@@ -187,6 +196,7 @@ func NewSpectrum48k(app *Application, rom [0x4000]byte) *Spectrum48k {
 		Joystick:       joystick,
 		Ports:          ports,
 		rom:            rom,
+		romType:        ROM_UNKNOWN,
 		displays:       make([]*DisplayInfo, 0),
 		audioReceivers: make([]AudioReceiver, 0),
 		app:            app,
@@ -485,6 +495,17 @@ func (speccy *Spectrum48k) reset(systemROMLoaded_orNil chan<- <-chan bool) error
 	// Copy the ROM image into the first 16k of memory
 	copy(speccy.Memory.Data()[0:0x4000], speccy.rom[:])
 
+	// ROM type detection
+	if bytes.Contains(speccy.rom[:], []byte("1981 Nine Tiles Networks")) {
+		speccy.romType = ROM_OPENSE
+	}
+
+	// OpenSE BASIC initializes almost immediately
+	if (speccy.systemROMLoaded_orNil != nil) && (speccy.romType == ROM_OPENSE) {
+		speccy.systemROMLoaded_orNil <- true
+		speccy.systemROMLoaded_orNil = nil
+	}
+
 	return nil
 }
 
@@ -600,7 +621,7 @@ func (speccy *Spectrum48k) loadTape(tap *formats.TAP) {
 
 // Send LOAD ""
 func (speccy *Spectrum48k) sendLOADCommand() {
-	speccy.Keyboard.CommandChannel <- Cmd_SendLoad{}
+	speccy.Keyboard.CommandChannel <- Cmd_SendLoad{speccy.romType}
 }
 
 func (speccy *Spectrum48k) makeVideoMemoryDump() []byte {

@@ -135,19 +135,20 @@ Configuration approach. To enjoy it, you should create the following
 folder structure:
 
 <pre>
-mkdir -p $HOME/.config/gospeccy/roms	# System roms folder
-mkdir -p $HOME/.config/gospeccy/scripts	# Scripts folder
+mkdir -p $HOME/.config/gospeccy/roms			# System roms folder
+mkdir -p $HOME/.config/gospeccy/programs		# Scripts folder
+mkdir -p $HOME/.config/gospeccy/scripts			# Scripts folder
 </pre>
 
-In the scripts folder, create file `config_local.go` with the following
-contents:
+If you like to add your custom search path, In the scripts folder,
+create file `config_local.go` with the following contents:
 
 <pre>
-// Search path for snapshots, scripts, etc
+// Search path for programs, scripts, etc
 addSearchPath("/home/user/gospeccy")
 </pre>
 
-After this, to load `/home/user/gospeccy/somegame.z80` simply execute:
+After this, to load `/home/user/gospeccy/programs/somegame.z80` simply execute:
 
 <pre>
 gospeccy somegame.z80

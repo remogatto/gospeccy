@@ -110,16 +110,22 @@ func appendCustomSearchPaths(paths *[]string) {
 // An error is returned if the search could not proceed.
 //
 // The search is performed in this order:
-// 1. ./
-// 2. $GOPATH/src/github.com/remogatto/gospeccy/snapshots/
+// 1. ./programs/
+// 2. $GOPATH/src/github.com/remogatto/gospeccy/programs/
 // 3. Custom search paths
 // 4. Download path
 func ProgramPath(fileName string) (string, error) {
+	var (
+		currDir = "programs"
+		userDir = path.Join(DefaultUserDir, "programs")
+		srcDir  = path.Join(srcDir, "programs")
+	)
+
 	var paths []string
-	paths = append(paths, "")
-	paths = append(paths, path.Join(srcDir, "snapshots"))
+	paths = append(paths, currDir, userDir, srcDir)
 	appendCustomSearchPaths(&paths)
 	paths = append(paths, DownloadPath())
+
 	return searchForValidPath(paths, fileName)
 }
 

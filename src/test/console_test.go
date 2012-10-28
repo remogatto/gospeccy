@@ -74,7 +74,8 @@ func (t *cliTestSuite) Should_allow_taking_screenshots() {
 }
 
 func (t *cliTestSuite) Should_allow_loading_scripts() {
-	console.PutCommand(fmt.Sprintf("script(\"%s\")", "testdata/script"))
+	spectrum.DefaultUserDir = "testdata/"
+	console.PutCommand(fmt.Sprintf("script(\"%s\")", "script"))
 	r, _ := regexp.Compile("Hello World!")
 	t.Equal(1, len(r.FindAllString(console.String(), -1)))
 }

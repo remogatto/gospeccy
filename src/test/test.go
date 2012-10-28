@@ -10,6 +10,7 @@ import (
 	"github.com/remogatto/gospeccy/src/spectrum"
 	"github.com/remogatto/prettytest"
 	"io/ioutil"
+	"bytes"
 )
 
 var (
@@ -207,13 +208,61 @@ func (t *cliTestSuite) Before() {
 	t.t.Before()
 }
 
+type console_writer_t struct {
+	buf     bytes.Buffer
+	console *clingon.Console
+}
+
+func newConsoleWriter(console *clingon.Console) *console_writer_t {
+	return &console_writer_t{
+		console: console,
+	}
+}
+
+// Implement 'io.Writer'
+func (w *console_writer_t) Write(p []byte) (n int, err error) {
+	for _, c := range p {
+		if c == '\n' {
+			w.console.Print(w.buf.String())
+			w.buf.Truncate(0)
+		} else {
+			w.buf.WriteByte(c)
+		}
+	}
+
+	return len(p), nil
+}
+
+func (w *console_writer_t) flush() {
+	if w.buf.Len() > 0 {
+		w.console.Print(w.buf.String())
+		w.buf.Truncate(0)
+	}
+}
+
 type interpreterAccess_t struct{}
 
 func (i *interpreterAccess_t) Run(console *clingon.Console, sourceCode string) error {
 	intp := interpreter.GetInterpreter()
+
+	myStdout := newConsoleWriter(console)
+	oldStdout := intp.SetStdout(myStdout)
+
 	err := intp.Run(sourceCode)
+
+	myStdout.flush()
+	intp.SetStdout(oldStdout)
+
 	return err
 }
+
+// type interpreterAccess_t struct{}
+
+// func (i *interpreterAccess_t) Run(console *clingon.Console, sourceCode string) error {
+// 	intp := interpreter.GetInterpreter()
+// 	err := intp.Run(sourceCode)
+// 	return err
+// }
 
 func StartFullEmulation(cli bool) {
 	rom, err := spectrum.ReadROM("testdata/48.rom")

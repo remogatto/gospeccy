@@ -247,9 +247,21 @@ func wrapper_wait(t *eval.Thread, in []eval.Value, out []eval.Value) {
 
 // Signature: func script(scriptName string)
 func wrapper_script(t *eval.Thread, in []eval.Value, out []eval.Value) {
-	scriptName := in[0].(eval.StringValue).Get(t)
 
-	err := runScript(w, scriptName, false /*optional*/)
+	if app.TerminationInProgress() || app.Terminated() {
+		return
+	}
+
+	path := in[0].(eval.StringValue).Get(t)
+
+	var err error
+	path, err = spectrum.ScriptPath(path)
+	if err != nil {
+		fmt.Fprintf(stdout, "%s\n", err)
+		return
+	}
+
+	err = runScript(w, path, false /*optional*/)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s\n", err)
 		return

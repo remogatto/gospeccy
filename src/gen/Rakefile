@@ -27,7 +27,7 @@ CLOBBER.concat(['z80_gen.go', 'opcodes_gen.go'])
 
 file "z80" => ["z80.go"] do
   puts "Compile z80.go"
-  `make z80`
+  `go build z80.go`
 end
 
 file "opcodes_gen.go" => ["z80", "opcodes_gen.go.template"] do
@@ -49,10 +49,10 @@ file "z80_gen.go" => ["z80_gen.go.erb"] do
 end
 
 task :copy_all => ['z80_gen.go', 'opcodes_gen.go'] do
-  cp "z80_gen.go", "../spectrum/"
-  cp "opcodes_gen.go", "../spectrum/"
-  Dir.chdir("../spectrum") do
-    sh "make && gotest"
+  cp "z80_gen.go", "../z80/"
+  cp "opcodes_gen.go", "../z80/"
+  Dir.chdir("../z80") do
+    sh "go test"
   end
 end
 

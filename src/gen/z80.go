@@ -35,7 +35,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"template"
+	"text/template"
 )
 
 // The status of which flags relates to which condition
@@ -252,7 +252,6 @@ func inir_indr(opcode string) {
 	ln("}")
 	ln("z80.", modifier, "HL()")
 }
-
 
 func ldi_ldd(opcode string) {
 	modifier := _if(opcode == "LDI", "inc", "dec")
@@ -768,7 +767,6 @@ func (Opcode) OUT(port, register string) {
 	}
 }
 
-
 func (Opcode) OUTD() { outi_outd("OUTD") }
 
 func (Opcode) OUTI() { outi_outd("OUTI") }
@@ -781,11 +779,11 @@ func (Opcode) PUSH(regpair string) {
 }
 
 func (Opcode) RES(bit, register string) {
-	bitNum, err := strconv.Atoui(bit)
+	bitNum, err := strconv.ParseUint(bit, 10, 0)
 	if err != nil {
-		panic(err.String())
+		panic(err.Error())
 	}
-	res_set("RES", bitNum, register)
+	res_set("RES", uint(bitNum), register)
 }
 
 func (Opcode) RET(condition string) {
@@ -875,11 +873,11 @@ func (Opcode) SCF() {
 }
 
 func (Opcode) SET(bit, register string) {
-	bitNum, err := strconv.Atoui(bit)
+	bitNum, err := strconv.ParseUint(bit, 10, 0)
 	if err != nil {
-		panic(err.String())
+		panic(err.Error())
 	}
-	res_set("SET", bitNum, register)
+	res_set("SET", uint(bitNum), register)
 }
 
 func (Opcode) SLA(a string) { rotate_shift("SLA", a) }
@@ -922,7 +920,6 @@ func init() {
 	}
 }
 
-
 // Removes characters which cannot form a Go identifier
 func turnIntoIdentifier(in string) string {
 	var out bytes.Buffer
@@ -945,15 +942,14 @@ func turnIntoIdentifier(in string) string {
 	return out.String()
 }
 
-
 func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, functions *bytes.Buffer) {
 	outputStream = code
 
 	var data []byte
-	var err os.Error
+	var err error
 	data, err = ioutil.ReadFile(data_file)
 	if err != nil {
-		panic(err.String())
+		panic(err.Error())
 	}
 
 	lines := strings.Split(string(data), "\n")
@@ -1051,13 +1047,13 @@ func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, fu
 
 				if (opcode2 == "RES") || (opcode2 == "SET") {
 					bit := strings.Split(extra, ",")[0]
-					bitNum, err2 := strconv.Atoui(bit)
+					bitNum, err2 := strconv.ParseUint(bit, 10, 0)
 					if err2 != nil {
 						panic("invalid bit number: " + bit)
 					}
 
 					operator := _if(opcode2 == "RES", "&", "|")
-					hexmask := res_set_hexmask(opcode2, bitNum)
+					hexmask := res_set_hexmask(opcode2, uint(bitNum))
 
 					ln("  z80.", lc_register, " = z80.memory.readByte(z80.tempaddr) ", operator, " ", hexmask)
 					ln("  z80.memory.contendReadNoMreq(z80.tempaddr, 1)")
@@ -1179,27 +1175,27 @@ func main() {
 
 	w, err := os.Create("opcodes_gen.go")
 	if err != nil {
-		panic(err.String())
+		panic(err.Error())
 	}
 
 	// Execute the template in file "opcodes_gen.go.template"
 	{
-		t := template.New(nil)
-		t.SetDelims("[[", "]]")
+		t := template.New("opcodes_gen.go.template")
+		t.Delims("[[", "]]")
+		t, err = t.ParseFiles("opcodes_gen.go.template")
 
-		err = t.ParseFile("opcodes_gen.go.template")
 		if err != nil {
-			panic(err.String())
+			panic(err.Error())
 		}
 
 		err = t.Execute(w, mapping)
 		if err != nil {
-			panic(err.String())
+			panic(err.Error())
 		}
 	}
 
 	err = w.Close()
 	if err != nil {
-		panic(err.String())
+		panic(err.Error())
 	}
 }

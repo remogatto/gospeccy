@@ -27,32 +27,32 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Automatically generated file -- DO NOT EDIT
 //
 
-package spectrum
+package z80
 
 func initOpcodes() {
 // BEGIN of non shifted opcodes
-	[[opcodes_base]]
+	[[.opcodes_base]]
 // END of non shifted opcodes
 
 // BEGIN of 0xcb shifted opcodes
-	[[opcodes_cb]]
+	[[.opcodes_cb]]
 // END of 0xcb shifted opcodes
 
 // BEGIN of 0xed shifted opcodes
-	[[opcodes_ed]]
+	[[.opcodes_ed]]
 // END of 0xed shifted opcodes
 
 // BEGIN of 0xdd shifted opcodes
-	[[opcodes_dd]]
+	[[.opcodes_dd]]
 // END of 0xdd shifted opcodes
 
 // BEGIN of 0xfd shifted opcodes
-	[[opcodes_fd]]
+	[[.opcodes_fd]]
 // END of 0xfd shifted opcodes
 
 // BEGIN of 0xddfdcb shifted opcodes
-	[[opcodes_ddfdcb]]
+	[[.opcodes_ddfdcb]]
 // END of 0xddfdcb shifted opcodes
 }
 
-[[functions]]
+[[.functions]]

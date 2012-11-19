@@ -481,13 +481,6 @@ func (Opcode) EI() {
 
 func (Opcode) EX(arg1, arg2 string) {
 	if (arg1 == "AF") && (arg2 == "AF'") {
-		ln("/* Tape saving trap: note this traps the EX AF,AF' at #04d0, not")
-		ln("   #04d1 as PC has already been incremented */")
-		ln("/* 0x76 - Timex 2068 save routine in EXROM */")
-		ln("if z80.pc == 0x04d1 || z80.pc == 0x0077 {")
-		ln("  if z80.tapeSaveTrap() == 0 { /*break*/ }")
-		ln("}")
-		ln()
 		ln("var olda, oldf = z80.a, z80.f")
 		ln("z80.a = z80.a_; z80.f = z80.f_")
 		ln("z80.a_ = olda; z80.f_ = oldf")
@@ -793,9 +786,6 @@ func (Opcode) RET(condition string) {
 		ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
 
 		if condition == "NZ" {
-			ln("if z80.pc==0x056c || z80.pc == 0x0112 {")
-			ln("  if z80.tapeLoadTrap() == 0 { /*break*/ }")
-			ln("}")
 		}
 
 		if not[condition] {

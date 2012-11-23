@@ -25,33 +25,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package spectrum
 
-type PortAccessor interface {
-	readPort(address uint16) byte
-	writePort(address uint16, b byte)
-	readPortInternal(address uint16, contend bool) byte
-	writePortInternal(address uint16, b byte, contend bool)
-	contendPortPreio(address uint16)
-	contendPortPostio(address uint16)
-
-	reset()
-
-	frame_begin()
-	frame_end() FrameStatusOfPorts
-
-	// Returns a copy of the list of border events.
-	// The difference between [the T-state of the 1st event] and [the T-state of the last event]
-	// always equals to TStatesPerFrame (if the returned list is not empty).
-	//
-	// If the returned list is non-empty, its length is at least 2.
-	getBorderEvents() []BorderEvent
-
-	// Returns a copy of the list of beeper events.
-	// The difference between [the T-state of the 1st event] and [the T-state of the last event]
-	// always equals to TStatesPerFrame (if the returned list is not empty).
-	//
-	// If the returned list is non-empty, its length is at least 2.
-	getBeeperEvents() []BeeperEvent
-}
+import "github.com/remogatto/gospeccy/src/z80"
 
 type FrameStatusOfPorts struct {
 	shouldPlayTheTape bool
@@ -235,6 +209,12 @@ func (p *Ports) frame_end() FrameStatusOfPorts {
 	}
 }
 
+// Returns a copy of the list of border events.  The difference
+// between [the T-state of the 1st event] and [the T-state of the last
+// event] always equals to TStatesPerFrame (if the returned list is
+// not empty).  
+// 
+// If the returned list is non-empty, its length is at least 2.
 func (p *Ports) getBorderEvents() []BorderEvent {
 	n := len(p.borderEvents)
 	for (n > 0) && (p.borderEvents[n-1].TState > TStatesPerFrame) {
@@ -251,6 +231,12 @@ func (p *Ports) getBorderEvents() []BorderEvent {
 	return ret
 }
 
+// Returns a copy of the list of beeper events.  The difference
+// between [the T-state of the 1st event] and [the T-state of the last
+// event] always equals to TStatesPerFrame (if the returned list is
+// not empty).
+//
+// If the returned list is non-empty, its length is at least 2.
 func (p *Ports) getBeeperEvents() []BeeperEvent {
 	n := len(p.beeperEvents)
 	for (n > 0) && (p.beeperEvents[n-1].TState > TStatesPerFrame) {
@@ -267,14 +253,14 @@ func (p *Ports) getBeeperEvents() []BeeperEvent {
 	return ret
 }
 
-func (p *Ports) readPort(address uint16) byte {
-	return p.readPortInternal(address, true)
+func (p *Ports) ReadPort(address uint16) byte {
+	return p.ReadPortInternal(address, true)
 }
 
-func (p *Ports) readPortInternal(address uint16, contend bool) byte {
+func (p *Ports) ReadPortInternal(address uint16, contend bool) byte {
 	if contend {
-		p.contendPortPreio(address)
-		p.contendPortPostio(address)
+		p.ContendPortPreio(address)
+		p.ContendPortPostio(address)
 	}
 
 	var result byte = 0xff
@@ -289,7 +275,7 @@ func (p *Ports) readPortInternal(address uint16, contend bool) byte {
 		}
 
 		// Read tape
-		if p.speccy.Cpu.readFromTape && (address == 0x7ffe) {
+		if p.speccy.readFromTape && (address == 0x7ffe) {
 			p.tapeReadCount++
 			earBit := p.speccy.tapeDrive.getEarBit()
 			result &= earBit
@@ -304,13 +290,13 @@ func (p *Ports) readPortInternal(address uint16, contend bool) byte {
 	return result
 }
 
-func (p *Ports) writePort(address uint16, b byte) {
-	p.writePortInternal(address, b, true)
+func (p *Ports) WritePort(address uint16, b byte) {
+	p.WritePortInternal(address, b, true)
 }
 
-func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
+func (p *Ports) WritePortInternal(address uint16, b byte, contend bool) {
 	if contend {
-		p.contendPortPreio(address)
+		p.ContendPortPreio(address)
 	}
 
 	if (address & 0x0001) == 0 {
@@ -321,16 +307,16 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 			p.speccy.ula.setBorderColor(color)
 
 			last := len(p.borderEvents) - 1
-			if p.borderEvents[last].TState == p.speccy.Cpu.tstates {
+			if p.borderEvents[last].TState == p.speccy.Cpu.Tstates {
 				p.borderEvents[last].Color = color
 			} else {
-				p.borderEvents = append(p.borderEvents, BorderEvent{p.speccy.Cpu.tstates, color})
+				p.borderEvents = append(p.borderEvents, BorderEvent{p.speccy.Cpu.Tstates, color})
 			}
 		}
 
 		// EAR(bit 4) and MIC(bit 3) output
 		newBeeperLevel := (b & 0x18) >> 3
-		if p.speccy.Cpu.readFromTape && !p.speccy.tapeDrive.AcceleratedLoad {
+		if p.speccy.readFromTape && !p.speccy.tapeDrive.AcceleratedLoad {
 			if p.speccy.tapeDrive.earBit == 0xff {
 				newBeeperLevel |= 2
 			} else {
@@ -341,41 +327,41 @@ func (p *Ports) writePortInternal(address uint16, b byte, contend bool) {
 			p.beeperLevel = newBeeperLevel
 
 			last := len(p.beeperEvents) - 1
-			if p.beeperEvents[last].TState == p.speccy.Cpu.tstates {
+			if p.beeperEvents[last].TState == p.speccy.Cpu.Tstates {
 				p.beeperEvents[last].Level = newBeeperLevel
 			} else {
-				p.beeperEvents = append(p.beeperEvents, BeeperEvent{p.speccy.Cpu.tstates, newBeeperLevel})
+				p.beeperEvents = append(p.beeperEvents, BeeperEvent{p.speccy.Cpu.Tstates, newBeeperLevel})
 			}
 		}
 	}
 
 	if contend {
-		p.contendPortPostio(address)
+		p.ContendPortPostio(address)
 	}
 }
 
-func contendPort(z80 *Z80, time uint) {
-	tstates_p := &z80.tstates
+func contendPort(z80 *z80.Z80, time uint) {
+	tstates_p := &z80.Tstates
 	*tstates_p += uint(delay_table[*tstates_p])
 	*tstates_p += time
 }
 
-func (p *Ports) contendPortPreio(address uint16) {
+func (p *Ports) ContendPortPreio(address uint16) {
 	if (address & 0xc000) == 0x4000 {
 		contendPort(p.speccy.Cpu, 1)
 	} else {
-		p.speccy.Cpu.tstates += 1
+		p.speccy.Cpu.Tstates += 1
 	}
 }
 
-func (p *Ports) contendPortPostio(address uint16) {
+func (p *Ports) ContendPortPostio(address uint16) {
 	if (address & 0x0001) == 1 {
 		if (address & 0xc000) == 0x4000 {
 			contendPort(p.speccy.Cpu, 1)
 			contendPort(p.speccy.Cpu, 1)
 			contendPort(p.speccy.Cpu, 1)
 		} else {
-			p.speccy.Cpu.tstates += 3
+			p.speccy.Cpu.Tstates += 3
 		}
 
 	} else {

@@ -26,10 +26,10 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 package z80
 
 type PortAccessor interface {
-	readPort(address uint16) byte
-	writePort(address uint16, b byte)
-	readPortInternal(address uint16, contend bool) byte
-	writePortInternal(address uint16, b byte, contend bool)
-	contendPortPreio(address uint16)
-	contendPortPostio(address uint16)
+	ReadPort(address uint16) byte
+	WritePort(address uint16, b byte)
+	ReadPortInternal(address uint16, contend bool) byte
+	WritePortInternal(address uint16, b byte, contend bool)
+	ContendPortPreio(address uint16)
+	ContendPortPostio(address uint16)
 }

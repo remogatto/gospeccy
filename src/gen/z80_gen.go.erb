@@ -30,24 +30,20 @@ package z80
 //
 
 
-// Generated getters and INC/DEC functions for 8bit registers
+// Generated INC/DEC functions for 8bit registers
 
-<%= %w{ a b c d e h l ixl ixh iyl iyh}.inject("") do |result, reg|
+<%= %w{ A B C D E F H I L R7 A_ B_ C_ D_ E_ F_ H_ L_ IXL IXH IYL IYH }.inject("") do |result, reg|
   result += <<CODE
 
-func (z80 *Z80) #{reg.upcase}() byte {
-	return z80.#{reg}
-}
-
-func (z80 *Z80) inc#{reg.upcase}() {
+func (z80 *Z80) inc#{reg}() {
 	z80.#{reg}++
-	z80.f = ( z80.f & FLAG_C ) | ( ternOpB(z80.#{reg} == 0x80, FLAG_V, 0) ) | ( ternOpB((z80.#{reg} & 0x0f) != 0, 0, FLAG_H) ) | sz53Table[z80.#{reg}]
+	z80.F = ( z80.F & FLAG_C ) | ( ternOpB(z80.#{reg} == 0x80, FLAG_V, 0) ) | ( ternOpB((z80.#{reg} & 0x0f) != 0, 0, FLAG_H) ) | sz53Table[z80.#{reg}]
 }
 
-func (z80 *Z80) dec#{reg.upcase}() {
-	z80.f = ( z80.f & FLAG_C ) | ( ternOpB(z80.#{reg} & 0x0f != 0, 0, FLAG_H )) | FLAG_N
+func (z80 *Z80) dec#{reg}() {
+	z80.F = ( z80.F & FLAG_C ) | ( ternOpB(z80.#{reg} & 0x0f != 0, 0, FLAG_H )) | FLAG_N
 	z80.#{reg}--
-	z80.f |= ( ternOpB(z80.#{reg} == 0x7f, FLAG_V, 0) ) | sz53Table[z80.#{reg}]
+	z80.F |= ( ternOpB(z80.#{reg} == 0x7f, FLAG_V, 0) ) | sz53Table[z80.#{reg}]
 }
 
 CODE
@@ -61,18 +57,18 @@ end
   result += <<CODE
 
 func (z80 *Z80) #{reg.upcase}() uint16 {
-	return z80.#{reg}.get()
+ 	return z80.#{reg}.get()
 }
 
-func (z80 *Z80) set#{reg.upcase}(value uint16) {
+func (z80 *Z80) Set#{reg.upcase}(value uint16) {
 	z80.#{reg}.set(value)
 }
 
-func (z80 *Z80) dec#{reg.upcase}() {
+func (z80 *Z80) Dec#{reg.upcase}() {
 	z80.#{reg}.dec()
 }
 
-func (z80 *Z80) inc#{reg.upcase}() {
+func (z80 *Z80) Inc#{reg.upcase}() {
 	z80.#{reg}.inc()
 }
 CODE

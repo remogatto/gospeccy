@@ -46,16 +46,16 @@ var (
 func (z80 *Z80) DumpRegisters(out *[]string) {
 	var halted byte
 
-	if z80.halted {
+	if z80.Halted {
 		halted = 1
 	} else {
 		halted = 0
 	}
 
 	*out = append(*out, fmt.Sprintf("%02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %04x %04x\n",
-		z80.a, z80.f, z80.b, z80.c, z80.d, z80.e, z80.h, z80.l, z80.a_, z80.f_, z80.b_, z80.c_, z80.d_, z80.e_, z80.h_, z80.l_, z80.ixh, z80.ixl, z80.iyh, z80.iyl, z80.sp, z80.pc))
-	*out = append(*out, fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.i, (z80.r7&0x80)|byte(z80.r&0x7f),
-		z80.iff1, z80.iff2, z80.im, halted, z80.tstates))
+		z80.A, z80.F, z80.B, z80.C, z80.D, z80.E, z80.H, z80.L, z80.A_, z80.F_, z80.B_, z80.C_, z80.D_, z80.E_, z80.H_, z80.L_, z80.IXH, z80.IXL, z80.IYH, z80.IYL, z80.sp, z80.pc))
+	*out = append(*out, fmt.Sprintf("%02x %02x %d %d %d %d %d\n", z80.I, (z80.R7&0x80)|byte(z80.R&0x7f),
+		z80.IFF1, z80.IFF2, z80.IM, halted, z80.Tstates))
 }
 
 func (memory *testMemory) DumpMemory(out *[]string) {
@@ -96,7 +96,7 @@ func (memory *testMemory) DumpMemory(out *[]string) {
 }
 
 func contendMemory(z80 *Z80, address uint16, time uint) {
-	tstates_p := &z80.tstates
+	tstates_p := &z80.Tstates
 	tstates := *tstates_p
 
 	tstates += time
@@ -105,7 +105,7 @@ func contendMemory(z80 *Z80, address uint16, time uint) {
 }
 
 func contendPort(z80 *Z80, time uint) {
-	tstates_p := &z80.tstates
+	tstates_p := &z80.Tstates
 	*tstates_p += time
 }
 
@@ -115,13 +115,13 @@ type testMemory struct {
 	z80        *Z80
 }
 
-func (memory *testMemory) readByteInternal(addr uint16) byte {
-	events = append(events, fmt.Sprintf("%5d MR %04x %02x\n", memory.z80.tstates, addr, memory.data_array[addr]))
+func (memory *testMemory) ReadByteInternal(addr uint16) byte {
+	events = append(events, fmt.Sprintf("%5d MR %04x %02x\n", memory.z80.Tstates, addr, memory.data_array[addr]))
 	return memory.data_array[addr]
 }
 
-func (memory *testMemory) writeByteInternal(address uint16, b byte) {
-	events = append(events, fmt.Sprintf("%5d MW %04x %02x\n", memory.z80.tstates, address, b))
+func (memory *testMemory) WriteByteInternal(address uint16, b byte) {
+	events = append(events, fmt.Sprintf("%5d MW %04x %02x\n", memory.z80.Tstates, address, b))
 	memory.data_array[address] = b
 	memory.data_map[address] = b
 	if b == 0 {
@@ -129,41 +129,41 @@ func (memory *testMemory) writeByteInternal(address uint16, b byte) {
 	}
 }
 
-func (memory *testMemory) readByte(addr uint16) byte {
-	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, addr))
+func (memory *testMemory) ReadByte(addr uint16) byte {
+	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.Tstates, addr))
 	contendMemory(memory.z80, addr, 3)
-	return memory.readByteInternal(addr)
+	return memory.ReadByteInternal(addr)
 }
 
-func (memory *testMemory) writeByte(address uint16, b byte) {
-	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
+func (memory *testMemory) WriteByte(address uint16, b byte) {
+	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.Tstates, address))
 	contendMemory(memory.z80, address, 3)
-	memory.writeByteInternal(address, b)
+	memory.WriteByteInternal(address, b)
 }
 
-func (memory *testMemory) contendRead(address uint16, time uint) {
-	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
+func (memory *testMemory) ContendRead(address uint16, time uint) {
+	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.Tstates, address))
 	contendMemory(memory.z80, address, time)
 }
 
-func (memory *testMemory) contendReadNoMreq(address uint16, time uint) {
-	memory.contendRead(address, time)
+func (memory *testMemory) ContendReadNoMreq(address uint16, time uint) {
+	memory.ContendRead(address, time)
 }
 
-func (memory *testMemory) contendReadNoMreq_loop(address uint16, time uint, count uint) {
+func (memory *testMemory) ContendReadNoMreq_loop(address uint16, time uint, count uint) {
 	for i := uint(0); i < count; i++ {
-		memory.contendReadNoMreq(address, time)
+		memory.ContendReadNoMreq(address, time)
 	}
 }
 
-func (memory *testMemory) contendWriteNoMreq(address uint16, time uint) {
-	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.tstates, address))
+func (memory *testMemory) ContendWriteNoMreq(address uint16, time uint) {
+	events = append(events, fmt.Sprintf("%5d MC %04x\n", memory.z80.Tstates, address))
 	contendMemory(memory.z80, address, time)
 }
 
-func (memory *testMemory) contendWriteNoMreq_loop(address uint16, time uint, count uint) {
+func (memory *testMemory) ContendWriteNoMreq_loop(address uint16, time uint, count uint) {
 	for i := uint(0); i < count; i++ {
-		memory.contendWriteNoMreq(address, time)
+		memory.ContendWriteNoMreq(address, time)
 	}
 }
 
@@ -191,60 +191,60 @@ type testPort struct {
 	z80 *Z80
 }
 
-func (p *testPort) readPortInternal(address uint16, contend bool) byte {
+func (p *testPort) ReadPortInternal(address uint16, contend bool) byte {
 	if contend {
-		p.contendPortPreio(address)
+		p.ContendPortPreio(address)
 	}
 
 	var r byte = byte(address >> 8)
-	events = append(events, fmt.Sprintf("%5d PR %04x %02x\n", p.z80.tstates, address, r))
+	events = append(events, fmt.Sprintf("%5d PR %04x %02x\n", p.z80.Tstates, address, r))
 
 	if contend {
-		p.contendPortPostio(address)
+		p.ContendPortPostio(address)
 	}
 	return r
 }
 
-func (p *testPort) readPort(port uint16) byte {
-	return p.readPortInternal(port, true)
+func (p *testPort) ReadPort(port uint16) byte {
+	return p.ReadPortInternal(port, true)
 }
 
-func (p *testPort) writePortInternal(address uint16, b byte, contend bool) {
+func (p *testPort) WritePortInternal(address uint16, b byte, contend bool) {
 	if contend {
-		p.contendPortPreio(address)
+		p.ContendPortPreio(address)
 	}
 
-	events = append(events, fmt.Sprintf("%5d PW %04x %02x\n", p.z80.tstates, address, b))
+	events = append(events, fmt.Sprintf("%5d PW %04x %02x\n", p.z80.Tstates, address, b))
 
 	if contend {
-		p.contendPortPostio(address)
+		p.ContendPortPostio(address)
 	}
 }
 
-func (p *testPort) writePort(port uint16, b byte) {
-	p.writePortInternal(port, b, true)
+func (p *testPort) WritePort(port uint16, b byte) {
+	p.WritePortInternal(port, b, true)
 }
 
-func (p *testPort) contendPortPreio(port uint16) {
+func (p *testPort) ContendPortPreio(port uint16) {
 	if (port & 0xc000) == 0x4000 {
-		events = append(events, fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+		events = append(events, fmt.Sprintf("%5d PC %04x\n", p.z80.Tstates, port))
 	}
-	p.z80.tstates += 1
+	p.z80.Tstates += 1
 }
 
-func (p *testPort) contendPortPostio(port uint16) {
+func (p *testPort) ContendPortPostio(port uint16) {
 	if (port & 0x0001) == 1 {
 		if (port & 0xc000) == 0x4000 {
 			for i := 0; i < 3; i++ {
-				events = append(events, fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+				events = append(events, fmt.Sprintf("%5d PC %04x\n", p.z80.Tstates, port))
 				contendPort(p.z80, 1)
 			}
 		} else {
-			p.z80.tstates += 3
+			p.z80.Tstates += 3
 		}
 
 	} else {
-		events = append(events, fmt.Sprintf("%5d PC %04x\n", p.z80.tstates, port))
+		events = append(events, fmt.Sprintf("%5d PC %04x\n", p.z80.Tstates, port))
 		contendPort(p.z80, 3)
 	}
 }
@@ -295,34 +295,34 @@ func TestDoOpcodes(t *testing.T) {
 			// Fill registers
 
 			af, _ := strconv.ParseUint(mainRegs[0], 16, 0)
-			z80.a, z80.f = byte(int16(af)>>8), byte(uint16(af)&0xff)
+			z80.A, z80.F = byte(int16(af)>>8), byte(uint16(af)&0xff)
 
 			bc, _ := strconv.ParseUint(mainRegs[1], 16, 0)
-			z80.b, z80.c = byte(int16(bc)>>8), byte(uint16(bc)&0xff)
+			z80.B, z80.C = byte(int16(bc)>>8), byte(uint16(bc)&0xff)
 
 			de, _ := strconv.ParseUint(mainRegs[2], 16, 0)
-			z80.d, z80.e = byte(int16(de)>>8), byte(uint16(de)&0xff)
+			z80.D, z80.E = byte(int16(de)>>8), byte(uint16(de)&0xff)
 
 			hl, _ := strconv.ParseUint(mainRegs[3], 16, 0)
-			z80.h, z80.l = byte(int16(hl)>>8), byte(uint16(hl)&0xff)
+			z80.H, z80.L = byte(int16(hl)>>8), byte(uint16(hl)&0xff)
 
 			af_, _ := strconv.ParseUint(mainRegs[4], 16, 0)
-			z80.a_, z80.f_ = byte(int16(af_)>>8), byte(uint16(af_)&0xff)
+			z80.A_, z80.F_ = byte(int16(af_)>>8), byte(uint16(af_)&0xff)
 
 			bc_, _ := strconv.ParseUint(mainRegs[5], 16, 0)
-			z80.b_, z80.c_ = byte(int16(bc_)>>8), byte(uint16(bc_)&0xff)
+			z80.B_, z80.C_ = byte(int16(bc_)>>8), byte(uint16(bc_)&0xff)
 
 			de_, _ := strconv.ParseUint(mainRegs[6], 16, 0)
-			z80.d_, z80.e_ = byte(int16(de_)>>8), byte(uint16(de_)&0xff)
+			z80.D_, z80.E_ = byte(int16(de_)>>8), byte(uint16(de_)&0xff)
 
 			hl_, _ := strconv.ParseUint(mainRegs[7], 16, 0)
-			z80.h_, z80.l_ = byte(int16(hl_)>>8), byte(uint16(hl_)&0xff)
+			z80.H_, z80.L_ = byte(int16(hl_)>>8), byte(uint16(hl_)&0xff)
 
 			ix, _ := strconv.ParseUint(mainRegs[8], 16, 0)
-			z80.ixh, z80.ixl = byte(int16(ix)>>8), byte(uint16(ix)&0xff)
+			z80.IXH, z80.IXL = byte(int16(ix)>>8), byte(uint16(ix)&0xff)
 
 			iy, _ := strconv.ParseUint(mainRegs[9], 16, 0)
-			z80.iyh, z80.iyl = byte(int16(iy)>>8), byte(uint16(iy)&0xff)
+			z80.IYH, z80.IYL = byte(int16(iy)>>8), byte(uint16(iy)&0xff)
 
 			sp, _ := strconv.ParseUint(mainRegs[10], 16, 0)
 			z80.sp = uint16(sp)
@@ -335,33 +335,33 @@ func TestDoOpcodes(t *testing.T) {
 			otherRegs := strings.Split(lines[currLine], " ")
 
 			i, _ := strconv.ParseUint(otherRegs[0], 16, 0)
-			z80.i = byte(i)
+			z80.I = byte(i)
 
 			r, _ := strconv.ParseUint(otherRegs[1], 16, 0)
-			z80.r, z80.r7 = uint16(r), byte(r)
+			z80.R, z80.R7 = uint16(r), byte(r)
 
 			iff1, _ := strconv.ParseUint(otherRegs[2], 16, 0)
-			z80.iff1 = byte(iff1)
+			z80.IFF1 = byte(iff1)
 
 			iff2, _ := strconv.ParseUint(otherRegs[3], 16, 0)
-			z80.iff2 = byte(iff2)
+			z80.IFF2 = byte(iff2)
 
 			im, _ := strconv.ParseUint(otherRegs[4], 16, 0)
-			z80.im = byte(im)
+			z80.IM = byte(im)
 
 			halted, _ := strconv.ParseUint(otherRegs[5], 10, 0)
 
 			if halted != 0 {
-				z80.halted = true
+				z80.Halted = true
 			} else {
-				z80.halted = false
+				z80.Halted = false
 			}
 
 			// Should set event_next_event and tstates
 
 			event, _ := strconv.ParseUint(otherRegs[len(otherRegs)-1], 10, 0)
 
-			z80.eventNextEvent = uint(event)
+			z80.EventNextEvent = uint(event)
 
 			// Fill memory
 
@@ -399,7 +399,7 @@ func TestDoOpcodes(t *testing.T) {
 
 			currLine++
 
-			z80.reset()
+			z80.Reset()
 			memory.reset()
 			dirtyMemory = make(map[uint16]bool)
 		}

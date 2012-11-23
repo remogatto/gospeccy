@@ -96,7 +96,7 @@ func (tapeDrive *TapeDrive) Insert(tape *Tape) {
 }
 
 func (tapeDrive *TapeDrive) Play() {
-	tapeDrive.speccy.Cpu.readFromTape = true
+	tapeDrive.speccy.readFromTape = true
 	tapeDrive.pos = 0
 	tapeDrive.state = TAPE_DRIVE_START
 	tapeDrive.timeout = 0
@@ -104,7 +104,7 @@ func (tapeDrive *TapeDrive) Play() {
 }
 
 func (tapeDrive *TapeDrive) Stop() {
-	tapeDrive.speccy.Cpu.readFromTape = false
+	tapeDrive.speccy.readFromTape = false
 	tapeDrive.pos = 0
 	tapeDrive.state = TAPE_DRIVE_PAUSE_STOP
 	tapeDrive.timeout = 0
@@ -141,7 +141,7 @@ func (tapeDrive *TapeDrive) decelerate() {
 }
 
 func (tapeDrive *TapeDrive) doPlay() (endOfBlock bool) {
-	now := tapeDrive.speccy.ula.frame*TStatesPerFrame + tapeDrive.speccy.Cpu.tstates
+	now := tapeDrive.speccy.ula.frame*TStatesPerFrame + tapeDrive.speccy.Cpu.Tstates
 
 	tapeDrive.timeout -= (int(now) - tapeDrive.timeLastIn)
 	tapeDrive.timeLastIn = int(now)
@@ -250,7 +250,7 @@ func (tapeDrive *TapeDrive) doPlay() (endOfBlock bool) {
 			tapeDrive.timeout = 1
 			tapeDrive.state = TAPE_DRIVE_STOP
 
-			tapeDrive.speccy.Cpu.readFromTape = false
+			tapeDrive.speccy.readFromTape = false
 			tapeDrive.notifyCpuLoadCompleted = true
 		}
 

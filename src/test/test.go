@@ -344,15 +344,15 @@ func assertStateEqual(expected, actual formats.Snapshot) bool {
 }
 
 func stateEqualTo(filename string) bool {
-	return assertStateEqual(loadSnapshot(filename), speccy.Cpu.MakeSnapshot())
+	return assertStateEqual(loadSnapshot(filename), speccy.MakeSnapshot())
 }
 
 func screenEqualTo(filename string) bool {
-	return assertScreenEqual(loadSnapshot(filename), speccy.Cpu.MakeSnapshot())
+	return assertScreenEqual(loadSnapshot(filename), speccy.MakeSnapshot())
 }
 
 func saveSnapshot(filename string) {
-	fullSnapshot := speccy.Cpu.MakeSnapshot()
+	fullSnapshot := speccy.MakeSnapshot()
 
 	data, err := fullSnapshot.EncodeSNA()
 

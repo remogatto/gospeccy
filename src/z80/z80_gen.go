@@ -29,171 +29,248 @@ package z80
 // Automatically generated file -- DO NOT EDIT
 //
 
-// Generated getters and INC/DEC functions for 8bit registers
-
-func (z80 *Z80) A() byte {
-	return z80.a
-}
+// Generated INC/DEC functions for 8bit registers
 
 func (z80 *Z80) incA() {
-	z80.a++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.a == 0x80, FLAG_V, 0)) | (ternOpB((z80.a&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.a]
+	z80.A++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.A == 0x80, FLAG_V, 0)) | (ternOpB((z80.A&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.A]
 }
 
 func (z80 *Z80) decA() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.a&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.a--
-	z80.f |= (ternOpB(z80.a == 0x7f, FLAG_V, 0)) | sz53Table[z80.a]
-}
-
-func (z80 *Z80) B() byte {
-	return z80.b
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.A&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.A--
+	z80.F |= (ternOpB(z80.A == 0x7f, FLAG_V, 0)) | sz53Table[z80.A]
 }
 
 func (z80 *Z80) incB() {
-	z80.b++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.b == 0x80, FLAG_V, 0)) | (ternOpB((z80.b&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.b]
+	z80.B++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.B == 0x80, FLAG_V, 0)) | (ternOpB((z80.B&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.B]
 }
 
 func (z80 *Z80) decB() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.b&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.b--
-	z80.f |= (ternOpB(z80.b == 0x7f, FLAG_V, 0)) | sz53Table[z80.b]
-}
-
-func (z80 *Z80) C() byte {
-	return z80.c
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.B&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.B--
+	z80.F |= (ternOpB(z80.B == 0x7f, FLAG_V, 0)) | sz53Table[z80.B]
 }
 
 func (z80 *Z80) incC() {
-	z80.c++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.c == 0x80, FLAG_V, 0)) | (ternOpB((z80.c&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.c]
+	z80.C++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.C == 0x80, FLAG_V, 0)) | (ternOpB((z80.C&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.C]
 }
 
 func (z80 *Z80) decC() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.c&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.c--
-	z80.f |= (ternOpB(z80.c == 0x7f, FLAG_V, 0)) | sz53Table[z80.c]
-}
-
-func (z80 *Z80) D() byte {
-	return z80.d
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.C&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.C--
+	z80.F |= (ternOpB(z80.C == 0x7f, FLAG_V, 0)) | sz53Table[z80.C]
 }
 
 func (z80 *Z80) incD() {
-	z80.d++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.d == 0x80, FLAG_V, 0)) | (ternOpB((z80.d&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.d]
+	z80.D++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.D == 0x80, FLAG_V, 0)) | (ternOpB((z80.D&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.D]
 }
 
 func (z80 *Z80) decD() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.d&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.d--
-	z80.f |= (ternOpB(z80.d == 0x7f, FLAG_V, 0)) | sz53Table[z80.d]
-}
-
-func (z80 *Z80) E() byte {
-	return z80.e
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.D&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.D--
+	z80.F |= (ternOpB(z80.D == 0x7f, FLAG_V, 0)) | sz53Table[z80.D]
 }
 
 func (z80 *Z80) incE() {
-	z80.e++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.e == 0x80, FLAG_V, 0)) | (ternOpB((z80.e&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.e]
+	z80.E++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.E == 0x80, FLAG_V, 0)) | (ternOpB((z80.E&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.E]
 }
 
 func (z80 *Z80) decE() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.e&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.e--
-	z80.f |= (ternOpB(z80.e == 0x7f, FLAG_V, 0)) | sz53Table[z80.e]
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.E&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.E--
+	z80.F |= (ternOpB(z80.E == 0x7f, FLAG_V, 0)) | sz53Table[z80.E]
 }
 
-func (z80 *Z80) H() byte {
-	return z80.h
+func (z80 *Z80) incF() {
+	z80.F++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.F == 0x80, FLAG_V, 0)) | (ternOpB((z80.F&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.F]
+}
+
+func (z80 *Z80) decF() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.F&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.F--
+	z80.F |= (ternOpB(z80.F == 0x7f, FLAG_V, 0)) | sz53Table[z80.F]
 }
 
 func (z80 *Z80) incH() {
-	z80.h++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.h == 0x80, FLAG_V, 0)) | (ternOpB((z80.h&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.h]
+	z80.H++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.H == 0x80, FLAG_V, 0)) | (ternOpB((z80.H&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.H]
 }
 
 func (z80 *Z80) decH() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.h&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.h--
-	z80.f |= (ternOpB(z80.h == 0x7f, FLAG_V, 0)) | sz53Table[z80.h]
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.H&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.H--
+	z80.F |= (ternOpB(z80.H == 0x7f, FLAG_V, 0)) | sz53Table[z80.H]
 }
 
-func (z80 *Z80) L() byte {
-	return z80.l
+func (z80 *Z80) incI() {
+	z80.I++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.I == 0x80, FLAG_V, 0)) | (ternOpB((z80.I&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.I]
+}
+
+func (z80 *Z80) decI() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.I&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.I--
+	z80.F |= (ternOpB(z80.I == 0x7f, FLAG_V, 0)) | sz53Table[z80.I]
 }
 
 func (z80 *Z80) incL() {
-	z80.l++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.l == 0x80, FLAG_V, 0)) | (ternOpB((z80.l&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.l]
+	z80.L++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.L == 0x80, FLAG_V, 0)) | (ternOpB((z80.L&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.L]
 }
 
 func (z80 *Z80) decL() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.l&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.l--
-	z80.f |= (ternOpB(z80.l == 0x7f, FLAG_V, 0)) | sz53Table[z80.l]
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.L&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.L--
+	z80.F |= (ternOpB(z80.L == 0x7f, FLAG_V, 0)) | sz53Table[z80.L]
 }
 
-func (z80 *Z80) IXL() byte {
-	return z80.ixl
+func (z80 *Z80) incR7() {
+	z80.R7++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.R7 == 0x80, FLAG_V, 0)) | (ternOpB((z80.R7&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.R7]
+}
+
+func (z80 *Z80) decR7() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.R7&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.R7--
+	z80.F |= (ternOpB(z80.R7 == 0x7f, FLAG_V, 0)) | sz53Table[z80.R7]
+}
+
+func (z80 *Z80) incA_() {
+	z80.A_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.A_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.A_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.A_]
+}
+
+func (z80 *Z80) decA_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.A_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.A_--
+	z80.F |= (ternOpB(z80.A_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.A_]
+}
+
+func (z80 *Z80) incB_() {
+	z80.B_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.B_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.B_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.B_]
+}
+
+func (z80 *Z80) decB_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.B_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.B_--
+	z80.F |= (ternOpB(z80.B_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.B_]
+}
+
+func (z80 *Z80) incC_() {
+	z80.C_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.C_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.C_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.C_]
+}
+
+func (z80 *Z80) decC_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.C_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.C_--
+	z80.F |= (ternOpB(z80.C_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.C_]
+}
+
+func (z80 *Z80) incD_() {
+	z80.D_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.D_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.D_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.D_]
+}
+
+func (z80 *Z80) decD_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.D_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.D_--
+	z80.F |= (ternOpB(z80.D_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.D_]
+}
+
+func (z80 *Z80) incE_() {
+	z80.E_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.E_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.E_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.E_]
+}
+
+func (z80 *Z80) decE_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.E_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.E_--
+	z80.F |= (ternOpB(z80.E_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.E_]
+}
+
+func (z80 *Z80) incF_() {
+	z80.F_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.F_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.F_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.F_]
+}
+
+func (z80 *Z80) decF_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.F_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.F_--
+	z80.F |= (ternOpB(z80.F_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.F_]
+}
+
+func (z80 *Z80) incH_() {
+	z80.H_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.H_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.H_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.H_]
+}
+
+func (z80 *Z80) decH_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.H_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.H_--
+	z80.F |= (ternOpB(z80.H_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.H_]
+}
+
+func (z80 *Z80) incL_() {
+	z80.L_++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.L_ == 0x80, FLAG_V, 0)) | (ternOpB((z80.L_&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.L_]
+}
+
+func (z80 *Z80) decL_() {
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.L_&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.L_--
+	z80.F |= (ternOpB(z80.L_ == 0x7f, FLAG_V, 0)) | sz53Table[z80.L_]
 }
 
 func (z80 *Z80) incIXL() {
-	z80.ixl++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.ixl == 0x80, FLAG_V, 0)) | (ternOpB((z80.ixl&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.ixl]
+	z80.IXL++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IXL == 0x80, FLAG_V, 0)) | (ternOpB((z80.IXL&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.IXL]
 }
 
 func (z80 *Z80) decIXL() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.ixl&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.ixl--
-	z80.f |= (ternOpB(z80.ixl == 0x7f, FLAG_V, 0)) | sz53Table[z80.ixl]
-}
-
-func (z80 *Z80) IXH() byte {
-	return z80.ixh
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IXL&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.IXL--
+	z80.F |= (ternOpB(z80.IXL == 0x7f, FLAG_V, 0)) | sz53Table[z80.IXL]
 }
 
 func (z80 *Z80) incIXH() {
-	z80.ixh++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.ixh == 0x80, FLAG_V, 0)) | (ternOpB((z80.ixh&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.ixh]
+	z80.IXH++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IXH == 0x80, FLAG_V, 0)) | (ternOpB((z80.IXH&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.IXH]
 }
 
 func (z80 *Z80) decIXH() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.ixh&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.ixh--
-	z80.f |= (ternOpB(z80.ixh == 0x7f, FLAG_V, 0)) | sz53Table[z80.ixh]
-}
-
-func (z80 *Z80) IYL() byte {
-	return z80.iyl
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IXH&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.IXH--
+	z80.F |= (ternOpB(z80.IXH == 0x7f, FLAG_V, 0)) | sz53Table[z80.IXH]
 }
 
 func (z80 *Z80) incIYL() {
-	z80.iyl++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.iyl == 0x80, FLAG_V, 0)) | (ternOpB((z80.iyl&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.iyl]
+	z80.IYL++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IYL == 0x80, FLAG_V, 0)) | (ternOpB((z80.IYL&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.IYL]
 }
 
 func (z80 *Z80) decIYL() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.iyl&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.iyl--
-	z80.f |= (ternOpB(z80.iyl == 0x7f, FLAG_V, 0)) | sz53Table[z80.iyl]
-}
-
-func (z80 *Z80) IYH() byte {
-	return z80.iyh
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IYL&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.IYL--
+	z80.F |= (ternOpB(z80.IYL == 0x7f, FLAG_V, 0)) | sz53Table[z80.IYL]
 }
 
 func (z80 *Z80) incIYH() {
-	z80.iyh++
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.iyh == 0x80, FLAG_V, 0)) | (ternOpB((z80.iyh&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.iyh]
+	z80.IYH++
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IYH == 0x80, FLAG_V, 0)) | (ternOpB((z80.IYH&0x0f) != 0, 0, FLAG_H)) | sz53Table[z80.IYH]
 }
 
 func (z80 *Z80) decIYH() {
-	z80.f = (z80.f & FLAG_C) | (ternOpB(z80.iyh&0x0f != 0, 0, FLAG_H)) | FLAG_N
-	z80.iyh--
-	z80.f |= (ternOpB(z80.iyh == 0x7f, FLAG_V, 0)) | sz53Table[z80.iyh]
+	z80.F = (z80.F & FLAG_C) | (ternOpB(z80.IYH&0x0f != 0, 0, FLAG_H)) | FLAG_N
+	z80.IYH--
+	z80.F |= (ternOpB(z80.IYH == 0x7f, FLAG_V, 0)) | sz53Table[z80.IYH]
 }
 
 // Generated getters/setters and INC/DEC functions for 16bit registers
@@ -202,15 +279,15 @@ func (z80 *Z80) BC() uint16 {
 	return z80.bc.get()
 }
 
-func (z80 *Z80) setBC(value uint16) {
+func (z80 *Z80) SetBC(value uint16) {
 	z80.bc.set(value)
 }
 
-func (z80 *Z80) decBC() {
+func (z80 *Z80) DecBC() {
 	z80.bc.dec()
 }
 
-func (z80 *Z80) incBC() {
+func (z80 *Z80) IncBC() {
 	z80.bc.inc()
 }
 
@@ -218,15 +295,15 @@ func (z80 *Z80) DE() uint16 {
 	return z80.de.get()
 }
 
-func (z80 *Z80) setDE(value uint16) {
+func (z80 *Z80) SetDE(value uint16) {
 	z80.de.set(value)
 }
 
-func (z80 *Z80) decDE() {
+func (z80 *Z80) DecDE() {
 	z80.de.dec()
 }
 
-func (z80 *Z80) incDE() {
+func (z80 *Z80) IncDE() {
 	z80.de.inc()
 }
 
@@ -234,15 +311,15 @@ func (z80 *Z80) HL() uint16 {
 	return z80.hl.get()
 }
 
-func (z80 *Z80) setHL(value uint16) {
+func (z80 *Z80) SetHL(value uint16) {
 	z80.hl.set(value)
 }
 
-func (z80 *Z80) decHL() {
+func (z80 *Z80) DecHL() {
 	z80.hl.dec()
 }
 
-func (z80 *Z80) incHL() {
+func (z80 *Z80) IncHL() {
 	z80.hl.inc()
 }
 
@@ -250,15 +327,15 @@ func (z80 *Z80) BC_() uint16 {
 	return z80.bc_.get()
 }
 
-func (z80 *Z80) setBC_(value uint16) {
+func (z80 *Z80) SetBC_(value uint16) {
 	z80.bc_.set(value)
 }
 
-func (z80 *Z80) decBC_() {
+func (z80 *Z80) DecBC_() {
 	z80.bc_.dec()
 }
 
-func (z80 *Z80) incBC_() {
+func (z80 *Z80) IncBC_() {
 	z80.bc_.inc()
 }
 
@@ -266,15 +343,15 @@ func (z80 *Z80) DE_() uint16 {
 	return z80.de_.get()
 }
 
-func (z80 *Z80) setDE_(value uint16) {
+func (z80 *Z80) SetDE_(value uint16) {
 	z80.de_.set(value)
 }
 
-func (z80 *Z80) decDE_() {
+func (z80 *Z80) DecDE_() {
 	z80.de_.dec()
 }
 
-func (z80 *Z80) incDE_() {
+func (z80 *Z80) IncDE_() {
 	z80.de_.inc()
 }
 
@@ -282,15 +359,15 @@ func (z80 *Z80) HL_() uint16 {
 	return z80.hl_.get()
 }
 
-func (z80 *Z80) setHL_(value uint16) {
+func (z80 *Z80) SetHL_(value uint16) {
 	z80.hl_.set(value)
 }
 
-func (z80 *Z80) decHL_() {
+func (z80 *Z80) DecHL_() {
 	z80.hl_.dec()
 }
 
-func (z80 *Z80) incHL_() {
+func (z80 *Z80) IncHL_() {
 	z80.hl_.inc()
 }
 
@@ -298,15 +375,15 @@ func (z80 *Z80) IX() uint16 {
 	return z80.ix.get()
 }
 
-func (z80 *Z80) setIX(value uint16) {
+func (z80 *Z80) SetIX(value uint16) {
 	z80.ix.set(value)
 }
 
-func (z80 *Z80) decIX() {
+func (z80 *Z80) DecIX() {
 	z80.ix.dec()
 }
 
-func (z80 *Z80) incIX() {
+func (z80 *Z80) IncIX() {
 	z80.ix.inc()
 }
 
@@ -314,14 +391,14 @@ func (z80 *Z80) IY() uint16 {
 	return z80.iy.get()
 }
 
-func (z80 *Z80) setIY(value uint16) {
+func (z80 *Z80) SetIY(value uint16) {
 	z80.iy.set(value)
 }
 
-func (z80 *Z80) decIY() {
+func (z80 *Z80) DecIY() {
 	z80.iy.dec()
 }
 
-func (z80 *Z80) incIY() {
+func (z80 *Z80) IncIY() {
 	z80.iy.inc()
 }

@@ -101,31 +101,30 @@ func arithmetic_logical(opcode, arg1, arg2 string) {
 
 	if len(arg1) == 1 {
 		if len(arg2) == 1 || matches(arg2, "^REGISTER[HL]$") {
-			lc_opcode, lc_arg2 := lc(opcode), lc(arg2)
-			ln("z80.", lc_opcode, "(z80.", lc_arg2, ")")
+			lc_opcode := lc(opcode)
+			ln("z80.", lc_opcode, "(z80.", arg2, ")")
 		} else if arg2 == "(REGISTER+dd)" {
 			lc_opcode := lc(opcode)
-			ln("var offset byte = z80.memory.readByte( z80.pc )")
-			ln("z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )")
-			ln("z80.pc++")
-			ln("var bytetemp byte = z80.memory.readByte(z80.REGISTER() + uint16(signExtend(offset)))")
+			ln("var offset byte = z80.memory.ReadByte( z80.PC() )")
+			ln("z80.memory.ContendReadNoMreq_loop( z80.PC(), 1, 5 )")
+			ln("z80.IncPC(1)")
+			ln("var bytetemp byte = z80.memory.ReadByte(z80.REGISTER() + uint16(signExtend(offset)))")
 			ln("z80.", lc_opcode, "(bytetemp)")
 		} else {
 			register := _if(arg2 == "(HL)", "HL", "PC")
-			increment := _if(register == "PC", "z80.pc++", "")
+			increment := _if(register == "PC", "z80.IncPC(1)", "")
 			lc_opcode := lc(opcode)
-			ln("var bytetemp byte = z80.memory.readByte(z80.", register, "())")
+			ln("var bytetemp byte = z80.memory.ReadByte(z80.", register, "())")
 			ln(increment)
 			ln("z80.", lc_opcode, "(bytetemp)")
 		}
 	} else if opcode == "ADD" {
 		lc_opcode := lc(opcode)
-		lc_arg1 := lc(arg1)
-		ln("z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 7 )")
-		ln("z80.", lc_opcode, "16(z80.", lc_arg1, ", z80.", arg2, "())")
+		ln("z80.memory.ContendReadNoMreq_loop( z80.IR(), 1, 7 )")
+		ln("z80.", lc_opcode, "16(z80.", lc(arg1), ", z80.", arg2, "())")
 	} else if (arg1 == "HL") && len(arg2) == 2 {
 		lc_opcode := lc(opcode)
-		ln("z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 7 )")
+		ln("z80.memory.ContendReadNoMreq_loop( z80.IR(), 1, 7 )")
 		ln("z80.", lc_opcode, "16(z80.", arg2, "())")
 	} else {
 		panic("invalid arguments")
@@ -139,186 +138,186 @@ func call_jp(opcode, condition, offset string) {
 	} else {
 		var condition_string string
 		if not[condition] {
-			condition_string = "(z80.f & FLAG_" + flag[condition] + ") == 0"
+			condition_string = "(z80.F & FLAG_" + flag[condition] + ") == 0"
 		} else {
-			condition_string = "(z80.f & FLAG_" + flag[condition] + ") != 0"
+			condition_string = "(z80.F & FLAG_" + flag[condition] + ") != 0"
 		}
 		ln("if ", condition_string, "{")
 		ln("  z80.", lc_opcode, "()")
 		ln("} else {")
-		ln("  z80.memory.contendRead(z80.pc, 3); z80.memory.contendRead( z80.pc + 1, 3 ); z80.pc += 2;")
+		ln("  z80.memory.ContendRead(z80.PC(), 3); z80.memory.ContendRead( z80.PC() + 1, 3 ); z80.IncPC(2);")
 		ln("}")
 	}
 }
 
 func cpi_cpd(opcode string) {
-	modifier := _if(opcode == "CPI", "inc", "dec")
+	modifier := _if(opcode == "CPI", "Inc", "Dec")
 
-	ln("var value byte = z80.memory.readByte( z80.HL() )")
-	ln("var bytetemp byte = z80.a - value")
-	ln("var lookup byte = ((z80.a & 0x08 ) >> 3 ) | (((value) & 0x08 ) >> 2 ) | ((bytetemp & 0x08 ) >> 1)")
+	ln("var value byte = z80.memory.ReadByte( z80.HL() )")
+	ln("var bytetemp byte = z80.A - value")
+	ln("var lookup byte = ((z80.A & 0x08 ) >> 3 ) | (((value) & 0x08 ) >> 2 ) | ((bytetemp & 0x08 ) >> 1)")
 
-	ln("z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )")
-	ln("z80.", modifier, "HL(); z80.decBC()")
-	ln("z80.f = (z80.f & FLAG_C) | ternOpB(z80.BC() != 0, FLAG_V | FLAG_N, FLAG_N) | halfcarrySubTable[lookup] | ternOpB(bytetemp != 0, 0, FLAG_Z) | (bytetemp & FLAG_S )")
-	ln("if (z80.f & FLAG_H) != 0 { bytetemp-- }")
-	ln("z80.f |= (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)")
+	ln("z80.memory.ContendReadNoMreq_loop( z80.HL(), 1, 5 )")
+	ln("z80.", modifier, "HL(); z80.DecBC()")
+	ln("z80.F = (z80.F & FLAG_C) | ternOpB(z80.BC() != 0, FLAG_V | FLAG_N, FLAG_N) | halfcarrySubTable[lookup] | ternOpB(bytetemp != 0, 0, FLAG_Z) | (bytetemp & FLAG_S )")
+	ln("if (z80.F & FLAG_H) != 0 { bytetemp-- }")
+	ln("z80.F |= (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)")
 }
 
 func cpir_cpdr(opcode string) {
-	modifier := _if(opcode == "CPIR", "inc", "dec")
+	modifier := _if(opcode == "CPIR", "Inc", "Dec")
 
-	ln("var value byte = z80.memory.readByte( z80.HL() )")
-	ln("var bytetemp byte = z80.a - value")
-	ln("var lookup byte = ((z80.a & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)")
+	ln("var value byte = z80.memory.ReadByte( z80.HL() )")
+	ln("var bytetemp byte = z80.A - value")
+	ln("var lookup byte = ((z80.A & 0x08) >> 3) | (((value) & 0x08) >> 2) | ((bytetemp & 0x08) >> 1)")
 
-	ln("z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )")
-	ln("z80.decBC()")
-	ln("z80.f = ( z80.f & FLAG_C ) | ( ternOpB(z80.BC() != 0, ( FLAG_V | FLAG_N ),FLAG_N)) | halfcarrySubTable[lookup] | ( ternOpB(bytetemp != 0, 0, FLAG_Z )) | ( bytetemp & FLAG_S )")
-	ln("if (z80.f & FLAG_H) != 0 {")
+	ln("z80.memory.ContendReadNoMreq_loop( z80.HL(), 1, 5 )")
+	ln("z80.DecBC()")
+	ln("z80.F = ( z80.F & FLAG_C ) | ( ternOpB(z80.BC() != 0, ( FLAG_V | FLAG_N ),FLAG_N)) | halfcarrySubTable[lookup] | ( ternOpB(bytetemp != 0, 0, FLAG_Z )) | ( bytetemp & FLAG_S )")
+	ln("if (z80.F & FLAG_H) != 0 {")
 	ln("  bytetemp--")
 	ln("}")
-	ln("z80.f |= ( bytetemp & FLAG_3 ) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)")
-	ln("if ( z80.f & ( FLAG_V | FLAG_Z ) ) == FLAG_V {")
-	ln("  z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 5 )")
-	ln("  z80.pc -= 2")
+	ln("z80.F |= ( bytetemp & FLAG_3 ) | ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)")
+	ln("if ( z80.F & ( FLAG_V | FLAG_Z ) ) == FLAG_V {")
+	ln("  z80.memory.ContendReadNoMreq_loop( z80.HL(), 1, 5 )")
+	ln("  z80.DecPC(2)")
 	ln("}")
 	ln("z80.", modifier, "HL()")
 }
 
 func inc_dec(opcode, arg string) {
-	modifier := _if(opcode == "INC", "inc", "dec")
+	modifier := _if(opcode == "INC", "Inc", "Dec")
 
 	if len(arg) == 1 || matches(arg, "^REGISTER[HL]$") {
 		ln("z80.", lc(opcode), arg, "()")
 	} else if len(arg) == 2 || arg == "REGISTER" {
-		ln("z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 2 )")
+		ln("z80.memory.ContendReadNoMreq_loop( z80.IR(), 1, 2 )")
 		ln("z80.", modifier, arg, "()")
 	} else if arg == "(HL)" {
 		ln("{")
-		ln("  var bytetemp byte = z80.memory.readByte( z80.HL() )")
-		ln("  z80.memory.contendReadNoMreq( z80.HL(), 1 )")
+		ln("  var bytetemp byte = z80.memory.ReadByte( z80.HL() )")
+		ln("  z80.memory.ContendReadNoMreq( z80.HL(), 1 )")
 		ln("  z80.", lc(opcode), "(&bytetemp)")
-		ln("  z80.memory.writeByte(z80.HL(), bytetemp)")
+		ln("  z80.memory.WriteByte(z80.HL(), bytetemp)")
 		ln("}")
 	} else if arg == "(REGISTER+dd)" {
-		ln("var offset byte = z80.memory.readByte( z80.pc )")
-		ln("z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )")
-		ln("z80.pc++")
+		ln("var offset byte = z80.memory.ReadByte( z80.PC() )")
+		ln("z80.memory.ContendReadNoMreq_loop( z80.PC(), 1, 5 )")
+		ln("z80.IncPC(1)")
 		ln("var wordtemp uint16 = z80.REGISTER() + uint16(signExtend(offset))")
-		ln("var bytetemp byte = z80.memory.readByte( wordtemp )")
-		ln("z80.memory.contendReadNoMreq( wordtemp, 1 )")
+		ln("var bytetemp byte = z80.memory.ReadByte( wordtemp )")
+		ln("z80.memory.ContendReadNoMreq( wordtemp, 1 )")
 		ln("z80.", lc(opcode), "(&bytetemp)")
-		ln("z80.memory.writeByte(wordtemp,bytetemp)")
+		ln("z80.memory.WriteByte(wordtemp,bytetemp)")
 	} else {
 		panic(arg)
 	}
 }
 
 func ini_ind(opcode string) {
-	modifier := _if(opcode == "INI", "inc", "dec")
+	modifier := _if(opcode == "INI", "Inc", "Dec")
 	operation := _if(opcode == "INI", "+", "-")
 
-	ln("z80.memory.contendReadNoMreq( z80.IR(), 1 );")
+	ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 );")
 	ln("var initemp byte = z80.readPort(z80.BC());")
-	ln("z80.memory.writeByte( z80.HL(), initemp );")
+	ln("z80.memory.WriteByte( z80.HL(), initemp );")
 	ln()
-	ln("z80.b--; z80.", modifier, "HL()")
-	ln("var initemp2 byte = initemp + z80.c ", operation, " 1;")
-	ln("z80.f = ternOpB((initemp & 0x80) != 0, FLAG_N, 0) |")
+	ln("z80.B--; z80.", modifier, "HL()")
+	ln("var initemp2 byte = initemp + z80.C ", operation, " 1;")
+	ln("z80.F = ternOpB((initemp & 0x80) != 0, FLAG_N, 0) |")
 	ln("        ternOpB(initemp2 < initemp, FLAG_H | FLAG_C, 0) |")
-	ln("        ternOpB(parityTable[(initemp2 & 0x07) ^ z80.b] != 0, FLAG_P, 0 ) |")
-	ln("        sz53Table[z80.b]")
+	ln("        ternOpB(parityTable[(initemp2 & 0x07) ^ z80.B] != 0, FLAG_P, 0 ) |")
+	ln("        sz53Table[z80.B]")
 }
 
 func inir_indr(opcode string) {
-	modifier := _if(opcode == "INIR", "inc", "dec")
+	modifier := _if(opcode == "INIR", "Inc", "Dec")
 	operation := _if(opcode == "INIR", "+", "-")
 
-	ln("z80.memory.contendReadNoMreq( z80.IR(), 1 );")
+	ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 );")
 	ln("var initemp byte = z80.readPort(z80.BC());")
-	ln("z80.memory.writeByte( z80.HL(), initemp );")
+	ln("z80.memory.WriteByte( z80.HL(), initemp );")
 	ln()
-	ln("z80.b--;")
-	ln("var initemp2 byte = initemp + z80.c ", operation, " 1;")
-	ln("z80.f = ternOpB(initemp & 0x80 != 0, FLAG_N, 0) |")
+	ln("z80.B--;")
+	ln("var initemp2 byte = initemp + z80.C ", operation, " 1;")
+	ln("z80.F = ternOpB(initemp & 0x80 != 0, FLAG_N, 0) |")
 	ln("        ternOpB(initemp2 < initemp, FLAG_H | FLAG_C, 0 ) |")
-	ln("        ternOpB(parityTable[ ( initemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0) |")
-	ln("        sz53Table[z80.b];")
+	ln("        ternOpB(parityTable[ ( initemp2 & 0x07 ) ^ z80.B ] != 0, FLAG_P, 0) |")
+	ln("        sz53Table[z80.B];")
 	ln()
-	ln("if z80.b != 0 {")
-	ln("  z80.memory.contendWriteNoMreq_loop( z80.HL(), 1, 5 )")
-	ln("  z80.pc -= 2")
+	ln("if z80.B != 0 {")
+	ln("  z80.memory.ContendWriteNoMreq_loop( z80.HL(), 1, 5 )")
+	ln("  z80.DecPC(2)")
 	ln("}")
 	ln("z80.", modifier, "HL()")
 }
 
 func ldi_ldd(opcode string) {
-	modifier := _if(opcode == "LDI", "inc", "dec")
+	modifier := _if(opcode == "LDI", "Inc", "Dec")
 
-	ln("var bytetemp byte = z80.memory.readByte( z80.HL() )")
-	ln("z80.decBC()")
-	ln("z80.memory.writeByte(z80.DE(), bytetemp);")
-	ln("z80.memory.contendWriteNoMreq_loop( z80.DE(), 1, 2 )")
+	ln("var bytetemp byte = z80.memory.ReadByte( z80.HL() )")
+	ln("z80.DecBC()")
+	ln("z80.memory.WriteByte(z80.DE(), bytetemp);")
+	ln("z80.memory.ContendWriteNoMreq_loop( z80.DE(), 1, 2 )")
 	ln("z80.", modifier, "DE(); z80.", modifier, "HL();")
-	ln("bytetemp += z80.a;")
-	ln("z80.f = ( z80.f & ( FLAG_C | FLAG_Z | FLAG_S ) ) |")
+	ln("bytetemp += z80.A;")
+	ln("z80.F = ( z80.F & ( FLAG_C | FLAG_Z | FLAG_S ) ) |")
 	ln("        ternOpB(z80.BC() != 0, FLAG_V, 0) |")
 	ln("        ( bytetemp & FLAG_3 ) |")
 	ln("        ternOpB((bytetemp & 0x02) != 0, FLAG_5, 0)")
 }
 
 func ldir_lddr(opcode string) {
-	modifier := _if(opcode == "LDIR", "inc", "dec")
+	modifier := _if(opcode == "LDIR", "Inc", "Dec")
 
-	ln("var bytetemp byte = z80.memory.readByte( z80.HL() )")
-	ln("z80.memory.writeByte(z80.DE(), bytetemp);")
-	ln("z80.memory.contendWriteNoMreq_loop(z80.DE(), 1, 2)")
-	ln("z80.decBC()")
-	ln("bytetemp += z80.a;")
-	ln("z80.f = (z80.f & ( FLAG_C | FLAG_Z | FLAG_S )) | ternOpB(z80.BC() != 0, FLAG_V, 0 ) | (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02 != 0), FLAG_5, 0 )")
+	ln("var bytetemp byte = z80.memory.ReadByte( z80.HL() )")
+	ln("z80.memory.WriteByte(z80.DE(), bytetemp);")
+	ln("z80.memory.ContendWriteNoMreq_loop(z80.DE(), 1, 2)")
+	ln("z80.DecBC()")
+	ln("bytetemp += z80.A;")
+	ln("z80.F = (z80.F & ( FLAG_C | FLAG_Z | FLAG_S )) | ternOpB(z80.BC() != 0, FLAG_V, 0 ) | (bytetemp & FLAG_3) | ternOpB((bytetemp & 0x02 != 0), FLAG_5, 0 )")
 	ln("if z80.BC() != 0 {")
-	ln("  z80.memory.contendWriteNoMreq_loop( z80.DE(), 1, 5 )")
-	ln("  z80.pc -= 2")
+	ln("  z80.memory.ContendWriteNoMreq_loop( z80.DE(), 1, 5 )")
+	ln("  z80.DecPC(2)")
 	ln("}")
 	ln("z80.", modifier, "HL(); z80.", modifier, "DE()")
 }
 
 func otir_otdr(opcode string) {
-	modifier := _if(opcode == "OTIR", "inc", "dec")
+	modifier := _if(opcode == "OTIR", "Inc", "Dec")
 
-	ln("z80.memory.contendReadNoMreq( z80.IR(), 1 );")
-	ln("var outitemp byte = z80.memory.readByte( z80.HL() );")
-	ln("z80.b--;	/* This does happen first, despite what the specs say */")
+	ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 );")
+	ln("var outitemp byte = z80.memory.ReadByte( z80.HL() );")
+	ln("z80.B--;	/* This does happen first, despite what the specs say */")
 	ln("z80.writePort(z80.BC(), outitemp);")
 	ln()
 	ln("z80.", modifier, "HL()")
-	ln("var outitemp2 byte = outitemp + z80.l;")
-	ln("z80.f = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0 ) |")
+	ln("var outitemp2 byte = outitemp + z80.L;")
+	ln("z80.F = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0 ) |")
 	ln("    ternOpB(outitemp2 < outitemp, FLAG_H | FLAG_C, 0) |")
-	ln("    ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |")
-	ln("    sz53Table[z80.b]")
+	ln("    ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.B ] != 0, FLAG_P, 0 ) |")
+	ln("    sz53Table[z80.B]")
 	ln()
-	ln("if z80.b != 0 {")
-	ln("  z80.memory.contendReadNoMreq_loop( z80.BC(), 1, 5 )")
-	ln("  z80.pc -= 2")
+	ln("if z80.B != 0 {")
+	ln("  z80.memory.ContendReadNoMreq_loop( z80.BC(), 1, 5 )")
+	ln("  z80.DecPC(2)")
 	ln("}")
 }
 
 func outi_outd(opcode string) {
-	modifier := _if(opcode == "OUTI", "inc", "dec")
+	modifier := _if(opcode == "OUTI", "Inc", "Dec")
 
-	ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
-	ln("var outitemp byte = z80.memory.readByte( z80.HL() )")
-	ln("z80.b--;	/* This does happen first, despite what the specs say */")
+	ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 )")
+	ln("var outitemp byte = z80.memory.ReadByte( z80.HL() )")
+	ln("z80.B--;	/* This does happen first, despite what the specs say */")
 	ln("z80.writePort(z80.BC(), outitemp)")
 	ln()
 	ln("z80.", modifier, "HL()")
-	ln("var outitemp2 byte = outitemp + z80.l")
-	ln("z80.f = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0) |")
+	ln("var outitemp2 byte = outitemp + z80.L")
+	ln("z80.F = ternOpB((outitemp & 0x80) != 0, FLAG_N, 0) |")
 	ln("        ternOpB(outitemp2 < outitemp, FLAG_H | FLAG_C, 0) |")
-	ln("        ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.b ] != 0, FLAG_P, 0 ) |")
-	ln("        sz53Table[z80.b]")
+	ln("        ternOpB(parityTable[ ( outitemp2 & 0x07 ) ^ z80.B ] != 0, FLAG_P, 0 ) |")
+	ln("        sz53Table[z80.B]")
 }
 
 func push_pop(opcode, regpair string) {
@@ -331,12 +330,10 @@ func push_pop(opcode, regpair string) {
 	}
 
 	lc_opcode := lc(opcode)
-	lc_low := lc(low)
-	lc_high := lc(high)
 	if lc_opcode == "pop" {
-		ln("z80.", lc_low, ", z80.", lc_high, " = z80.", lc_opcode, "16()")
+		ln("z80.", low, ", z80.", high, " = z80.", lc_opcode, "16()")
 	} else {
-		ln("z80.", lc_opcode, "16(z80.", lc_low, ", z80.", lc_high, ")")
+		ln("z80.", lc_opcode, "16(z80.", low, ", z80.", high, ")")
 	}
 }
 
@@ -352,18 +349,16 @@ func res_set_hexmask(opcode string, bit uint) string {
 func res_set(opcode string, bit uint, register string) {
 	operator := _if(opcode == "RES", "&", "|")
 	hex_mask := res_set_hexmask(opcode, bit)
-	lc_register := lc(register)
-
 	if len(register) == 1 {
-		ln("z80.", lc_register, " ", operator, "= ", hex_mask)
+		ln("z80.", register, " ", operator, "= ", hex_mask)
 	} else if register == "(HL)" {
-		ln("var bytetemp byte = z80.memory.readByte( z80.HL() )")
-		ln("z80.memory.contendReadNoMreq( z80.HL(), 1 )")
-		ln("z80.memory.writeByte( z80.HL(), bytetemp ", operator, " ", hex_mask, " )")
+		ln("var bytetemp byte = z80.memory.ReadByte( z80.HL() )")
+		ln("z80.memory.ContendReadNoMreq( z80.HL(), 1 )")
+		ln("z80.memory.WriteByte( z80.HL(), bytetemp ", operator, " ", hex_mask, " )")
 	} else if register == "(REGISTER+dd)" {
-		ln("var bytetemp byte = z80.memory.readByte( z80.tempaddr )")
-		ln("z80.memory.contendReadNoMreq( z80.tempaddr, 1 )")
-		ln("z80.memory.writeByte( z80.tempaddr, bytetemp ", operator, " ", hex_mask, " )")
+		ln("var bytetemp byte = z80.memory.ReadByte( z80.tempaddr )")
+		ln("z80.memory.ContendReadNoMreq( z80.tempaddr, 1 )")
+		ln("z80.memory.WriteByte( z80.tempaddr, bytetemp ", operator, " ", hex_mask, " )")
 	} else {
 		panic("invalid register: " + register)
 	}
@@ -371,20 +366,18 @@ func res_set(opcode string, bit uint, register string) {
 
 func rotate_shift(opcode, register string) {
 	lc_opcode := lc(opcode)
-	lc_register := lc(register)
-
 	if len(register) == 1 {
-		ln("z80.", lc_register, " = z80.", lc_opcode, "(z80.", lc_register, ")")
+		ln("z80.", register, " = z80.", lc_opcode, "(z80.", register, ")")
 	} else if register == "(HL)" {
-		ln("var bytetemp byte = z80.memory.readByte(z80.HL())")
-		ln("z80.memory.contendReadNoMreq( z80.HL(), 1 )")
+		ln("var bytetemp byte = z80.memory.ReadByte(z80.HL())")
+		ln("z80.memory.ContendReadNoMreq( z80.HL(), 1 )")
 		ln("bytetemp = z80.", lc_opcode, "(bytetemp)")
-		ln("z80.memory.writeByte(z80.HL(),bytetemp)")
+		ln("z80.memory.WriteByte(z80.HL(),bytetemp)")
 	} else if register == "(REGISTER+dd)" {
-		ln("var bytetemp byte = z80.memory.readByte(z80.tempaddr)")
-		ln("z80.memory.contendReadNoMreq( z80.tempaddr, 1 )")
+		ln("var bytetemp byte = z80.memory.ReadByte(z80.tempaddr)")
+		ln("z80.memory.ContendReadNoMreq( z80.tempaddr, 1 )")
 		ln("bytetemp = z80.", lc_opcode, "(bytetemp)")
-		ln("z80.memory.writeByte(z80.tempaddr, bytetemp)")
+		ln("z80.memory.WriteByte(z80.tempaddr, bytetemp)")
 	} else {
 		panic("invalid register: " + register)
 	}
@@ -403,16 +396,15 @@ func (Opcode) ADD(a, b string) { arithmetic_logical("ADD", a, b) }
 func (Opcode) AND(a, b string) { arithmetic_logical("AND", a, b) }
 
 func (Opcode) BIT(bit, register string) {
-	lc_register := lc(register)
 	if len(register) == 1 {
-		ln("z80.bit(", bit, ", z80.", lc_register, ")")
+		ln("z80.bit(", bit, ", z80.", register, ")")
 	} else if register == "(REGISTER+dd)" {
-		ln("bytetemp := z80.memory.readByte( z80.tempaddr )")
-		ln("z80.memory.contendReadNoMreq( z80.tempaddr, 1 )")
+		ln("bytetemp := z80.memory.ReadByte( z80.tempaddr )")
+		ln("z80.memory.ContendReadNoMreq( z80.tempaddr, 1 )")
 		ln("z80.biti(", bit, ", bytetemp, z80.tempaddr)")
 	} else {
-		ln("bytetemp := z80.memory.readByte( z80.HL() )")
-		ln("z80.memory.contendReadNoMreq( z80.HL(), 1 )")
+		ln("bytetemp := z80.memory.ReadByte( z80.HL() )")
+		ln("z80.memory.ContendReadNoMreq( z80.HL(), 1 )")
 		ln("z80.bit(", bit, ", bytetemp)")
 	}
 }
@@ -420,9 +412,9 @@ func (Opcode) BIT(bit, register string) {
 func (Opcode) CALL(a, b string) { call_jp("CALL", a, b) }
 
 func (Opcode) CCF() {
-	ln("z80.f = ( z80.f & ( FLAG_P | FLAG_Z | FLAG_S ) ) |")
-	ln("        ternOpB( ( z80.f & FLAG_C ) != 0, FLAG_H, FLAG_C ) |")
-	ln("        ( z80.a & ( FLAG_3 | FLAG_5 ) )")
+	ln("z80.F = ( z80.F & ( FLAG_P | FLAG_Z | FLAG_S ) ) |")
+	ln("        ternOpB( ( z80.F & FLAG_C ) != 0, FLAG_H, FLAG_C ) |")
+	ln("        ( z80.A & ( FLAG_3 | FLAG_5 ) )")
 }
 
 func (Opcode) CP(a, b string) { arithmetic_logical("CP", a, b) }
@@ -436,54 +428,54 @@ func (Opcode) CPI() { cpi_cpd("CPI") }
 func (Opcode) CPIR() { cpir_cpdr("CPIR") }
 
 func (Opcode) CPL() {
-	ln("z80.a ^= 0xff")
-	ln("z80.f = ( z80.f & ( FLAG_C | FLAG_P | FLAG_Z | FLAG_S ) ) |")
-	ln("        ( z80.a & ( FLAG_3 | FLAG_5 ) ) | ")
+	ln("z80.A ^= 0xff")
+	ln("z80.F = ( z80.F & ( FLAG_C | FLAG_P | FLAG_Z | FLAG_S ) ) |")
+	ln("        ( z80.A & ( FLAG_3 | FLAG_5 ) ) | ")
 	ln("        ( FLAG_N | FLAG_H )")
 }
 
 func (Opcode) DAA() {
-	ln("var add, carry byte = 0, ( z80.f & FLAG_C )")
-	ln("if ( (z80.f & FLAG_H ) != 0) || ( ( z80.a & 0x0f ) > 9 ) { add = 6 }")
-	ln("if (carry != 0) || ( z80.a > 0x99 ) { add |= 0x60 }")
-	ln("if z80.a > 0x99 { carry = FLAG_C }")
-	ln("if (z80.f & FLAG_N) != 0 {")
+	ln("var add, carry byte = 0, ( z80.F & FLAG_C )")
+	ln("if ( (z80.F & FLAG_H ) != 0) || ( ( z80.A & 0x0f ) > 9 ) { add = 6 }")
+	ln("if (carry != 0) || ( z80.A > 0x99 ) { add |= 0x60 }")
+	ln("if z80.A > 0x99 { carry = FLAG_C }")
+	ln("if (z80.F & FLAG_N) != 0 {")
 	ln("  z80.sub(add)")
 	ln("} else {")
 	ln("  z80.add(add)")
 	ln("}")
-	ln("var temp byte = byte(int(z80.f) & ^(FLAG_C | FLAG_P)) | carry | parityTable[z80.a]")
-	ln("z80.f = temp")
+	ln("var temp byte = byte(int(z80.F) & ^(FLAG_C | FLAG_P)) | carry | parityTable[z80.A]")
+	ln("z80.F = temp")
 }
 
 func (Opcode) DEC(a string) { inc_dec("DEC", a) }
 
-func (Opcode) DI() { ln("z80.iff1, z80.iff2 = 0, 0") }
+func (Opcode) DI() { ln("z80.IFF1, z80.IFF2 = 0, 0") }
 
 func (Opcode) DJNZ() {
-	ln("z80.memory.contendReadNoMreq(z80.IR(), 1)")
-	ln("z80.b--")
-	ln("if z80.b != 0 {")
+	ln("z80.memory.ContendReadNoMreq(z80.IR(), 1)")
+	ln("z80.B--")
+	ln("if z80.B != 0 {")
 	ln("  z80.jr()")
 	ln("} else {")
-	ln("  z80.memory.contendRead( z80.pc, 3 )")
+	ln("  z80.memory.ContendRead( z80.PC(), 3 )")
 	ln("}")
-	ln("z80.pc++")
+	ln("z80.IncPC(1)")
 }
 
 func (Opcode) EI() {
 	ln("/* Interrupts are not accepted immediately after an EI, but are")
 	ln("   accepted after the next instruction */")
-	ln("z80.iff1, z80.iff2 = 1, 1")
-	ln("z80.interruptsEnabledAt = int(z80.tstates)")
-	ln("// eventAdd(z80.tstates + 1, z80InterruptEvent)")
+	ln("z80.IFF1, z80.IFF2 = 1, 1")
+	ln("z80.interruptsEnabledAt = int(z80.Tstates)")
+	ln("// eventAdd(z80.Tstates + 1, z80InterruptEvent)")
 }
 
 func (Opcode) EX(arg1, arg2 string) {
 	if (arg1 == "AF") && (arg2 == "AF'") {
-		ln("var olda, oldf = z80.a, z80.f")
-		ln("z80.a = z80.a_; z80.f = z80.f_")
-		ln("z80.a_ = olda; z80.f_ = oldf")
+		ln("var olda, oldf = z80.A, z80.F")
+		ln("z80.A = z80.A_; z80.F = z80.F_")
+		ln("z80.A_ = olda; z80.F_ = oldf")
 	} else if (arg1 == "(SP)") && (arg2 == "HL" || arg2 == "REGISTER") {
 		var high, low string
 
@@ -492,21 +484,18 @@ func (Opcode) EX(arg1, arg2 string) {
 		} else {
 			high, low = "REGISTERH", "REGISTERL"
 		}
-		lc_low := lc(low)
-		lc_high := lc(high)
-
-		ln("var bytetempl = z80.memory.readByte( z80.SP() )")
-		ln("var bytetemph = z80.memory.readByte( z80.SP() + 1 )")
-		ln("z80.memory.contendReadNoMreq( z80.SP() + 1, 1 )")
-		ln("z80.memory.writeByte( z80.SP() + 1, z80.", lc_high, " )")
-		ln("z80.memory.writeByte( z80.SP(),     z80.", lc_low, "  )")
-		ln("z80.memory.contendWriteNoMreq_loop( z80.SP(), 1, 2 )")
-		ln("z80.", lc_low, " = bytetempl")
-		ln("z80.", lc_high, " = bytetemph")
+		ln("var bytetempl = z80.memory.ReadByte( z80.SP() )")
+		ln("var bytetemph = z80.memory.ReadByte( z80.SP() + 1 )")
+		ln("z80.memory.ContendReadNoMreq( z80.SP() + 1, 1 )")
+		ln("z80.memory.WriteByte( z80.SP() + 1, z80.", high, " )")
+		ln("z80.memory.WriteByte( z80.SP(),     z80.", low, "  )")
+		ln("z80.memory.ContendWriteNoMreq_loop( z80.SP(), 1, 2 )")
+		ln("z80.", low, " = bytetempl")
+		ln("z80.", high, " = bytetemph")
 	} else if (arg1 == "DE") && (arg2 == "HL") {
 		ln("var wordtemp uint16 = z80.DE()")
-		ln("z80.setDE(z80.HL())")
-		ln("z80.setHL(wordtemp)")
+		ln("z80.SetDE(z80.HL())")
+		ln("z80.SetHL(wordtemp)")
 	} else {
 		panic("invalid args: " + arg1 + ", " + arg2)
 	}
@@ -514,39 +503,38 @@ func (Opcode) EX(arg1, arg2 string) {
 
 func (Opcode) EXX() {
 	ln("var wordtemp uint16 = z80.BC()")
-	ln("z80.setBC(z80.BC_())")
-	ln("z80.setBC_(wordtemp)")
+	ln("z80.SetBC(z80.BC_())")
+	ln("z80.SetBC_(wordtemp)")
 	ln()
 	ln("wordtemp = z80.DE()")
-	ln("z80.setDE(z80.DE_())")
-	ln("z80.setDE_(wordtemp)")
+	ln("z80.SetDE(z80.DE_())")
+	ln("z80.SetDE_(wordtemp)")
 	ln()
 	ln("wordtemp = z80.HL()")
-	ln("z80.setHL(z80.HL_())")
-	ln("z80.setHL_(wordtemp)")
+	ln("z80.SetHL(z80.HL_())")
+	ln("z80.SetHL_(wordtemp)")
 }
 
 func (Opcode) HALT() {
-	ln("z80.halted = true")
-	ln("z80.pc--")
+	ln("z80.Halted = true")
+	ln("z80.DecPC(1)")
 	ln("return")
 }
 
 func (Opcode) IM(mode string) {
-	ln("z80.im = ", mode)
+	ln("z80.IM = ", mode)
 }
 
 func (Opcode) IN(register, port string) {
 	if (register == "A") && (port == "(nn)") {
-		ln("var intemp uint16 = uint16(z80.memory.readByte(z80.pc)) + (uint16(z80.a) << 8 )")
-		ln("z80.pc++")
-		ln("z80.a = z80.readPort(intemp)")
+		ln("var intemp uint16 = uint16(z80.memory.ReadByte(z80.PC())) + (uint16(z80.A) << 8 )")
+		ln("z80.IncPC(1)")
+		ln("z80.A = z80.readPort(intemp)")
 	} else if (register == "F") && (port == "(C)") {
 		ln("var bytetemp byte")
 		ln("z80.in(&bytetemp, z80.BC())")
 	} else if (len(register) == 1) && (port == "(C)") {
-		lc_register := lc(register)
-		ln("z80.in(&z80.", lc_register, ", z80.BC())")
+		ln("z80.in(&z80.", register, ", z80.BC())")
 	} else {
 		panic("invalid args: " + register + ", " + port)
 	}
@@ -564,7 +552,7 @@ func (Opcode) INIR() { inir_indr("INIR") }
 
 func (Opcode) JP(condition, offset string) {
 	if (condition == "HL") || (condition == "REGISTER") {
-		ln("z80.pc = z80.", condition, "()\t\t/* NB: NOT INDIRECT! */")
+		ln("z80.SetPC(z80.", condition, "())\t\t/* NB: NOT INDIRECT! */")
 	} else {
 		call_jp("JP", condition, offset)
 	}
@@ -581,61 +569,60 @@ func (Opcode) JR(condition, offset string) {
 	} else {
 		var condition_string string
 		if not[condition] {
-			condition_string = "(z80.f & FLAG_" + flag[condition] + ") == 0"
+			condition_string = "(z80.F & FLAG_" + flag[condition] + ") == 0"
 		} else {
-			condition_string = "(z80.f & FLAG_" + flag[condition] + ") != 0"
+			condition_string = "(z80.F & FLAG_" + flag[condition] + ") != 0"
 		}
 		ln("if ", condition_string, " {")
 		ln("  z80.jr()")
 		ln("} else {")
-		ln("  z80.memory.contendRead( z80.pc, 3 )")
+		ln("  z80.memory.ContendRead( z80.PC(), 3 )")
 		ln("}")
 	}
 
-	ln("z80.pc++")
+	ln("z80.IncPC(1)")
 }
 
 func (Opcode) LD(dest, src string) {
 	if (len(dest) == 1) || matches(dest, "^REGISTER[HL]$") {
 		if (len(src) == 1) || matches(src, "^REGISTER[HL]$") {
 			if (dest == "R") && (src == "A") {
-				ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
+				ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 )")
 				ln("/* Keep the RZX instruction counter right */")
-				ln("z80.rzxInstructionsOffset += ( int(z80.r) - int(z80.a))")
-				ln("z80.r, z80.r7 = uint16(z80.a), z80.a")
+				ln("z80.rzxInstructionsOffset += ( int(z80.R) - int(z80.A))")
+				ln("z80.R, z80.R7 = uint16(z80.A), z80.A")
 			} else if (dest == "A") && (src == "R") {
-				ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
-				ln("z80.a = byte(z80.r&0x7f) | (z80.r7 & 0x80)")
-				ln("z80.f = ( z80.f & FLAG_C ) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)")
+				ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 )")
+				ln("z80.A = byte(z80.R&0x7f) | (z80.R7 & 0x80)")
+				ln("z80.F = ( z80.F & FLAG_C ) | sz53Table[z80.A] | ternOpB(z80.IFF2 != 0, FLAG_V, 0)")
 			} else {
 				if (src == "I") || (dest == "I") {
-					ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
+					ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 )")
 				}
-				lc_dest, lc_src := lc(dest), lc(src)
 				if dest != src {
-					ln("z80.", lc_dest, " = z80.", lc_src)
+					ln("z80.", dest, " = z80.", src)
 				}
 				if (dest == "A") && (src == "I") {
-					ln("z80.f = ( z80.f & FLAG_C ) | sz53Table[z80.a] | ternOpB(z80.iff2 != 0, FLAG_V, 0)")
+					ln("z80.F = ( z80.F & FLAG_C ) | sz53Table[z80.A] | ternOpB(z80.IFF2 != 0, FLAG_V, 0)")
 				}
 			}
 		} else if src == "nn" {
-			ln("z80.", lc(dest), " = z80.memory.readByte(z80.pc)")
-			ln("z80.pc++")
+			ln("z80.", dest, " = z80.memory.ReadByte(z80.PC())")
+			ln("z80.IncPC(1)")
 		} else if matches(src, "^\\(..\\)$") {
 			register := src[1 : 1+2]
-			ln("z80.", lc(dest), " = z80.memory.readByte(z80.", register, "())")
+			ln("z80.", dest, " = z80.memory.ReadByte(z80.", register, "())")
 		} else if src == "(nnnn)" {
-			ln("var wordtemp uint16 = uint16(z80.memory.readByte(z80.pc))")
-			ln("z80.pc++")
-			ln("wordtemp |= uint16(z80.memory.readByte(z80.pc)) << 8")
-			ln("z80.pc++")
-			ln("z80.a = z80.memory.readByte(wordtemp)")
+			ln("var wordtemp uint16 = uint16(z80.memory.ReadByte(z80.PC()))")
+			ln("z80.IncPC(1)")
+			ln("wordtemp |= uint16(z80.memory.ReadByte(z80.PC())) << 8")
+			ln("z80.IncPC(1)")
+			ln("z80.A = z80.memory.ReadByte(wordtemp)")
 		} else if src == "(REGISTER+dd)" {
-			ln("var offset byte = z80.memory.readByte( z80.pc )")
-			ln("z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )")
-			ln("z80.pc++")
-			ln("z80.", lc(dest), " = z80.memory.readByte(z80.REGISTER() + uint16(signExtend(offset)))")
+			ln("var offset byte = z80.memory.ReadByte( z80.PC() )")
+			ln("z80.memory.ContendReadNoMreq_loop( z80.PC(), 1, 5 )")
+			ln("z80.IncPC(1)")
+			ln("z80.", dest, " = z80.memory.ReadByte(z80.REGISTER() + uint16(signExtend(offset)))")
 		} else {
 			panic("invalid src: " + src)
 		}
@@ -649,19 +636,19 @@ func (Opcode) LD(dest, src string) {
 		}
 
 		if src == "nnnn" {
-			ln("b1 := z80.memory.readByte(z80.pc)")
-			ln("z80.pc++")
-			ln("b2 := z80.memory.readByte(z80.pc)")
-			ln("z80.pc++")
-			ln("z80.set", high, low, "(joinBytes(b2, b1))")
+			ln("b1 := z80.memory.ReadByte(z80.PC())")
+			ln("z80.IncPC(1)")
+			ln("b2 := z80.memory.ReadByte(z80.PC())")
+			ln("z80.IncPC(1)")
+			ln("z80.Set", high, low, "(joinBytes(b2, b1))")
 		} else if (src == "HL") || (src == "REGISTER") {
-			ln("z80.memory.contendReadNoMreq_loop( z80.IR(), 1, 2 )")
-			ln("z80.sp = z80.", src, "()")
+			ln("z80.memory.ContendReadNoMreq_loop( z80.IR(), 1, 2 )")
+			ln("z80.SetSP(z80.", src, "())")
 		} else if src == "(nnnn)" {
 			if low == "SPL" {
-				ln("sph, spl := splitWord(z80.sp)\nz80.ld16rrnn(&spl, &sph)\nz80.sp = joinBytes(sph, spl)\n // break")
+				ln("sph, spl := splitWord(z80.SP())\nz80.ld16rrnn(&spl, &sph)\nz80.SetSP(joinBytes(sph, spl))\n // break")
 			} else {
-				ln("z80.ld16rrnn(&z80.", lc(low), ", &z80.", lc(high), ")\n // break")
+				ln("z80.ld16rrnn(&z80.", low, ", &z80.", high, ")\n // break")
 			}
 		} else {
 			panic("invalid src: " + src)
@@ -670,23 +657,22 @@ func (Opcode) LD(dest, src string) {
 		register := dest[1 : 1+2]
 
 		if len(src) == 1 {
-			ln("z80.memory.writeByte(z80.", register, "(),z80.", lc(src), ")")
+			ln("z80.memory.WriteByte(z80.", register, "(),z80.", src, ")")
 		} else if src == "nn" {
-			ln("z80.memory.writeByte(z80.", register, "(),z80.memory.readByte(z80.pc))")
-			ln("z80.pc++")
+			ln("z80.memory.WriteByte(z80.", register, "(),z80.memory.ReadByte(z80.PC()))")
+			ln("z80.IncPC(1)")
 		} else {
 			panic("invalid src: " + src)
 		}
 	} else if dest == "(nnnn)" {
 		if src == "A" {
-			ln("var wordtemp uint16 = uint16(z80.memory.readByte(z80.pc))")
-			ln("z80.pc++")
-			ln("wordtemp |= uint16(z80.memory.readByte(z80.pc)) << 8")
-			ln("z80.pc++")
-			ln("z80.memory.writeByte(wordtemp, z80.a)")
+			ln("var wordtemp uint16 = uint16(z80.memory.ReadByte(z80.PC()))")
+			ln("z80.IncPC(1)")
+			ln("wordtemp |= uint16(z80.memory.ReadByte(z80.PC())) << 8")
+			ln("z80.IncPC(1)")
+			ln("z80.memory.WriteByte(wordtemp, z80.A)")
 		} else if (len(src) == 2) || (src == "REGISTER") {
 			var high, low string
-
 			if (src == "SP") || (src == "REGISTER") {
 				high, low = (src + "H"), (src + "L")
 			} else {
@@ -695,24 +681,24 @@ func (Opcode) LD(dest, src string) {
 			if low == "SPL" {
 				ln("sph, spl := splitWord(z80.sp)\nz80.ld16nnrr(spl, sph)\n // break")
 			} else {
-				ln("z80.ld16nnrr(z80.", lc(low), ", z80.", lc(high), ")\n // break")
+				ln("z80.ld16nnrr(z80.", low, ", z80.", high, ")\n // break")
 			}
 		} else {
 			panic("invalid src: " + src)
 		}
 	} else if dest == "(REGISTER+dd)" {
 		if len(src) == 1 {
-			ln("offset := z80.memory.readByte( z80.pc )")
-			ln("z80.memory.contendReadNoMreq_loop( z80.pc, 1, 5 )")
-			ln("z80.pc++")
-			ln("z80.memory.writeByte(z80.REGISTER() + uint16(signExtend(offset)), z80.", lc(src), " )")
+			ln("offset := z80.memory.ReadByte( z80.PC() )")
+			ln("z80.memory.ContendReadNoMreq_loop( z80.PC(), 1, 5 )")
+			ln("z80.IncPC(1)")
+			ln("z80.memory.WriteByte(z80.REGISTER() + uint16(signExtend(offset)), z80.", src, " )")
 		} else if src == "nn" {
-			ln("offset := z80.memory.readByte( z80.pc )")
-			ln("z80.pc++")
-			ln("value := z80.memory.readByte( z80.pc )")
-			ln("z80.memory.contendReadNoMreq_loop( z80.pc, 1, 2 )")
-			ln("z80.pc++")
-			ln("z80.memory.writeByte(z80.REGISTER() + uint16(signExtend(offset)), value )")
+			ln("offset := z80.memory.ReadByte( z80.PC() )")
+			ln("z80.IncPC(1)")
+			ln("value := z80.memory.ReadByte( z80.PC() )")
+			ln("z80.memory.ContendReadNoMreq_loop( z80.PC(), 1, 2 )")
+			ln("z80.IncPC(1)")
+			ln("z80.memory.WriteByte(z80.REGISTER() + uint16(signExtend(offset)), value )")
 		} else {
 			panic("invalid src: " + src)
 		}
@@ -730,8 +716,8 @@ func (Opcode) LDI() { ldi_ldd("LDI") }
 func (Opcode) LDIR() { ldir_lddr("LDIR") }
 
 func (Opcode) NEG() {
-	ln("bytetemp := z80.a")
-	ln("z80.a = 0")
+	ln("bytetemp := z80.A")
+	ln("z80.A = 0")
 	ln("z80.sub(bytetemp)")
 }
 
@@ -745,15 +731,14 @@ func (Opcode) OTIR() { otir_otdr("OTIR") }
 
 func (Opcode) OUT(port, register string) {
 	if (port == "(nn)") && (register == "A") {
-		ln("var outtemp uint16 = uint16(z80.memory.readByte(z80.pc)) + (uint16(z80.a) << 8)")
-		ln("z80.pc++")
-		ln("z80.writePort(outtemp, z80.a)")
+		ln("var outtemp uint16 = uint16(z80.memory.ReadByte(z80.PC())) + (uint16(z80.A) << 8)")
+		ln("z80.IncPC(1)")
+		ln("z80.writePort(outtemp, z80.A)")
 	} else if (port == "(C)") && (len(register) == 1) {
 		if register == "0" {
 			ln("z80.writePort(z80.BC(), ", register, ")")
 		} else {
-			lc_register := lc(register)
-			ln("z80.writePort(z80.BC(), z80.", lc_register, ")")
+			ln("z80.writePort(z80.BC(), z80.", register, ")")
 		}
 	} else {
 		panic("invalid args: " + port + ", " + register)
@@ -767,7 +752,7 @@ func (Opcode) OUTI() { outi_outd("OUTI") }
 func (Opcode) POP(a string) { push_pop("POP", a) }
 
 func (Opcode) PUSH(regpair string) {
-	ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
+	ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 )")
 	push_pop("PUSH", regpair)
 }
 
@@ -783,21 +768,21 @@ func (Opcode) RET(condition string) {
 	if condition == "" {
 		ln("z80.ret()")
 	} else {
-		ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
+		ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 )")
 
 		if condition == "NZ" {
 		}
 
 		if not[condition] {
-			ln("if !((z80.f & FLAG_", flag[condition], ") != 0) { z80.ret() }")
+			ln("if !((z80.F & FLAG_", flag[condition], ") != 0) { z80.ret() }")
 		} else {
-			ln("if (z80.f & FLAG_", flag[condition], ") != 0 { z80.ret() }")
+			ln("if (z80.F & FLAG_", flag[condition], ") != 0 { z80.ret() }")
 		}
 	}
 }
 
 func (Opcode) RETN() {
-	ln("z80.iff1 = z80.iff2")
+	ln("z80.IFF1 = z80.IFF2")
 	ln("z80.ret()")
 }
 
@@ -806,59 +791,59 @@ func (Opcode) RL(a string) { rotate_shift("RL", a) }
 func (Opcode) RLC(a string) { rotate_shift("RLC", a) }
 
 func (Opcode) RLCA() {
-	ln("z80.a = ( z80.a << 1 ) | ( z80.a >> 7 )")
-	ln("z80.f = ( z80.f & ( FLAG_P | FLAG_Z | FLAG_S ) ) |")
-	ln("        ( z80.a & ( FLAG_C | FLAG_3 | FLAG_5 ) )")
+	ln("z80.A = ( z80.A << 1 ) | ( z80.A >> 7 )")
+	ln("z80.F = ( z80.F & ( FLAG_P | FLAG_Z | FLAG_S ) ) |")
+	ln("        ( z80.A & ( FLAG_C | FLAG_3 | FLAG_5 ) )")
 }
 
 func (Opcode) RLA() {
-	ln("var bytetemp byte = z80.a")
-	ln("z80.a = ( z80.a << 1 ) | ( z80.f & FLAG_C )")
-	ln("z80.f = ( z80.f & ( FLAG_P | FLAG_Z | FLAG_S ) ) | ( z80.a & ( FLAG_3 | FLAG_5 ) ) | ( bytetemp >> 7 )")
+	ln("var bytetemp byte = z80.A")
+	ln("z80.A = ( z80.A << 1 ) | ( z80.F & FLAG_C )")
+	ln("z80.F = ( z80.F & ( FLAG_P | FLAG_Z | FLAG_S ) ) | ( z80.A & ( FLAG_3 | FLAG_5 ) ) | ( bytetemp >> 7 )")
 }
 
 func (Opcode) RLD() {
-	ln("var bytetemp byte = z80.memory.readByte( z80.HL() )")
-	ln("z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 4 )")
-	ln("z80.memory.writeByte(z80.HL(), (bytetemp << 4 ) | ( z80.a & 0x0f ) )")
-	ln("z80.a = ( z80.a & 0xf0 ) | ( bytetemp >> 4 )")
-	ln("z80.f = ( z80.f & FLAG_C ) | sz53pTable[z80.a]")
+	ln("var bytetemp byte = z80.memory.ReadByte( z80.HL() )")
+	ln("z80.memory.ContendReadNoMreq_loop( z80.HL(), 1, 4 )")
+	ln("z80.memory.WriteByte(z80.HL(), (bytetemp << 4 ) | ( z80.A & 0x0f ) )")
+	ln("z80.A = ( z80.A & 0xf0 ) | ( bytetemp >> 4 )")
+	ln("z80.F = ( z80.F & FLAG_C ) | sz53pTable[z80.A]")
 }
 
 func (Opcode) RR(a string) { rotate_shift("RR", a) }
 
 func (Opcode) RRA(a string) {
-	ln("var bytetemp byte = z80.a")
-	ln("z80.a = ( z80.a >> 1 ) | ( z80.f << 7 )")
-	ln("z80.f = ( z80.f & ( FLAG_P | FLAG_Z | FLAG_S ) ) | ( z80.a & ( FLAG_3 | FLAG_5 ) ) | ( bytetemp & FLAG_C )")
+	ln("var bytetemp byte = z80.A")
+	ln("z80.A = ( z80.A >> 1 ) | ( z80.F << 7 )")
+	ln("z80.F = ( z80.F & ( FLAG_P | FLAG_Z | FLAG_S ) ) | ( z80.A & ( FLAG_3 | FLAG_5 ) ) | ( bytetemp & FLAG_C )")
 }
 
 func (Opcode) RRC(a string) { rotate_shift("RRC", a) }
 
 func (Opcode) RRCA() {
-	ln("z80.f = ( z80.f & ( FLAG_P | FLAG_Z | FLAG_S ) ) | ( z80.a & FLAG_C )")
-	ln("z80.a = ( z80.a >> 1) | ( z80.a << 7 )")
-	ln("z80.f |= ( z80.a & ( FLAG_3 | FLAG_5 ) )")
+	ln("z80.F = ( z80.F & ( FLAG_P | FLAG_Z | FLAG_S ) ) | ( z80.A & FLAG_C )")
+	ln("z80.A = ( z80.A >> 1) | ( z80.A << 7 )")
+	ln("z80.F |= ( z80.A & ( FLAG_3 | FLAG_5 ) )")
 }
 
 func (Opcode) RRD() {
-	ln("var bytetemp byte = z80.memory.readByte( z80.HL() )")
-	ln("z80.memory.contendReadNoMreq_loop( z80.HL(), 1, 4 )")
-	ln("z80.memory.writeByte(z80.HL(),  ( z80.a << 4 ) | ( bytetemp >> 4 ) )")
-	ln("z80.a = ( z80.a & 0xf0 ) | ( bytetemp & 0x0f )")
-	ln("z80.f = ( z80.f & FLAG_C ) | sz53pTable[z80.a]")
+	ln("var bytetemp byte = z80.memory.ReadByte( z80.HL() )")
+	ln("z80.memory.ContendReadNoMreq_loop( z80.HL(), 1, 4 )")
+	ln("z80.memory.WriteByte(z80.HL(),  ( z80.A << 4 ) | ( bytetemp >> 4 ) )")
+	ln("z80.A = ( z80.A & 0xf0 ) | ( bytetemp & 0x0f )")
+	ln("z80.F = ( z80.F & FLAG_C ) | sz53pTable[z80.A]")
 }
 
 func (Opcode) RST(value string) {
-	ln("z80.memory.contendReadNoMreq( z80.IR(), 1 )")
+	ln("z80.memory.ContendReadNoMreq( z80.IR(), 1 )")
 	ln("z80.rst(0x", value, ")")
 }
 
 func (Opcode) SBC(a, b string) { arithmetic_logical("SBC", a, b) }
 
 func (Opcode) SCF() {
-	ln("z80.f = ( z80.f & ( FLAG_P | FLAG_Z | FLAG_S ) ) |")
-	ln("        ( z80.a & ( FLAG_3 | FLAG_5          ) ) |")
+	ln("z80.F = ( z80.F & ( FLAG_P | FLAG_Z | FLAG_S ) ) |")
+	ln("        ( z80.A & ( FLAG_3 | FLAG_5          ) ) |")
 	ln("        FLAG_C")
 }
 
@@ -883,7 +868,7 @@ func (Opcode) SUB(a, b string) { arithmetic_logical("SUB", a, b) }
 func (Opcode) XOR(a, b string) { arithmetic_logical("XOR", a, b) }
 
 func (Opcode) SLTTRAP() {
-	ln("z80.sltTrap(int16(z80.HL()), z80.a)")
+	ln("z80.sltTrap(int16(z80.HL()), z80.A)")
 }
 
 // Description of each file
@@ -1023,7 +1008,7 @@ func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, fu
 		functionName = strings.Replace(functionName, "iyH", "IYH", -1)
 		functionName = strings.Replace(functionName, "iyL", "IYL", -1)
 		functionName = strings.Replace(functionName, "REGISTER", "REG", -1)
-		ln("opcodesMap[", shift_op, "] = ", functionName)
+		ln("OpcodesMap[", shift_op, "] = ", functionName)
 
 		outputStream = functions
 		{
@@ -1033,7 +1018,7 @@ func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, fu
 			// Handle the undocumented rotate-shift-or-bit and store-in-register opcodes specially
 			if extra != "" {
 				register, opcode2 := args[0], args[1]
-				lc_register, lc_opcode2 := lc(register), lc(opcode2)
+				lc_opcode2 := lc(opcode2)
 
 				if (opcode2 == "RES") || (opcode2 == "SET") {
 					bit := strings.Split(extra, ",")[0]
@@ -1045,15 +1030,15 @@ func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, fu
 					operator := _if(opcode2 == "RES", "&", "|")
 					hexmask := res_set_hexmask(opcode2, uint(bitNum))
 
-					ln("  z80.", lc_register, " = z80.memory.readByte(z80.tempaddr) ", operator, " ", hexmask)
-					ln("  z80.memory.contendReadNoMreq(z80.tempaddr, 1)")
-					ln("  z80.memory.writeByte(z80.tempaddr, z80.", lc_register, ")")
+					ln("  z80.", register, " = z80.memory.ReadByte(z80.tempaddr) ", operator, " ", hexmask)
+					ln("  z80.memory.ContendReadNoMreq(z80.tempaddr, 1)")
+					ln("  z80.memory.WriteByte(z80.tempaddr, z80.", register, ")")
 					ln("}")
 				} else {
-					ln("  z80.", lc_register, " = z80.memory.readByte(z80.tempaddr)")
-					ln("  z80.memory.contendReadNoMreq( z80.tempaddr, 1 )")
-					ln("  z80.", lc_register, " = z80.", lc_opcode2, "(z80.", lc_register, ")")
-					ln("  z80.memory.writeByte(z80.tempaddr, z80.", lc_register, ")")
+					ln("  z80.", register, " = z80.memory.ReadByte(z80.tempaddr)")
+					ln("  z80.memory.ContendReadNoMreq( z80.tempaddr, 1 )")
+					ln("  z80.", register, " = z80.", lc_opcode2, "(z80.", register, ")")
+					ln("  z80.memory.WriteByte(z80.tempaddr, z80.", register, ")")
 					ln("}")
 				}
 
@@ -1087,7 +1072,7 @@ func processDataFile(data_file, logical_data_file string, code *bytes.Buffer, fu
 				{
 					ln("// Fallthrough cases")
 					for _, fallthrough_case := range fallthrough_cases {
-						ln("opcodesMap[", fallthrough_case, "] = opcodesMap[", shift_op, "]")
+						ln("OpcodesMap[", fallthrough_case, "] = OpcodesMap[", shift_op, "]")
 					}
 					fallthrough_cases = fallthrough_cases[0:0]
 				}
@@ -1128,33 +1113,33 @@ func main() {
 
 		switch data_file[1] {
 		case "opcodes_base":
-			fnStr_base := strings.Replace(fnStr, "setSPHSPL", "setSP", -1)
+			fnStr_base := strings.Replace(fnStr, "SetSPHSPL", "SetSP", -1)
 			functions.WriteString(fnStr_base)
 		case "opcodes_dd":
 			fnStr_dd := strings.Replace(fnStr, "REGISTER", "ix", -1)
 			fnStr_dd = strings.Replace(fnStr_dd, "register", "ix", -1)
 			fnStr_dd = strings.Replace(fnStr_dd, "ix()", "IX()", -1)
-			fnStr_dd = strings.Replace(fnStr_dd, "setixHixL", "setIX", -1)
-			fnStr_dd = strings.Replace(fnStr_dd, "incixH", "incIXH", -1)
-			fnStr_dd = strings.Replace(fnStr_dd, "decixH", "decIXH", -1)
-			fnStr_dd = strings.Replace(fnStr_dd, "incixL", "incIXL", -1)
-			fnStr_dd = strings.Replace(fnStr_dd, "decixL", "decIXL", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "SetixHixL", "SetIX", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "IncixH", "IncIXH", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "DecixH", "DecIXH", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "IncixL", "IncIXL", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "DecixL", "DecIXL", -1)
 			fnStr_dd = strings.Replace(fnStr_dd, "z80.ix()", "z80.IX()", -1)
-			fnStr_dd = strings.Replace(fnStr_dd, "ixH", "z80.IXH()", -1)
-			fnStr_dd = strings.Replace(fnStr_dd, "ixL", "z80.IXL()", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "ixH", "IXH", -1)
+			fnStr_dd = strings.Replace(fnStr_dd, "ixL", "IXL", -1)
 			functions.WriteString(fnStr_dd)
 		case "opcodes_fd":
 			fnStr_fd := strings.Replace(fnStr, "REGISTER", "iy", -1)
 			fnStr_fd = strings.Replace(fnStr_fd, "register", "iy", -1)
 			fnStr_fd = strings.Replace(fnStr_fd, "iy()", "IY()", -1)
-			fnStr_fd = strings.Replace(fnStr_fd, "setiyHiyL", "setIY", -1)
-			fnStr_fd = strings.Replace(fnStr_fd, "inciyH", "incIYH", -1)
-			fnStr_fd = strings.Replace(fnStr_fd, "deciyH", "decIYH", -1)
-			fnStr_fd = strings.Replace(fnStr_fd, "inciyL", "incIYL", -1)
-			fnStr_fd = strings.Replace(fnStr_fd, "deciyL", "decIYL", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "SetiyHiyL", "SetIY", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "InciyH", "IncIYH", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "DeciyH", "DecIYH", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "InciyL", "IncIYL", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "DeciyL", "DecIYL", -1)
 			fnStr_fd = strings.Replace(fnStr_fd, "z80.iy()", "z80.IY()", -1)
-			fnStr_fd = strings.Replace(fnStr_fd, "iyH", "z80.IYH()", -1)
-			fnStr_fd = strings.Replace(fnStr_fd, "iyL", "z80.IYL()", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "iyH", "IYH", -1)
+			fnStr_fd = strings.Replace(fnStr_fd, "iyL", "IYL", -1)
 			functions.WriteString(fnStr_fd)
 		default:
 			functions.WriteString(fnStr)

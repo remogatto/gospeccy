@@ -1,25 +1,6 @@
 package spectrum
 
-type MemoryAccessor interface {
-	readByte(address uint16) byte
-	readByteInternal(address uint16) byte
-
-	writeByte(address uint16, value byte)
-	writeByteInternal(address uint16, value byte)
-
-	contendRead(address uint16, time uint)
-	contendReadNoMreq(address uint16, time uint)
-	contendReadNoMreq_loop(address uint16, time uint, count uint)
-
-	contendWriteNoMreq(address uint16, time uint)
-	contendWriteNoMreq_loop(address uint16, time uint, count uint)
-
-	Read(address uint16) byte
-	Write(address uint16, value byte, protectROM bool)
-	Data() *[0x10000]byte
-
-	reset()
-}
+import "github.com/remogatto/gospeccy/src/z80"
 
 type Memory struct {
 	data [0x10000]byte
@@ -41,11 +22,11 @@ func (memory *Memory) reset() {
 	}
 }
 
-func (memory *Memory) readByteInternal(address uint16) byte {
+func (memory *Memory) ReadByteInternal(address uint16) byte {
 	return memory.data[address]
 }
 
-func (memory *Memory) writeByteInternal(address uint16, b byte) {
+func (memory *Memory) WriteByteInternal(address uint16, b byte) {
 	if (address >= SCREEN_BASE_ADDR) && (address < ATTR_BASE_ADDR) {
 		memory.speccy.ula.screenBitmapWrite(address, memory.data[address], b)
 	} else if (address >= ATTR_BASE_ADDR) && (address < 0x5b00) {
@@ -57,18 +38,18 @@ func (memory *Memory) writeByteInternal(address uint16, b byte) {
 	}
 }
 
-func (memory *Memory) readByte(address uint16) byte {
+func (memory *Memory) ReadByte(address uint16) byte {
 	contendMemory(memory.speccy.Cpu, address, 3)
-	return memory.readByteInternal(address)
+	return memory.ReadByteInternal(address)
 }
 
-func (memory *Memory) writeByte(address uint16, b byte) {
+func (memory *Memory) WriteByte(address uint16, b byte) {
 	contendMemory(memory.speccy.Cpu, address, 3)
-	memory.writeByteInternal(address, b)
+	memory.WriteByteInternal(address, b)
 }
 
-func contendMemory(z80 *Z80, address uint16, time uint) {
-	tstates_p := &z80.tstates
+func contendMemory(z80 *z80.Z80, address uint16, time uint) {
+	tstates_p := &z80.Tstates
 	tstates := *tstates_p
 
 	if (address & 0xc000) == 0x4000 {
@@ -81,8 +62,8 @@ func contendMemory(z80 *Z80, address uint16, time uint) {
 }
 
 // Equivalent to executing "contendMemory(z80, address, time)" count times
-func contendMemory_loop(z80 *Z80, address uint16, time uint, count uint) {
-	tstates_p := &z80.tstates
+func contendMemory_loop(z80 *z80.Z80, address uint16, time uint, count uint) {
+	tstates_p := &z80.Tstates
 	tstates := *tstates_p
 
 	if (address & 0xc000) == 0x4000 {
@@ -97,23 +78,23 @@ func contendMemory_loop(z80 *Z80, address uint16, time uint, count uint) {
 	*tstates_p = tstates
 }
 
-func (memory *Memory) contendRead(address uint16, time uint) {
+func (memory *Memory) ContendRead(address uint16, time uint) {
 	contendMemory(memory.speccy.Cpu, address, time)
 }
 
-func (memory *Memory) contendReadNoMreq(address uint16, time uint) {
+func (memory *Memory) ContendReadNoMreq(address uint16, time uint) {
 	contendMemory(memory.speccy.Cpu, address, time)
 }
 
-func (memory *Memory) contendReadNoMreq_loop(address uint16, time uint, count uint) {
+func (memory *Memory) ContendReadNoMreq_loop(address uint16, time uint, count uint) {
 	contendMemory_loop(memory.speccy.Cpu, address, time, count)
 }
 
-func (memory *Memory) contendWriteNoMreq(address uint16, time uint) {
+func (memory *Memory) ContendWriteNoMreq(address uint16, time uint) {
 	contendMemory(memory.speccy.Cpu, address, time)
 }
 
-func (memory *Memory) contendWriteNoMreq_loop(address uint16, time uint, count uint) {
+func (memory *Memory) ContendWriteNoMreq_loop(address uint16, time uint, count uint) {
 	contendMemory_loop(memory.speccy.Cpu, address, time, count)
 }
 

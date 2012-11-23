@@ -2,6 +2,7 @@ package spectrum
 
 import (
 	"time"
+	"github.com/remogatto/gospeccy/src/z80"
 )
 
 type ula_byte_t struct {
@@ -37,16 +38,16 @@ type ULA struct {
 	// Whether the 8x8 rectangular screen area was modified during the current frame
 	dirtyScreen [ScreenWidth_Attr * ScreenHeight_Attr]bool
 
-	z80    *Z80
-	memory MemoryAccessor
-	ports  PortAccessor
+	z80    *z80.Z80
+	memory *Memory
+	ports  *Ports
 }
 
 func NewULA() *ULA {
 	return &ULA{accurateEmulation: true}
 }
 
-func (ula *ULA) init(z80 *Z80, memory MemoryAccessor, ports PortAccessor) {
+func (ula *ULA) init(z80 *z80.Z80, memory *Memory, ports *Ports) {
 	ula.z80 = z80
 	ula.memory = memory
 	ula.ports = ports
@@ -123,7 +124,7 @@ func (ula *ULA) screenBitmapWrite(address uint16, oldValue byte, newValue byte) 
 			ula_lineStart_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
 			x, _ := screenAddr_to_xy(address)
 			ula_tstate := ula_lineStart_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
-			if ula_tstate <= ula.z80.tstates {
+			if ula_tstate <= ula.z80.Tstates {
 				// Remember the value read by ULA
 				ula.bitmap[rel_addr] = ula_byte_t{true, oldValue}
 			}
@@ -149,10 +150,10 @@ func (ula *ULA) screenAttrWrite(address uint16, oldValue byte, newValue byte) {
 			ula_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE + (x >> PIXELS_PER_TSTATE_LOG2)
 
 			for i := 0; i < 8; i++ {
-				if ula_tstate <= CPU.tstates {
+				if ula_tstate <= CPU.Tstates {
 					ula_attr := &ula.attr[ofs]
 					if !ula_attr.valid || (ula_tstate > ula_attr.tstate) {
-						*ula_attr = ula_attr_t{true, oldValue, CPU.tstates}
+						*ula_attr = ula_attr_t{true, oldValue, CPU.Tstates}
 					}
 					ofs += BytesPerLine
 					ula_tstate += TSTATES_PER_LINE

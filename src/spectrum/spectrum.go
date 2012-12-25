@@ -33,7 +33,7 @@ import (
 	"time"
 	"github.com/0xe2-0x9a-0x9b/Go-PerfEvents"
 	"github.com/remogatto/gospeccy/src/formats"
-	"github.com/remogatto/gospeccy/src/z80"
+	"github.com/remogatto/z80"
 )
 
 const TStatesPerFrame = 69888 // Number of T-states per frame

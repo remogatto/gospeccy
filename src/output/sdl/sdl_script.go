@@ -3,8 +3,8 @@
 package sdl_output
 
 import (
-	"bitbucket.org/binet/go-eval/pkg/eval"
 	intp "github.com/remogatto/gospeccy/src/interpreter"
+	"github.com/sbinet/go-eval/pkg/eval"
 	"sync"
 )
 

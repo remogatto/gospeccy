@@ -1,11 +1,11 @@
 // Implementation of Value... interfaces which are defined in
-// Go package "bitbucket.org/binet/go-eval".
+// Go package "github.com/sbinet/go-eval".
 
 package interpreter
 
 import (
-	eval "bitbucket.org/binet/go-eval/pkg/eval"
 	"bytes"
+	"github.com/sbinet/go-eval/pkg/eval"
 	"strconv"
 	"strings"
 )

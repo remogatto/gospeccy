@@ -1,10 +1,10 @@
-// GoSpeccy's scripting language based on "bitbucket.org/binet/go-eval"
+// GoSpeccy's scripting language based on "github.com/sbinet/go-eval"
 package interpreter
 
 import (
-	"bitbucket.org/binet/go-eval/pkg/eval"
 	"fmt"
 	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/sbinet/go-eval/pkg/eval"
 	"go/ast"
 	"go/parser"
 	"go/token"

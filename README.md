@@ -1,3 +1,5 @@
+[![Build Status](https://drone.io/github.com/remogatto/gospeccy/status.png)](https://drone.io/github.com/remogatto/gospeccy/latest)
+
 # GoSpeccy - An evolving ZX Spectrum 48k Emulator
 
 GoSpeccy is a free ZX Spectrum (Speccy for friends) emulator

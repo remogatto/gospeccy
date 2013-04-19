@@ -4,7 +4,6 @@ import "github.com/remogatto/z80"
 
 type Memory struct {
 	data [0x10000]byte
-
 	speccy *Spectrum48k
 }
 
@@ -108,8 +107,8 @@ func (memory *Memory) Write(address uint16, value byte, protectROM bool) {
 	}
 }
 
-func (memory *Memory) Data() *[0x10000]byte {
-	return &memory.data
+func (memory *Memory) Data() []byte {
+	return memory.data[:]
 }
 
 // Number of T-states to delay, for each possible T-state within a frame.

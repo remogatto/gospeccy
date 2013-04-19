@@ -27,7 +27,7 @@ func (t *cliTestSuite) Should_allow_accelerated_tape_load() {
 	console.PutCommand("acceleratedLoad(false)")
 
 	t.True(time.Since(start).Nanoseconds() < 10e9)
-	t.False(speccy.TapeDrive().AcceleratedLoad)
+	t.Not(t.True(speccy.TapeDrive().AcceleratedLoad))
 	t.True(screenEqualTo("testdata/hello_tape_loaded.sna"))
 }
 

@@ -1,11 +1,11 @@
 package interpreter
 
 import (
-	eval "bitbucket.org/binet/go-eval/pkg/eval"
 	"bytes"
 	"fmt"
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/sbinet/go-eval/pkg/eval"
 	"io/ioutil"
 	"net/url"
 	"strings"

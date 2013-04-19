@@ -187,6 +187,7 @@ func (ula *ULA) prepare(display *DisplayInfo) *DisplayData {
 		}
 
 		// Fill screen.bitmap & screen.attr, but only the dirty regions.
+
 		var memory_data = ula.memory.Data()
 		ula_bitmap := &ula.bitmap
 		ula_attr := &ula.attr

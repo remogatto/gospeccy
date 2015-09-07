@@ -12,8 +12,8 @@ package sdl_output
 import (
 	"errors"
 	"fmt"
-	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
-	sdl_audio "github.com/0xe2-0x9a-0x9b/Go-SDL/sdl/audio"
+	"github.com/scottferg/Go-SDL/sdl"
+	sdl_audio "github.com/scottferg/Go-SDL/sdl/audio"
 	"github.com/remogatto/gospeccy/src/spectrum"
 	"math"
 	"os"

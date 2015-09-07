@@ -5,7 +5,7 @@ package interpreter
 
 import (
 	"bytes"
-	"github.com/sbinet/go-eval/pkg/eval"
+	"github.com/sbinet/go-eval"
 	"strconv"
 	"strings"
 )

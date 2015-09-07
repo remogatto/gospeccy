@@ -4,7 +4,7 @@ package interpreter
 import (
 	"fmt"
 	"github.com/remogatto/gospeccy/src/spectrum"
-	"github.com/sbinet/go-eval/pkg/eval"
+	"github.com/sbinet/go-eval"
 	"go/ast"
 	"go/parser"
 	"go/token"

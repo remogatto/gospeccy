@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/gospeccy/src/spectrum"
-	"github.com/sbinet/go-eval/pkg/eval"
+	"github.com/sbinet/go-eval"
 	"io/ioutil"
 	"net/url"
 	"strings"

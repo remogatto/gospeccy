@@ -29,8 +29,8 @@ package sdl_output
 
 import (
 	"fmt"
-	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
-	"github.com/0xe2-0x9a-0x9b/Go-SDL/ttf"
+	"github.com/scottferg/Go-SDL/sdl"
+	"github.com/scottferg/Go-SDL/ttf"
 	"github.com/remogatto/gospeccy/src/spectrum"
 	"os"
 	"time"
@@ -460,7 +460,7 @@ func (disp *UnscaledDisplay) releaseMemory() {
 }
 
 // Set pixels from (minx,y) to (maxx,y). Both bounds are inclusive.
-func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
+func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y int, color byte) {
 	wy := spectrum.TotalScreenWidth * y
 	pixels := &disp.pixels
 
@@ -480,7 +480,7 @@ func (disp *UnscaledDisplay) scanlineFill(minx, maxx, y uint, color byte) {
 		for x := minx; x < spectrum.ScreenBorderX; x++ {
 			pixels[wy+x] = color
 		}
-		for x := uint(spectrum.TotalScreenWidth - spectrum.ScreenBorderX); x <= maxx; x++ {
+		for x := spectrum.TotalScreenWidth - spectrum.ScreenBorderX; x <= maxx; x++ {
 			pixels[wy+x] = color
 		}
 	}

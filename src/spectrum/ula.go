@@ -13,7 +13,7 @@ type ula_byte_t struct {
 type ula_attr_t struct {
 	valid  bool
 	value  uint8
-	tstate uint
+	tstate int
 }
 
 type ULA struct {
@@ -123,7 +123,7 @@ func (ula *ULA) screenBitmapWrite(address uint16, oldValue byte, newValue byte) 
 			rel_addr := address - SCREEN_BASE_ADDR
 			ula_lineStart_tstate := screenline_start_tstates[rel_addr>>BytesPerLine_log2]
 			x, _ := screenAddr_to_xy(address)
-			ula_tstate := ula_lineStart_tstate + uint(x>>PIXELS_PER_TSTATE_LOG2)
+			ula_tstate := ula_lineStart_tstate + int(x>>PIXELS_PER_TSTATE_LOG2)
 			if ula_tstate <= ula.z80.Tstates {
 				// Remember the value read by ULA
 				ula.bitmap[rel_addr] = ula_byte_t{true, oldValue}
@@ -147,7 +147,7 @@ func (ula *ULA) screenAttrWrite(address uint16, oldValue byte, newValue byte) {
 			y := 8 * attr_y
 
 			ofs := (y << BytesPerLine_log2) + attr_x
-			ula_tstate := FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE + (x >> PIXELS_PER_TSTATE_LOG2)
+			ula_tstate := int(FIRST_SCREEN_BYTE + y*TSTATES_PER_LINE + (x >> PIXELS_PER_TSTATE_LOG2))
 
 			for i := 0; i < 8; i++ {
 				if ula_tstate <= CPU.Tstates {

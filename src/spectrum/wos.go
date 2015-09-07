@@ -177,17 +177,19 @@ func WosQuery(app *Application, query string) ([]WosRecord, error) {
 	return matches, nil
 }
 
+
 // Fetch the specified URL and store to the given open file
 func httpGet(url string, outfile io.Writer) error {
    	resp, err := http.Get(url)
 	defer resp.Body.Close()
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 	
 	_, err = io.Copy(outfile, resp.Body)
 	return err
 }
+
 
 // Download from [ftp.worldofspectrum.org].
 // An URL can be obtained by calling function WosQuery.

@@ -31,7 +31,7 @@ import (
 	"errors"
 	"sync"
 	"time"
-	"github.com/0xe2-0x9a-0x9b/Go-PerfEvents"
+	"github.com/remogatto/Go-PerfEvents"
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/z80"
 )
@@ -625,7 +625,7 @@ func (speccy *Spectrum48k) loadSnapshot(s formats.Snapshot) error {
 	// Populate memory
 	copy(speccy.Memory.Data()[0x4000:], mem[:])
 
-	speccy.Cpu.Tstates = cpu.Tstate
+	speccy.Cpu.Tstates = int(cpu.Tstate)
 
 	return nil
 }

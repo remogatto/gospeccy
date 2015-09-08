@@ -47,12 +47,12 @@ func (memory *Memory) WriteByte(address uint16, b byte) {
 	memory.WriteByteInternal(address, b)
 }
 
-func contendMemory(z80 *z80.Z80, address uint16, time uint) {
+func contendMemory(z80 *z80.Z80, address uint16, time int) {
 	tstates_p := &z80.Tstates
 	tstates := *tstates_p
 
 	if (address & 0xc000) == 0x4000 {
-		tstates += uint(delay_table[tstates])
+		tstates += int(delay_table[tstates])
 	}
 
 	tstates += time
@@ -61,39 +61,39 @@ func contendMemory(z80 *z80.Z80, address uint16, time uint) {
 }
 
 // Equivalent to executing "contendMemory(z80, address, time)" count times
-func contendMemory_loop(z80 *z80.Z80, address uint16, time uint, count uint) {
+func contendMemory_loop(z80 *z80.Z80, address uint16, time int, count uint) {
 	tstates_p := &z80.Tstates
 	tstates := *tstates_p
 
 	if (address & 0xc000) == 0x4000 {
 		for i := uint(0); i < count; i++ {
-			tstates += uint(delay_table[tstates])
+			tstates += int(delay_table[tstates])
 			tstates += time
 		}
 	} else {
-		tstates += time * count
+		tstates += time * int(count)
 	}
 
 	*tstates_p = tstates
 }
 
-func (memory *Memory) ContendRead(address uint16, time uint) {
+func (memory *Memory) ContendRead(address uint16, time int) {
 	contendMemory(memory.speccy.Cpu, address, time)
 }
 
-func (memory *Memory) ContendReadNoMreq(address uint16, time uint) {
+func (memory *Memory) ContendReadNoMreq(address uint16, time int) {
 	contendMemory(memory.speccy.Cpu, address, time)
 }
 
-func (memory *Memory) ContendReadNoMreq_loop(address uint16, time uint, count uint) {
+func (memory *Memory) ContendReadNoMreq_loop(address uint16, time int, count uint) {
 	contendMemory_loop(memory.speccy.Cpu, address, time, count)
 }
 
-func (memory *Memory) ContendWriteNoMreq(address uint16, time uint) {
+func (memory *Memory) ContendWriteNoMreq(address uint16, time int) {
 	contendMemory(memory.speccy.Cpu, address, time)
 }
 
-func (memory *Memory) ContendWriteNoMreq_loop(address uint16, time uint, count uint) {
+func (memory *Memory) ContendWriteNoMreq_loop(address uint16, time int, count uint) {
 	contendMemory_loop(memory.speccy.Cpu, address, time, count)
 }
 

@@ -34,26 +34,26 @@ type FrameStatusOfPorts struct {
 type BorderEvent struct {
 	// The moment when the border color was changed.
 	// It is the number of T-states since the beginning of the frame.
-	TState uint
+	TState int
 
 	// The new border color
 	Color byte
 }
 
-func (e *BorderEvent) GetTState() uint {
+func (e *BorderEvent) GetTState() int {
 	return e.TState
 }
 
 type BeeperEvent struct {
 	// The moment when the beeper-event occurred.
 	// It is the number of T-states since the beginning of the frame.
-	TState uint
+	TState int
 
 	// The beeper level (0 .. MAX_AUDIO_LEVEL)
 	Level byte
 }
 
-func (e *BeeperEvent) GetTState() uint {
+func (e *BeeperEvent) GetTState() int {
 	return e.TState
 }
 
@@ -340,9 +340,9 @@ func (p *Ports) WritePortInternal(address uint16, b byte, contend bool) {
 	}
 }
 
-func contendPort(z80 *z80.Z80, time uint) {
+func contendPort(z80 *z80.Z80, time int) {
 	tstates_p := &z80.Tstates
-	*tstates_p += uint(delay_table[*tstates_p])
+	*tstates_p += int(delay_table[*tstates_p])
 	*tstates_p += time
 }
 

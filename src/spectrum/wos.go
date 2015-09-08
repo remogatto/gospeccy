@@ -2,7 +2,6 @@ package spectrum
 
 import (
 	"fmt"
-	"github.com/remogatto/ftpget"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,7 +13,8 @@ import (
 
 var (
 	fileSuffixes = []string{".tap.zip", ".sna.zip", ".z80.zip"}
-	queryBaseURL = "http://www.worldofspectrum.org/infoseek.cgi?"
+	baseURL      = "http://www.worldofspectrum.org/"    
+	queryBaseURL = baseURL + "infoseek.cgi?"
 )
 
 func knownType(filename string) bool {
@@ -31,7 +31,7 @@ type WosRecord struct {
 	Title       string
 	MachineType string   // "ZX Spectrum 48K", "ZX Spectrum 48K/128K", ...
 	Publication string   // "Freeware", "Commercial", "unknown", ...
-	FtpFiles    []string // ftp://ftp.worldofspectrum.org/...
+	FtpFiles    []string // formerly ftp, now http://www.worldofspectrum.org/...
 	Score       string   // "7.59 (24 votes)", "No votes yet"
 }
 
@@ -63,7 +63,7 @@ func WosQuery(app *Application, query string) ([]WosRecord, error) {
 		regexp1 := regexp.MustCompile("<A[^>]*>" + "([^<]+)" + "</A>")
 		regexp2 := regexp.MustCompile("<FONT[^>]*>(<I>)?" + "([^<]+)")
 		regexp_score := regexp.MustCompile(("<FONT[^>]*>" + "([^<]+)" + "<" + "[^<]+") + ("<I[^>]*>" + "([^<]+)" + "</I>"))
-		regexp_ftp := regexp.MustCompile("ftp://([a-zA-Z0-9\\-\\/\\.\\?_]+)")
+		regexp_file := regexp.MustCompile("/pub/sinclair/[a-zA-Z0-9\\-\\/\\.\\?_]+")
 
 		var a [][]int = regexp_title.FindAllIndex(body, -1)
 		for i := 0; i < len(a); i++ {
@@ -160,22 +160,36 @@ func WosQuery(app *Application, query string) ([]WosRecord, error) {
 				}
 			}
 
-			var ftpFiles []string
+			var fileUrls []string
 			{
-				urls := regexp_ftp.FindAllString(string(body2), -1)
+				urls := regexp_file.FindAllString(string(body2), -1)
 				for _, url := range urls {
 					if knownType(path.Base(url)) {
-						ftpFiles = append(ftpFiles, url)
+						fileUrls = append(fileUrls, url)
 					}
 				}
 			}
 
-			matches = append(matches, WosRecord{title, machineType, publication, ftpFiles, score})
+			matches = append(matches, WosRecord{title, machineType, publication, fileUrls, score})
 		}
 	}
 
 	return matches, nil
 }
+
+
+// Fetch the specified URL and store to the given open file
+func httpGet(url string, outfile io.Writer) error {
+   	resp, err := http.Get(url)
+	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	
+	_, err = io.Copy(outfile, resp.Body)
+	return err
+}
+
 
 // Download from [ftp.worldofspectrum.org].
 // An URL can be obtained by calling function WosQuery.
@@ -183,11 +197,7 @@ func WosGet(app *Application, stdout io.Writer, url string) (string, error) {
 	filename := path.Base(url)
 	dir := DownloadPath()
 	filePath := path.Join(dir, filename)
-	ftpURL := url[6:len(url)]
-
-	if app.Verbose {
-		ftp.Log = true
-	}
+	httpURL := baseURL + url
 
 	if err := os.MkdirAll(dir, 0777); err != nil {
 		return "", err
@@ -207,7 +217,7 @@ func WosGet(app *Application, stdout io.Writer, url string) (string, error) {
 		return "", err
 	}
 
-	if err = ftp.Get(ftpURL, f); err != nil {
+	if err = httpGet(httpURL, f); err != nil {
 		os.Remove(filePath)
 		return "", err
 	}

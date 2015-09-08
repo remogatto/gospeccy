@@ -158,12 +158,12 @@ type DisplayReceiver interface {
 // Let 'addr' be in range 0x4000 ... 0x5800-1.
 // Then 'screenline_start_tstates[(addr-0x4000)/BytesPerLine]' is the T-state when the Spectrum
 // starts painting the screenline containing 'addr'.
-var screenline_start_tstates [ScreenHeight]uint
+var screenline_start_tstates [ScreenHeight]int
 
 func init() {
 	for y := uint8(0); y < ScreenHeight; y++ {
 		addr := xy_to_screenAddr(0, y)
-		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + uint(y)*TSTATES_PER_LINE
+		screenline_start_tstates[(addr-SCREEN_BASE_ADDR)/BytesPerLine] = FIRST_SCREEN_BYTE + int(y)*TSTATES_PER_LINE
 	}
 }
 

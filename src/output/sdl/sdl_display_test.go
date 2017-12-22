@@ -1,4 +1,4 @@
-// +build linux freebsd
+// +build linux freebsd darwin
 
 package sdl_output
 
@@ -7,10 +7,11 @@ import (
 	//"image/png"
 
 	//"strings"
-	"github.com/scottferg/Go-SDL/sdl"
+	"testing"
+
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/gospeccy/src/spectrum"
-	"testing"
+	"github.com/scottferg/Go-SDL/sdl"
 	//"unsafe"
 )
 

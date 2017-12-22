@@ -5,19 +5,20 @@
  * except for usages in immoral contexts.
  */
 
-// +build linux freebsd
+// +build linux freebsd darwin
 
 package sdl_output
 
 import (
 	"errors"
 	"fmt"
-	"github.com/scottferg/Go-SDL/sdl"
-	sdl_audio "github.com/scottferg/Go-SDL/sdl/audio"
-	"github.com/remogatto/gospeccy/src/spectrum"
 	"math"
 	"os"
 	"sync"
+
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/scottferg/Go-SDL/sdl"
+	sdl_audio "github.com/scottferg/Go-SDL/sdl/audio"
 )
 
 func init() {

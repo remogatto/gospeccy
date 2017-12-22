@@ -171,6 +171,14 @@ Manic Miner running on GoSpeccy.
 * Add more filters and improve the scaler
 * Add new graphical backends (Go's exp/draw?)
 
+# osx notes
+The SDL usage needs X11 because the Quartz implementation is picky about how threads are used (you need to poll events on the main thread or it throws an exception.)
+Getting a sdl installed in osx which supports x11 is not that simple though because the bottled versions seem to exclude X11. The following worked for me.
+
+    brew install -vd --build-from-source  sdl --with-x11 --with-test
+    brew install sdl_image sdl_ttf sdl_mixer
+
+
 # Credits
 
 * Thanks to [⚛](http://github.com/0xe2-0x9a-0x9b) for giving a new

@@ -5,15 +5,16 @@
  * except for usages in immoral contexts.
  */
 
-// +build linux freebsd
+// +build linux freebsd darwin
 
 package sdl_output
 
 import (
-	"github.com/scottferg/Go-SDL/sdl"
-	"github.com/remogatto/gospeccy/src/spectrum"
 	"math/rand"
 	"unsafe"
+
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/scottferg/Go-SDL/sdl"
 )
 
 // Composes multiple SDL surfaces into a single surface

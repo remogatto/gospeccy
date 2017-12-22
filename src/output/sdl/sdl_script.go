@@ -1,11 +1,12 @@
-// +build linux freebsd
+// +build linux freebsd darwin
 
 package sdl_output
 
 import (
+	"sync"
+
 	intp "github.com/remogatto/gospeccy/src/interpreter"
 	"github.com/sbinet/go-eval"
-	"sync"
 )
 
 type userInterfaceSettings_t interface {

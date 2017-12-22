@@ -23,18 +23,19 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
-// +build linux freebsd
+// +build linux freebsd darwin
 
 package sdl_output
 
 import (
 	"fmt"
-	"github.com/scottferg/Go-SDL/sdl"
-	"github.com/scottferg/Go-SDL/ttf"
-	"github.com/remogatto/gospeccy/src/spectrum"
 	"os"
 	"time"
 	"unsafe"
+
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/scottferg/Go-SDL/sdl"
+	"github.com/scottferg/Go-SDL/ttf"
 )
 
 func init() {

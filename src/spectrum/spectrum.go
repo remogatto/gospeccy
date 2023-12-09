@@ -31,7 +31,8 @@ import (
 	"errors"
 	"sync"
 	"time"
-	"github.com/remogatto/Go-PerfEvents"
+
+	perf "github.com/remogatto/Go-PerfEvents"
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/z80"
 )
@@ -658,7 +659,7 @@ func (speccy *Spectrum48k) MakeSnapshot() *formats.FullSnapshot {
 	s.Cpu.IFF2 = speccy.Cpu.IFF2
 	s.Cpu.IM = speccy.Cpu.IM
 
-	s.Cpu.R = byte(speccy.Cpu.R & 0x7f) | (speccy.Cpu.R7 & 0x80)
+	s.Cpu.R = byte(speccy.Cpu.R&0x7f) | (speccy.Cpu.R7 & 0x80)
 
 	s.Cpu.SP = speccy.Cpu.SP()
 	s.Cpu.PC = speccy.Cpu.PC()
@@ -751,10 +752,10 @@ func (speccy *Spectrum48k) doOpcodes() {
 		speccy.z80_instructionCounter += uint64(z80_localInstructionCounter)
 
 		/*if z80_localInstructionCounter > 0 {
-		 println( z80_localInstructionCounter, hostCpu_instrCount_start, hostCpu_instrCount_end,
-		 hostCpu_instrCount_end-hostCpu_instrCount_start,
-		 (hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter) )
-		 }*/
+		println( z80_localInstructionCounter, hostCpu_instrCount_start, hostCpu_instrCount_end,
+		hostCpu_instrCount_end-hostCpu_instrCount_start,
+		(hostCpu_instrCount_end - hostCpu_instrCount_start) / uint64(z80_localInstructionCounter) )
+		}*/
 
 		if (hostCpu_instrCount_startErr == nil) &&
 			(hostCpu_instrCount_endErr == nil) &&

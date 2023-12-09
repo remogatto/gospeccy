@@ -1,9 +1,10 @@
 package formats
 
 import (
-	"github.com/remogatto/prettytest"
 	"strings"
 	"testing"
+
+	"github.com/remogatto/prettytest"
 )
 
 type testSuite struct {
@@ -44,7 +45,7 @@ func (t *testSuite) TestReadProgram_SNA_ZIP() {
 
 func (t *testSuite) TestReadProgram_ZIP_ambiguous() {
 	_, err := ReadProgram("testdata/ambiguous.zip")
-	t.NotNil(err)
+	t.Not(t.Nil(err))
 	t.True(strings.Contains(err.Error(), "multiple"))
 }
 

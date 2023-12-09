@@ -1,16 +1,17 @@
 package test
 
 import (
-	"github.com/0xe2-0x9a-0x9b/Go-SDL/sdl"
-	"github.com/0xe2-0x9a-0x9b/Go-SDL/ttf"
+	"bytes"
+	"io/ioutil"
+
 	"github.com/remogatto/clingon"
 	"github.com/remogatto/gospeccy/src/formats"
 	"github.com/remogatto/gospeccy/src/interpreter"
 	output "github.com/remogatto/gospeccy/src/output/sdl"
 	"github.com/remogatto/gospeccy/src/spectrum"
 	"github.com/remogatto/prettytest"
-	"io/ioutil"
-	"bytes"
+	"github.com/scottferg/Go-SDL/sdl"
+	"github.com/scottferg/Go-SDL/ttf"
 )
 
 var (

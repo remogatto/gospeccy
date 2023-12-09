@@ -3,13 +3,14 @@ package interpreter
 import (
 	"bytes"
 	"fmt"
-	"github.com/remogatto/gospeccy/src/formats"
-	"github.com/remogatto/gospeccy/src/spectrum"
-	"github.com/sbinet/go-eval"
 	"io/ioutil"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/remogatto/gospeccy/src/formats"
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/sbinet/go-eval"
 )
 
 // Contains the names of all defined functions

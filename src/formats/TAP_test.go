@@ -24,7 +24,7 @@ func (t *testSuite) TestReadTAP() {
 
 	t.Equal(23, int(tap.Len()))
 
-	t.NotNil(headerBlock)
+	t.Not(t.Nil(headerBlock))
 	t.Equal(byte(TAP_FILE_CODE), headerBlock.tapType)
 	t.Equal("ROM       ", headerBlock.filename)
 	t.Equal(uint16(2), headerBlock.length)
@@ -33,7 +33,7 @@ func (t *testSuite) TestReadTAP() {
 
 func (t *testSuite) TestReadTAPError() {
 	_, err := NewTAP(nil)
-	t.NotNil(err)
+	t.Not(t.Nil(err))
 }
 
 // SAVE "ROM" CODE 0,2

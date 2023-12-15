@@ -1,12 +1,13 @@
 package test
 
 import (
-	"github.com/remogatto/gospeccy/src/formats"
-	"github.com/remogatto/gospeccy/src/spectrum"
-	"github.com/remogatto/prettytest"
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/remogatto/gospeccy/src/formats"
+	"github.com/remogatto/gospeccy/src/spectrum"
+	"github.com/remogatto/prettytest"
 )
 
 // System ROM

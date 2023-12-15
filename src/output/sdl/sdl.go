@@ -1,3 +1,4 @@
+//go:build linux || freebsd
 // +build linux freebsd
 
 // GoSpeccy SDL interface (audio&video output, keyboard input)
@@ -8,14 +9,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/scottferg/Go-SDL/sdl"
-	"github.com/scottferg/Go-SDL/ttf"
+	"reflect"
+	"sync"
+
 	"github.com/remogatto/clingon"
 	"github.com/remogatto/gospeccy/src/env"
 	"github.com/remogatto/gospeccy/src/interpreter"
 	"github.com/remogatto/gospeccy/src/spectrum"
-	"reflect"
-	"sync"
+	"github.com/scottferg/Go-SDL/sdl"
+	"github.com/scottferg/Go-SDL/ttf"
 )
 
 const DEFAULT_JOYSTICK_ID = 0
